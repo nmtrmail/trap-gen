@@ -427,6 +427,7 @@ def procInitCode(self, model):
     """Creates the processor initialization code, initializing the default value of
     registers, aliases, etc."""
     initString = ''
+
     for elem in self.regBanks + self.aliasRegBanks:
         # First of all I check that the initialization is the default one: in case it is,
         # I can write more compact code
@@ -1127,6 +1128,14 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         quantumKeeperAttribute = cxx_writer.writer_code.Attribute('quantKeeper', quantumKeeperType, 'pri')
         processorElements.append(quantumKeeperAttribute)
         bodyInits += 'this->quantKeeper.set_global_quantum( this->latency*100 );\nthis->quantKeeper.reset();\n'
+
+    initParCode = ''
+    for par in self.parameters:
+        initParCode += 'this->' + par.name + '(_' + par.name + ');\n'
+        attribute = cxx_writer.writer_code.Attribute(par.name, par.type, 'pri')
+        processorElements.append(attribute)
+    initElements.append(initParCode)
+
     # Lets now add the registers, the reg banks, the aliases, etc.
     (bodyInits, bodyDestructor, abiIfInit) = createRegsAttributes(self, model, processorElements, initElements, bodyAliasInit, aliasInit, bodyInits)
 
@@ -1354,6 +1363,11 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     if (self.systemc or model.startswith('acc') or len(self.tlmPorts) > 0 or model.endswith('AT')) and not self.externalClock:
         constructorParams.append(cxx_writer.writer_code.Parameter('latency', cxx_writer.writer_code.sc_timeType))
         constructorInit.append('latency(latency)')
+
+    for par in self.parameters:
+        constructorParams.append(par)
+        constructorInit.append(par.name+'(_'+par.name+')')
+
     publicConstr = cxx_writer.writer_code.Constructor(constructorBody, 'pu', constructorParams, constructorInit + initElements)
     destrCode = processor_name + """::numInstances--;
     for(int i = 0; i < """ + str(maxInstrId + 1) + """; i++){

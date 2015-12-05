@@ -350,6 +350,8 @@ class Processor:
         self.byteSize = None
         self.bitSizes = None
         self.cacheLimit = cacheLimit
+        self.defines = []
+        self.parameters = []
         self.regs = []
         self.regBanks = []
         self.aliasRegs = []
@@ -438,6 +440,16 @@ class Processor:
     def setWordsize(self, wordSize = 4, byteSize = 8):
         self.wordSize = wordSize
         self.byteSize = byteSize
+
+    def addDefine(self, define, includes = []):
+        self.defines.append(cxx_writer.writer_code.Define(define + '\n', includes = includes))
+
+    def addParameter(self, name, varType, default):
+        for i in self.parameters:
+            if i.name == name:
+                raise Exception('A parameter with name ' + name + ' already exists in processor ' + self.name)
+        parameter = cxx_writer.writer_code.Parameter(name, type = varType, initValue = default)
+        self.parameters.append(parameter)
 
     def addRegister(self, reg):
         for i in self.regs:
@@ -1134,6 +1146,7 @@ class Processor:
             implFileRegs.addInclude('registers.hpp')
             headFileRegs = cxx_writer.writer_code.FileDumper('registers.hpp', True)
             headFileRegs.addMember(defCode)
+            headFileRegs.addMember(self.defines)
             headFileRegs.addMember(self.getRegistersBitfields())
             implFileRegs.addMember(namespaceUse)
             for i in RegClasses:
