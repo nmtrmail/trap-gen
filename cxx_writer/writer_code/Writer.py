@@ -54,7 +54,7 @@ class CodeWriter:
     """This class is simply used to write strings to an output file; the added value is that we do not
     need to care about indenting since this is automatically managed"""
 
-    def __init__(self, file, indentSize = 4, lineWidth = 90):
+    def __init__(self, file, indentSize = 2, lineWidth = 80):
         if type(file) == type(''):
             self.file = open(file, 'at')
             self.opened = True
@@ -73,7 +73,7 @@ class CodeWriter:
         if self.opened:
             self.file.close()
 
-    def write(self, code):
+    def write(self, code, split = ' ', indent = -1):
         """(After/Before) each delimiter start ({) I have to increment
         the size of the current indent. Before each delimiter
         end (}) I have to decrement it
@@ -81,54 +81,97 @@ class CodeWriter:
         self.codeBuffer += code.expandtabs(self.indentSize)
         if not '\n' in code:
             return
+        if (indent == -1):
+            indent = self.curIndent
+            force = False
+        else: force = True
         for line in self.codeBuffer.split('\n')[:-1]:
             line = line.strip()
             # I check if it is the case to unindent
-            if (line.endswith('}') or line.startswith('}')) and self.curIndent >= self.indentSize:
-                self.curIndent -= self.indentSize
+            if (line.endswith('}') or line.startswith('}')) and self.curIndent >= 1:
+                self.curIndent -= 1
+                indent -= 1
             # Now I print the current line, making sure that It is not too long
             # in case I send it to a new line
             if line:
-                for i in range(0, self.curIndent):
+                # [tadros]: Moved the calculation of the indenting out of the
+                # recursive go_new_line for efficiency.
+                singleIndent = ''
+                totalIndent = ''
+                for i in range(0, self.indentSize):
+                    singleIndent += ' '
+                for i in range(0, indent * self.indentSize):
                     self.file.write(' ')
-                printOnFile(self.go_new_line(line), self.file)
+                    totalIndent += ' '
+                printOnFile(self.go_new_line(line, singleIndent, totalIndent, split, force), self.file)
             else:
                 printOnFile('', self.file)
             # Finally I compute the nesting level for the next lines
             if line.endswith('{'):
-                self.curIndent += self.indentSize
+                self.curIndent += 1
+                indent += 1
         lastLine = self.codeBuffer.split('\n')[-1]
         if not lastLine.endswith('\n'):
             self.codeBuffer = lastLine
 
-    def go_new_line(self, toModify):
-        """Given a string the function introduces newline characters to
-        respect the line width constraint"""
+    def go_new_line(self, toModify, singleIndent, totalIndent, split = ' ', force = False, cpp = False):
+        """Given a string the function introduces newline characters to respect
+        the line width constraint (+/-8 chars)"""
         # Check if there is nothing to do
-        if len(toModify) < self.lineWidth:
+        toModify = toModify.strip()
+        if (len(totalIndent) + len(toModify)) < (self.lineWidth+8):
             return toModify
-        # Computing the current intenting
-        singleIndent = ''
-        for i in range(0, self.indentSize):
-            singleIndent += ' '
-        totalIndent = ''
-        for i in range(0, self.curIndent):
-            totalIndent += ' '
-        # Now I have to get the nearest white space character
-        endToCheck = toModify.find('\n')
-        if endToCheck < 0:
-            endToCheck = len(toModify)
-        i = endToCheck
-        for i in range(self.lineWidth - 10, endToCheck):
-            if toModify[i] == ' ':
+        # The calling function should have taken care of single-line comments,
+        # but just in case.
+        if (toModify.startswith('#') or toModify.startswith('//')):
+            return toModify
+        # The calling functions should have already split on newlines, so
+        # endOfLine should always equal len(toModify).
+        endOfLine = toModify.find('\n')
+        if endOfLine < 0:
+            endOfLine = len(toModify)
+        # Check for crazy indentations > linewidth.
+        if ((len(totalIndent) + len(singleIndent)) > self.lineWidth):
+            self.lineWidth += len(totalIndent) + len(singleIndent)
+        # Find the split char nearest to the target line width.
+        found = -1
+        for i in range(len(totalIndent), len(totalIndent)+8):
+            if toModify[self.lineWidth-i] == split:
+                found = self.lineWidth-i
                 break
-        if i < endToCheck - 1:
-            return toModify[:i] + ' \\\n' + singleIndent + totalIndent + self.go_new_line(toModify[(i + 1):endToCheck])
+        # If no split char was found, we retry with whitespace.
+        if (found == -1 and split != ' '):
+            for i in range(len(totalIndent), len(totalIndent)+8):
+                if toModify[self.lineWidth-i] == ' ':
+                    found = self.lineWidth-i
+                    break
+        # If we still found nothing, we search upwards from linewidth.
+        if (found == -1):
+            for i in range(self.lineWidth-len(totalIndent)+1, endOfLine):
+                if toModify[i] == split:
+                    found = i
+                    break
+        # If still no split char was found, we retry with whitespace.
+        if (found == -1 and split != ' '):
+            for i in range(self.lineWidth-len(totalIndent)+1, endOfLine):
+                if toModify[i] == ' ':
+                    found = i
+                    break
+        # Removed unnecessary line continuation chars except in preprocessing
+        # code and strings.
+        insert = '\n'
+        if (cpp == True) : insert = ' \\\n'
+        if ((toModify.count('"', 0, found) % 2) == 1): insert = ' \\\n'
+        # Add one level of indentation to all lines after the first, unless the
+        # indentation is forced (aligned list of parameters).
+        if (force == False): insert += singleIndent
+        # If the split char is not whitespace, make sure we don't delete it!
+        if (toModify[found] != ' '): insert = toModify[found] + insert
+        # Recursion
+        if (found != -1):
+            return toModify[:found] + insert + totalIndent + self.go_new_line(toModify[(found+1):endOfLine], singleIndent, totalIndent, split, force, cpp)
         else:
-            if i < len(toModify) - 1:
-                return toModify[:(endToCheck + 1)] + self.go_new_line(toModify[(endToCheck + 1):])
-            else:
-                return toModify
+            return toModify
 
 
     def flush(self):

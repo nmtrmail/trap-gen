@@ -49,7 +49,10 @@ class DumpElement:
     def printDocString(self, writer):
         for line in self.docstring.split('\n'):
             if line:
-                writer.write('/// ' + line + '\n')
+                # Allow up to lineWidth+8 (+4 and /// )
+                if (len(line) < (writer.lineWidth+4)):
+                    writer.write('/// ' + line + '\n')
+                else: writer.write('/** ' + line + '*/\n')
     def __str__(self):
         try:
             stringWriter = Writer.StringWriter()
@@ -59,17 +62,29 @@ class DumpElement:
             return self.name
 
 class Define:
-    def __init__(self, defineStr):
+    def __init__(self, defineStr, namespace = [], includes = []):
         self.defineStr = defineStr
+        if type(namespace) == type(''):
+            self.namespace = [namespace]
+        else:
+            self.namespace = namespace
+        if type(includes) == type(''):
+            self.includes = [includes]
+        else:
+            self.includes = includes
 
     def writeImplementation(self, writer):
         pass
 
     def writeDeclaration(self, writer):
+        for namespace in self.namespace:
+            writer.write('namespace ' + namespace + ' {\n')
         writer.write(self.defineStr)
+        for namespace in self.namespace:
+            writer.write('}; // namespace ' + namespace + '\n\n')
 
     def getIncludes(self):
-        return []
+        return self.includes
 
     def __str__(self):
         return self.defineStr
@@ -166,7 +181,7 @@ class TemplateType(Type):
         Type.writeDeclaration(self, writer)
         if self.template:
             writtenTempl = 0
-            writer.write('< ')
+            writer.write('<')
             for i in self.template:
                 writtenTempl += 1
                 try:
@@ -175,7 +190,7 @@ class TemplateType(Type):
                     writer.write(str(i))
                 if writtenTempl < len(self.template):
                     writer.write(', ')
-            writer.write(' >')
+            writer.write('>')
         for i in currentModifiers:
             writer.write(' ' + i)
         self.modifiers = currentModifiers
@@ -196,7 +211,7 @@ class TemplateType(Type):
         self.modifiers = []
         typeStr = Type.__str__(self)
         if self.template:
-            typeStr += '< '
+            typeStr += '<'
             for i in self.template:
                 typeStr += str(i)
                 if i != self.template[-1]:
@@ -335,7 +350,7 @@ class Variable(DumpElement):
 
     def writeImplementation(self, writer):
         for namespace in self.namespaces:
-            writer.write('namespace ' + namespace + '{\n')
+            writer.write('namespace ' + namespace + ' {\n')
         if self.docstring:
             self.printDocString(writer)
         if self.static:
@@ -346,7 +361,9 @@ class Variable(DumpElement):
             writer.write(' = ' + self.initValue)
         writer.write(';\n')
         for namespace in self.namespaces:
-            writer.write('};\n')
+            writer.write('}; // namespace ')
+            writer.write(namespace)
+            writer.write('\n')
 
     def getIncludes(self):
         return copy.copy(self.varType.getIncludes())
@@ -381,16 +398,16 @@ class Function(DumpElement):
 
     def writeDeclaration(self, writer):
         for namespace in self.namespaces:
-            writer.write('namespace ' + namespace + '{\n')
+            writer.write('namespace ' + namespace + ' {\n')
         if self.docstring:
             self.printDocString(writer)
         if self.template:
-            writer.write('template < typename ')
+            writer.write('template <typename ')
             for i in self.template:
                 writer.write(i)
                 if i != self.template[-1]:
                     writer.write(', ')
-            writer.write(' > ')
+            writer.write('> ')
         if self.static:
             writer.write('static ')
         if self.inline:
@@ -406,41 +423,42 @@ class Function(DumpElement):
         if self.retType.name:
             writer.write(' ')
         writer.write(self.name + '(')
-        if self.parameters:
-            writer.write(' ')
+        split = False
+        indent = -1
+        if (len(self.parameters) > 1):
+            writer.write('\n')
+            indent = writer.curIndent+2
         for i in self.parameters:
             i.writeDeclaration(writer)
             if i != self.parameters[-1]:
-                writer.write(', ')
-            else:
-                writer.write(' ')
+                writer.write(', ', split = ',', indent = indent)
         if self.template or self.inline:
-            writer.write(')')
+            writer.write(')', split = ',', indent = indent)
             try:
                 if self.const:
-                    writer.write(' const')
+                    writer.write(' const', split = ',', indent = indent)
             except AttributeError:
                 pass
             if self.noException:
-                writer.write(' throw()')
-            writer.write('{\n')
+                writer.write(' throw()', split = ',', indent = indent)
+            writer.write(' {\n', split = ',', indent = indent)
             self.body.writeImplementation(writer)
             writer.write('}\n')
         else:
-            writer.write(')')
+            writer.write(')', split = ',', indent = indent)
             try:
                 if self.const:
-                    writer.write(' const')
+                    writer.write(' const', split = ',', indent = indent)
             except AttributeError:
                 pass
             if self.noException:
-                writer.write(' throw()')
+                writer.write(' throw()', split = ',', indent = indent)
             try:
                 if self.pure:
-                    writer.write(' = 0')
+                    writer.write(' = 0', split = ',', indent = indent)
             except AttributeError:
                 pass
-            writer.write(';\n')
+            writer.write(';\n', split = ',', indent = indent)
         for namespace in self.namespaces:
             writer.write('};\n')
 
@@ -455,20 +473,28 @@ class Function(DumpElement):
         for namespace in self.namespaces:
             writer.write(namespace + '::')
         writer.write(self.name + '(')
-        if self.parameters:
-            writer.write(' ')
+        split = False
+        indent = -1
+        if (len(self.parameters) > 1):
+            if (len(self.parameters) < 10):
+                split = True
+            writer.write('\n')
+            indent = writer.curIndent+2
         for i in self.parameters:
             i.writeImplementation(writer)
             if i != self.parameters[-1]:
-                writer.write(', ')
-            else:
-                writer.write(' ')
-        writer.write(')')
+                if (split == True):
+                    writer.write(',\n', indent = indent)
+                else:
+                    writer.write(', ', split = ',', indent = indent)
+        writer.write(')', split = ',', indent = indent)
         if self.noException:
-            writer.write(' throw()\n')
-        writer.write('{\n')
+            writer.write(' throw()\n', split = ',', indent = indent)
+        writer.write(' {\n', split = ',', indent = indent)
         self.body.writeImplementation(writer)
-        writer.write('}\n')
+        writer.write('} // ')
+        writer.write(self.name)
+        writer.write('()\n')
 
     def getIncludes(self):
         includes = copy.copy(self.retType.getIncludes())
@@ -504,7 +530,7 @@ class Enum(DumpElement):
 
     def writeDeclaration(self, writer):
         for namespace in self.namespaces:
-            writer.write('namespace ' + namespace + '{\n')
+            writer.write('namespace ' + namespace + ' {\n')
         if self.docstring:
             self.printDocString(writer)
         if not self.values:
@@ -514,7 +540,9 @@ class Enum(DumpElement):
             code += key + ' = ' + str(val) + ' \n,'
         writer.write(code[:-1] + '};\n')
         for namespace in self.namespaces:
-            writer.write('};\n')
+            writer.write('}; // namespace ')
+            writer.write(namespace)
+            writer.write('\n')
 
 class Union(DumpElement):
     """Represents a union"""
@@ -539,7 +567,9 @@ class Union(DumpElement):
             i.writeImplementation(writer)
         writer.write('};\n')
         for namespace in self.namespaces:
-            writer.write('};\n')
+            writer.write('}; // namespace ')
+            writer.write(namespace)
+            writer.write('\n')
 
     def getIncludes(self):
         includes = []
@@ -575,7 +605,9 @@ class BitField(DumpElement):
             writer.write('unsigned ' + str(i[0]) + ':' + str(i[1]) + ';\n')
         writer.write('};\n')
         for namespace in self.namespaces:
-            writer.write('};\n')
+            writer.write('}; // namespace ')
+            writer.write(namespace)
+            writer.write('\n')
 
     def getIncludes(self):
         return []
@@ -600,7 +632,9 @@ class Typedef(DumpElement):
         self.oldType.writeDeclaration(writer)
         writer.write(';\n')
         for namespace in self.namespaces:
-            writer.write('}:\n')
+            writer.write('}; // namespace ')
+            writer.write(namespace)
+            writer.write('\n')
 
     def getIncludes(self):
         return copy.copy(self.oldType.getIncludes())

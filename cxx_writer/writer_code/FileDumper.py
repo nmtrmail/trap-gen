@@ -69,26 +69,23 @@ class FileDumper:
         #in the same order in which they are contained
         #inside self.members
 
-        if FileDumper.developer_name or FileDumper.developer_email:
-            copyright = '(c) ' + FileDumper.developer_name + ', ' + FileDumper.developer_email
-        else:
-            copyright = ''
+        copyright = FileDumper.developer_name
+        if (copyright and FileDumper.developer_email):
+            copyright += ', '
+        copyright += FileDumper.developer_email
+        if copyright: copyright = '(c) ' + copyright
 
         fileHnd = open(self.name, 'wt')
-        printOnFile('/***************************************************************************\\', fileHnd)
-        printOnFile(' *', fileHnd)
+        printOnFile('/***************************************************************************//**', fileHnd)
         for line in FileDumper.banner.split('\n'):
-            printOnFile(' *   ' + line, fileHnd)
-        printOnFile(' *', fileHnd)
-        printOnFile(' *', fileHnd)
-        for line in FileDumper.license_text.split('\n'):
-            printOnFile(' *   ' + line, fileHnd)
-        printOnFile(' *', fileHnd)
-        printOnFile(' *', fileHnd)
+            printOnFile('*  ' + line, fileHnd)
+        printOnFile('*\n*', fileHnd)
         for line in copyright.split('\n'):
-            printOnFile(' *   ' + line, fileHnd)
-        printOnFile(' *', fileHnd)
-        printOnFile('\\***************************************************************************/\n\n', fileHnd)
+            printOnFile('* ' + line, fileHnd)
+        printOnFile('*', fileHnd)
+        for line in FileDumper.license_text.split('\n'):
+            printOnFile('* ' + line, fileHnd)
+        printOnFile('*******************************************************************************/\n', fileHnd)
 
         # Now I can start priting the actual code: lets create the writer
         writer = Writer.CodeWriter(fileHnd)
@@ -105,21 +102,32 @@ class FileDumper:
                 pass
         if self.includes:
             writer.write('\n')
-        # Not that I have to add a dirty hack to put always SystemC in the
-        # last position among the includes, otherwise it might create problems
-        # compiling
-        foundSysC = False
+        # This is to choose between the #include <xxx> and #include "xxx" syntax.
+        # By sorting the includes in three different lists we can group them logically.
+        projectfiles = ['alias.hpp', 'decoder.hpp', 'externalPins.hpp', 'externalPorts.hpp', 'instructions.hpp', 'interface.hpp', 'irqPorts.hpp', 'memory.hpp', 'processor.hpp', 'registers.hpp']
+        projectincludes = []
+        trapfiles = ['analyzer.hpp', 'ABIIf.hpp', 'GDBConnectionManager.hpp', 'GDBStub.hpp', 'MemoryAT.hpp', 'MemoryLT.hpp', 'PINTarget.hpp', 'SparseMemoryAT.hpp', 'SparseMemoryLT.hpp', 'ToolsIf.hpp', 'WatchpointManager.hpp', 'customExceptions.hpp', 'debugger/BreakpointManager.hpp', 'instructionBase.hpp', 'libbfd_elfFrontend.hpp', 'libbfd_execLoader.hpp', 'libelf_elfFrontend.hpp', 'libelf_execLoader.hpp', 'memAccessType.hpp', 'osEmulator.hpp', 'profInfo.hpp', 'profiler.hpp', 'syscCallB.hpp', 'trap.hpp', 'trap_utils.hpp']
+        trapincludes = []
+        sysincludes = []
         for include in self.includes:
             include = include.lstrip()
-            if 'systemc.h' in include:
-                foundSysC = True
-            else:
-                if include.startswith('#'):
-                    writer.write(include + '\n')
-                elif include != self.name:
-                    writer.write('#include <' + include + '>\n')
-        if foundSysC:
-            writer.write('#include <systemc.h>\n')
+            if include.startswith('#'):
+                writer.write(include + '\n')
+            elif include != self.name:
+                if include in projectfiles:
+                    projectincludes.append(include)
+                elif include in trapfiles:
+                    trapincludes.append(include)
+                else:
+                    sysincludes.append(include)
+        for include in projectincludes:
+            writer.write('#include "' + include + '"\n')
+        writer.write('\n')
+        for include in trapincludes:
+            writer.write('#include <' + include + '>\n')
+        writer.write('\n')
+        for include in sysincludes:
+            writer.write('#include <' + include + '>\n')
         writer.write('\n')
         # Now I simply have to print in order all the members
         for member in self.members:

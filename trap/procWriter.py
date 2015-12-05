@@ -1920,7 +1920,13 @@ def getMainCode(self, model, namespace):
     bannerInit = 'std::string("\\n\\\n'
     for bannerLine in self.banner.split('\n'):
         bannerInit += '\\t' + bannerLine.replace('\\', '\\\\') + '\\n\\\n'
-    bannerInit += '\\n\\n' + '\\t' + self.developer_name + '\t-\t email: ' + self.developer_email + '\\n\\n")'
+    bannerInit += '\\n\\n' + '\\t'
+    for bannerLine in self.developer_name.split('\n'):
+        bannerInit += '\\t' + bannerLine.replace('\\', '\\\\') + '\\n\\\n'
+    if self.developer_email:
+        bannerInit += '\t-\t email: ' + self.developer_email
+    bannerInit += '\\n\\n")'
+
     bannerVariable = cxx_writer.writer_code.Variable('banner', cxx_writer.writer_code.stringType, initValue = bannerInit)
 
     return [bannerVariable, debuggerVariable, signalFunction, hexToIntFunction, cycleRangeFunction, mainFunction]

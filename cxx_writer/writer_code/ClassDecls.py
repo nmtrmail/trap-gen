@@ -75,20 +75,26 @@ class Method(ClassMember, Function):
         if className:
             writer.write(className + '::')
         writer.write(self.name + '(')
-        if self.parameters:
-            writer.write(' ')
+        split = False
+        indent = -1
+        if (len(self.parameters) > 1):
+            if (len(self.parameters) < 10):
+                split = True
+            writer.write('\n')
+            indent = writer.curIndent+2
         for i in self.parameters:
             i.writeImplementation(writer)
             if i != self.parameters[-1]:
-                writer.write(', ')
-            else:
-                writer.write(' ')
-        writer.write(')')
+                if (split == True):
+                    writer.write(',\n', indent = indent)
+                else:
+                    writer.write(', ', split = ',', indent = indent)
+        writer.write(')', split = ',', indent = indent)
         if self.const:
             writer.write(' const')
         if self.noException:
             writer.write(' throw()')
-        writer.write('{\n')
+        writer.write(' {\n', split = ',', indent = indent)
         self.body.writeImplementation(writer)
         writer.write('}\n\n')
 
@@ -118,20 +124,26 @@ class MemberOperator(ClassMember, Operator):
         if className:
             writer.write(className + '::')
         writer.write(self.name + '(')
-        if self.parameters:
-            writer.write(' ')
+        split = False
+        indent = -1
+        if (len(self.parameters) > 1):
+            if (len(self.parameters) < 10):
+                split = True
+            writer.write('\n')
+            indent = writer.curIndent+2
         for i in self.parameters:
             i.writeImplementation(writer)
             if i != self.parameters[-1]:
-                writer.write(', ')
-            else:
-                writer.write(' ')
-        writer.write(')')
+                if (split == True):
+                    writer.write(',\n', indent = indent)
+                else:
+                    writer.write(', ', split = ',', indent = indent)
+        writer.write(')', split = ',', indent = indent)
         if self.const:
             writer.write(' const')
         if self.noException:
             writer.write(' throw()')
-        writer.write('{\n')
+        writer.write(' {\n', split = ',', indent = indent)
         self.body.writeImplementation(writer)
         writer.write('}\n\n')
 
@@ -149,22 +161,39 @@ class Constructor(ClassMember, Function):
         if className:
             writer.write(className + '::')
         writer.write(self.name + '(')
-        if self.parameters:
-            writer.write(' ')
+        split = False
+        indent = -1
+        if (len(self.parameters) > 1):
+            if (len(self.parameters) < 10):
+                split = True
+            writer.write('\n')
+            indent = writer.curIndent+2
         for i in self.parameters:
             i.writeImplementation(writer)
             if i != self.parameters[-1]:
-                writer.write(', ')
-            else:
-                writer.write(' ')
-        writer.write(')')
+                if (split == True):
+                    writer.write(',\n', indent = indent)
+                else:
+                    writer.write(', ', split = ',', indent = indent)
+        writer.write(')', split = ',', indent = indent)
         if self.initList:
-            writer.write(' : ')
+            writer.write(' :\n', split = ',', indent = indent)
+            indent = writer.curIndent+1
+        else: indent = -1
+        split = False
+        if (len(self.initList) > 1):
+            if (len(self.initList) < 10):
+                split = True
+        else: writer.write(' ')
         for i in self.initList:
             writer.write(i)
             if i != self.initList[-1]:
-                writer.write(', ')
-        writer.write('{\n')
+                if (split == True):
+                    writer.write(',\n', indent = indent)
+                else:
+                    writer.write(', ', split = ',', indent = indent)
+            else: writer.write(' ')
+        writer.write('{\n', split = ',', indent = indent)
         self.body.writeImplementation(writer)
         writer.write('}\n\n')
 
@@ -181,7 +210,7 @@ class Destructor(ClassMember, Function):
             writer.write(namespace + '::')
         if className:
             writer.write(className + '::')
-        writer.write(self.name + '(){\n')
+        writer.write(self.name + '() {\n')
         self.body.writeImplementation(writer)
         writer.write('}\n')
 
@@ -283,18 +312,18 @@ class ClassDeclaration(DumpElement):
     def writeDeclaration(self, writer):
         self.computeMemVisibility()
         for namespace in self.namespaces:
-            writer.write('namespace ' + namespace + '{\n\n')
+            writer.write('namespace ' + namespace + ' {\n\n')
         # Now I can simply print the declarations
         if self.docstring:
             self.printDocString(writer)
         if self.template:
-            writer.write('template < ')
+            writer.write('template <')
             for i in self.template:
                 writer.write('typename ')
                 writer.write(i)
                 if i != self.template[-1]:
                     writer.write(', ')
-            writer.write(' > ')
+            writer.write('>\n')
         writer.write('class ' + self.name)
         if self.superclasses or self.virtual_superclasses:
             writer.write(' : ')
@@ -308,7 +337,7 @@ class ClassDeclaration(DumpElement):
             i.writeDeclaration(writer)
             if i != self.superclasses[-1]:
                 writer.write(', ')
-        writer.write('{\n')
+        writer.write(' {\n')
         # First of all I create the inner classes:
         if self.innerClasses:
             writer.write('public:\n')
@@ -351,9 +380,9 @@ class ClassDeclaration(DumpElement):
                         pass
                 else:
                     i.writeDeclaration(writer)
-        writer.write('};\n\n')
+        writer.write('}; // class ' + self.name + '\n\n')
         for namespace in self.namespaces:
-            writer.write('};\n\n')
+            writer.write('}; // namespace ' + namespace + '\n\n')
 
     def writeImplementation(self, writer, namespaces = []):
         if self.template:
@@ -403,14 +432,14 @@ class SCModule(ClassDeclaration):
                 if i.visibility == 'pri':
                     if isinstance(i, Constructor):
                         added = True
-                        self.private = [Code('SC_HAS_PROCESS( ' + self.name + ' );'), i] + self.private
+                        self.private = [Code('SC_HAS_PROCESS(' + self.name + ');'), i] + self.private
                     else:
                         self.private.append(i)
                 elif i.visibility == 'pro':
                     if isinstance(i, Constructor):
                         if not added:
                             added = True
-                            self.protected = [Code('SC_HAS_PROCESS( ' + self.name + ' );'), i] + self.protected
+                            self.protected = [Code('SC_HAS_PROCESS(' + self.name + ');'), i] + self.protected
                         else:
                             self.protected = [i] + self.protected
                     else:
@@ -419,7 +448,7 @@ class SCModule(ClassDeclaration):
                     if isinstance(i, Constructor):
                         if not added:
                             added = True
-                            self.public = [Code('SC_HAS_PROCESS( ' + self.name + ' );'), i] + self.public
+                            self.public = [Code('SC_HAS_PROCESS(' + self.name + ');'), i] + self.public
                         else:
                             self.public = [i] + self.public
                     else:
@@ -428,7 +457,7 @@ class SCModule(ClassDeclaration):
                 if isinstance(i, Constructor):
                     if not added:
                         added = True
-                        self.public = [Code('SC_HAS_PROCESS( ' + self.name + ' );'), i] + self.public
+                        self.public = [Code('SC_HAS_PROCESS(' + self.name + ');'), i] + self.public
                     else:
                         self.public = [i] + self.public
                 else:

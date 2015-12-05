@@ -382,7 +382,7 @@ class Processor:
         self.invalid_instr = None
 
     def setIpRights(self, license, developer_name = '', developer_email = '', banner = '', license_text = ''):
-        validLicense = ['gpl', 'lgpl', 'esa', 'custom']
+        validLicense = ['gpl', 'lgpl', 'affero', 'esa', 'custom']
         if not license.lower() in validLicense:
             raise Exception('Unknown license ' + license + '; please use one of ' + ' '.join(validLicense))
         if license.lower() == 'custom':
@@ -435,7 +435,7 @@ class Processor:
     def setLittleEndian(self):
         self.isBigEndian = False
 
-    def setWordsize(self, wordSize, byteSize = 8):
+    def setWordsize(self, wordSize = 4, byteSize = 8):
         self.wordSize = wordSize
         self.byteSize = byteSize
 
@@ -1082,7 +1082,7 @@ class Processor:
             dec.printDecoder(dumpDecoderName)
         mainFolder = cxx_writer.writer_code.Folder(os.path.expanduser(os.path.expandvars(folder)))
         for model in models:
-            # Here I add the define code, definig the type of the current model;
+            # Here I add the define code, defining the type of the current model;
             # such define code has to be added to each created header file
             defString = '#define ' + model[:-2].upper() + '_MODEL\n'
             defString += '#define ' + model[-2:].upper() + '_IF\n'
@@ -1091,13 +1091,13 @@ class Processor:
             # Now I also set the processor class name: note that even if each model has a
             # separate namespace, some buggy dynamic linkers complain, so we must also
             # use separate names for the processor class
-            procWriter.processor_name = 'Processor_' + self.name.lower() + '_' + model.lower()
+            procWriter.processor_name = 'Core' + self.name + model[-2:]
 
             print ('\t\tCreating the implementation for model ' + model)
             if not model in validModels:
                 raise Exception(model + ' is not a valid model type')
             if not namespace:
-                namespace = self.name.lower() + '_' + model.lower() + '_trap'
+                namespace = 'core_' + self.name.lower() + '_' + model[-2:].lower()
             namespaceUse = cxx_writer.writer_code.UseNamespace(namespace)
             namespaceTrapUse = cxx_writer.writer_code.UseNamespace('trap')
             decClasses = dec.getCPPClass(self.bitSizes[1], self.instructionCache, namespace)
