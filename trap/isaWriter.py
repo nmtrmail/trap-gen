@@ -327,6 +327,35 @@ def getCppOpClass(self, namespace):
     opDecl.addConstructor(opConstr)
     return opDecl
 
+def getCPPInstrSwitch(obj, i):
+    if type(i) == type(''):
+        if i.startswith('%'):
+            getMnemonicCode = 'oss << this->' + i[1:]
+            if i[1:] in obj.machineCode.bitCorrespondence.keys() + obj.bitCorrespondence.keys():
+                getMnemonicCode += '_bit'
+            getMnemonicCode += ';\n'
+        else:
+            getMnemonicCode = 'oss << "' + i + '";\n'
+    else:
+        # I have a switch
+        if not i[0].startswith('%'):
+            raise Exception('The first element of a multi-word mnemonic must start with %; error in instruction ' + obj.name)
+        getMnemonicCode = 'switch(this->' + i[0][1:]
+        if i[0][1:] in obj.machineCode.bitCorrespondence.keys() + obj.bitCorrespondence.keys():
+            getMnemonicCode += '_bit'
+        getMnemonicCode += '){\n'
+        for code, mnemValue in i[1].items():
+            if code != 'default':
+                getMnemonicCode += 'case '
+            getMnemonicCode += str(code) + ':{\n'
+            if type(mnemValue) == type(''):
+                getMnemonicCode += 'oss << "' + mnemValue + '";\n'
+            else:
+                getMnemonicCode += getCPPInstrSwitch(obj, mnemValue)
+            getMnemonicCode += 'break;}\n'
+        getMnemonicCode += '}\n'
+    return getMnemonicCode
+
 def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     """Returns the code implementing the current instruction: we have to provide the
     implementation of all the abstract methods and call from the behavior method
@@ -699,29 +728,9 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     # Here I declare the methods necessary to create the current instruction mnemonic given the current value of
     # the variable parts of the instruction
     getMnemonicCode = 'std::ostringstream oss (std::ostringstream::out);\n'
+
     for i in self.mnemonic:
-        if type(i) == type(''):
-            if i.startswith('%'):
-                getMnemonicCode += 'oss << this->' + i[1:]
-                if i[1:] in self.machineCode.bitCorrespondence.keys() + self.bitCorrespondence.keys():
-                    getMnemonicCode += '_bit'
-                getMnemonicCode += ';\n'
-            else:
-                getMnemonicCode += 'oss << "' + i + '";\n'
-        else:
-            # I have a switch
-            if not i[0].startswith('%'):
-                raise Exception('The first element of a multi-word mnemonic must start with %; error in instruction ' + self.name)
-            getMnemonicCode += 'switch(this->' + i[0][1:]
-            if i[0][1:] in self.machineCode.bitCorrespondence.keys() + self.bitCorrespondence.keys():
-                getMnemonicCode += '_bit'
-            getMnemonicCode += '){\n'
-            for code, mnemValue in i[1].items():
-                getMnemonicCode += 'case ' + str(code) + ':{\n'
-                getMnemonicCode += 'oss << "' + mnemValue + '";\n'
-                getMnemonicCode += 'break;}\n'
-            getMnemonicCode += 'default:\nbreak;\n'
-            getMnemonicCode += '}\n'
+        getMnemonicCode += getCPPInstrSwitch(self, i)
     getMnemonicCode += 'return oss.str();'
     getMnemonicBody = cxx_writer.writer_code.Code(getMnemonicCode)
     getMnemonicBody.addInclude('sstream')
