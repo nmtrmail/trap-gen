@@ -103,7 +103,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
     constructorCode += 'this->nextInstruction = NULL;\n'
 
     flushCode = """this->hasToFlush = true;
-    if(this->prevStage != NULL){
+    if(this->prevStage != NULL) {
         this->prevStage->flush();
     }
     """
@@ -195,14 +195,14 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             codeString += 'bool startMet = false;\n'
             if self.instructionCache:
                 codeString += 'template_map< ' + str(self.bitSizes[1]) + ', CacheElem >::iterator instrCacheEnd = this->instrCache.end();\n\n'
-            codeString += 'while(true){\n'
+            codeString += 'while(true) {\n'
 
             # Here is the code to notify start of the instruction execution
             codeString += 'this->instrExecuting = true;\n'
 
             codeString += 'unsigned int numCycles = 0;\n'
             if hasCheckHazard:
-                codeString += 'if(!this->chStalled){\n'
+                codeString += 'if(!this->chStalled) {\n'
 
             codeString += '\n// HERE WAIT FOR BEGIN OF ALL STAGES\nthis->waitPipeBegin();\n'
 
@@ -217,10 +217,10 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             codeString += str(self.bitSizes[1]) + ' curPC = ' + fetchAddress + ';\n'
 
             # Here is the code for updating cycle counts
-            codeString += """if(!startMet && curPC == this->profStartAddr){
+            codeString += """if(!startMet && curPC == this->profStartAddr) {
                 this->profTimeStart = sc_time_stamp();
             }
-            if(startMet && curPC == this->profEndAddr){
+            if(startMet && curPC == this->profEndAddr) {
                 this->profTimeEnd = sc_time_stamp();
             }
             """
@@ -231,19 +231,17 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                 #ifndef DISABLE_TOOLS
                 // code necessary to check the tools, to see if they need
                 // the pipeline to be empty before being able to procede with execution
-                if(this->toolManager.emptyPipeline(curPC)){
+                if(this->toolManager.emptyPipeline(curPC)) {
                     numNOPS++;
-                }
-                else{
+                } else {
                     numNOPS = 0;
                 }
-                if(numNOPS > 0 && numNOPS < """ + str(len(self.pipes)) + """){
+                if(numNOPS > 0 && numNOPS < """ + str(len(self.pipes)) + """) {
                     this->curInstruction = this->NOPInstrInstance;
                 """
             if trace and not combinedTrace:
                 codeString += 'std::cerr << \"PC: \" << std::hex << std::showbase << curPC << " propagating NOP because tools need it" << std::endl;\n'
-            codeString += """}
-                else{
+            codeString += """} else {
                     numNOPS = 0;
                 #endif
                     wait(this->latency);
@@ -254,7 +252,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             # Lets start with the code for the instruction queue
             codeString += """#ifdef ENABLE_HISTORY
             HistoryInstrType instrQueueElem;
-            if(this->historyEnabled){
+            if(this->historyEnabled) {
                 instrQueueElem.cycle = (unsigned int)(sc_time_stamp()/this->latency);
                 instrQueueElem.address = curPC;
             }
@@ -278,15 +276,15 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             # Lets finish with the code for the instruction queue: I just still have to
             # check if it is time to save to file the instruction queue
             codeString += """#ifdef ENABLE_HISTORY
-            if(this->historyEnabled){
+            if(this->historyEnabled) {
                 // First I add the new element to the queue
                 this->instHistoryQueue.push_back(instrQueueElem);
                 //Now, in case the queue dump file has been specified, I have to check if I need to save it
-                if(this->histFile){
+                if(this->histFile) {
                     this->undumpedHistElems++;
-                    if(undumpedHistElems == this->instHistoryQueue.capacity()){
+                    if(undumpedHistElems == this->instHistoryQueue.capacity()) {
                         boost::circular_buffer<HistoryInstrType>::const_iterator beg, end;
-                        for(beg = this->instHistoryQueue.begin(), end = this->instHistoryQueue.end(); beg != end; beg++){
+                        for(beg = this->instHistoryQueue.begin(), end = this->instHistoryQueue.end(); beg != end; beg++) {
                             this->histFile << beg->toStr() << std::endl;
                         }
                         this->undumpedHistElems = 0;
@@ -314,11 +312,10 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             codeString += """
             // Now I have to propagate the instruction to the next cycle if
             // the next stage has completed elaboration
-            if(this->hasToFlush){
-                if(this->curInstruction->toDestroy){
+            if(this->hasToFlush) {
+                if(this->curInstruction->toDestroy) {
                     delete this->curInstruction;
-                }
-                else{
+                } else {
                     this->curInstruction->inPipeline = false;
                 }
                 this->curInstruction = this->NOPInstrInstance;
@@ -328,8 +325,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             """
             codeString += 'this->succStage->nextInstruction = this->curInstruction;\n'
             if hasCheckHazard:
-                codeString += """}
-                else{
+                codeString += """} else {
                     //The current stage is not doing anything since one of the following stages
                     //is blocked to a data hazard.
                     this->waitPipeBegin();
@@ -337,11 +333,10 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                     //I will be impossible to procede, this thread will always execute
                     wait(this->latency);
                     this->waitPipeEnd();
-                    if(this->hasToFlush){
-                        if(this->curInstruction->toDestroy){
+                    if(this->hasToFlush) {
+                        if(this->curInstruction->toDestroy) {
                             delete this->curInstruction;
-                        }
-                        else{
+                        } else {
                             this->curInstruction->inPipeline = false;
                         }
                         this->curInstruction = this->NOPInstrInstance;
@@ -366,14 +361,14 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                     else:
                         codeString += 'succStage->'
                 codeString += 'nextInstruction;\n'
-                codeString += 'if(!succToCheck->checkHazard_' + pipeStageTemp.name + '()){\n'
+                codeString += 'if(!succToCheck->checkHazard_' + pipeStageTemp.name + '()) {\n'
                 codeTemp = 'this->'
                 for pipeStageTemp in self.pipes:
                     codeString += codeTemp + 'chStalled = true;\n'
                     codeTemp += 'succStage->'
                     if pipeStageTemp.checkHazard:
                         break
-                codeString += '}\nelse{\n'
+                codeString += '} else {\n'
                 codeTemp = 'this->'
                 for pipeStageTemp in self.pipes:
                     codeString += codeTemp + 'chStalled = false;\n'
@@ -391,7 +386,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             # to go on.
             if hasCheckHazard and not checkHazardsMet:
                 codeString += 'Instruction * nextStageInstruction;\n'
-            codeString += """while(true){
+            codeString += """while(true) {
             unsigned int numCycles = 0;
             bool flushAnnulled = false;
 
@@ -402,7 +397,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             """
 
             if hasCheckHazard and not checkHazardsMet:
-                codeString += 'if(!this->chStalled){\n'
+                codeString += 'if(!this->chStalled) {\n'
             codeString += 'wait((' + str(1 - float(seenStages - 1)/(len(self.pipes) - 1)) + ')*this->latency);\n'
             if trace and not combinedTrace:
                 codeString += 'std::cerr << \"Stage ' + pipeStage.name + ' instruction at PC = \" << std::hex << std::showbase << this->curInstruction->fetchPC << std::endl;\n'
@@ -412,7 +407,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                 codeString += 'this->curInstruction->lockRegs_' + pipeStage.name + '();\n'
 
             if trace and combinedTrace and pipeStage == self.pipes[-1]:
-                codeString += 'if(this->curInstruction != this->NOPInstrInstance){\n'
+                codeString += 'if(this->curInstruction != this->NOPInstrInstance) {\n'
                 codeString += 'std::cerr << \"Current PC: \" << std::hex << std::showbase << this->curInstruction->fetchPC << std::endl;\n'
                 codeString += '}\n'
             # Now we issue the instruction, i.e. we execute its behavior related to this pipeline stage
@@ -420,7 +415,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             # Finally I finalize the pipeline stage by synchrnonizing with the others
             codeString += 'wait((numCycles + ' + str(float(seenStages - 1)/(len(self.pipes) - 1)) + ')*this->latency);\n'
             codeString += """// flushing current stage
-            if(this->curInstruction->flushPipeline || flushAnnulled){
+            if(this->curInstruction->flushPipeline || flushAnnulled) {
                 this->curInstruction->flushPipeline = false;
                 //Now I have to flush the preceding pipeline stages
                 this->prevStage->flush();
@@ -434,11 +429,10 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                 """
 
             if pipeStage != self.pipes[-1]:
-                codeString += """if(this->hasToFlush){
-                        if(this->curInstruction->toDestroy){
+                codeString += """if(this->hasToFlush) {
+                        if(this->curInstruction->toDestroy) {
                             delete this->curInstruction;
-                        }
-                        else{
+                        } else {
                             this->curInstruction->inPipeline = false;
                         }
                         // First of all I have to free any used resource in case there are any
@@ -452,15 +446,14 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
 
             if pipeStage == self.pipes[-1]:
                 # Here I have to check if it is the case of destroying the instruction
-                codeString += 'if(this->curInstruction->toDestroy){\n'
+                codeString += 'if(this->curInstruction->toDestroy) {\n'
                 codeString += 'delete this->curInstruction;\n'
                 codeString += '}\n'
-                codeString += 'else{\n'
+                codeString += 'else {\n'
                 codeString += 'this->curInstruction->inPipeline = false;\n'
                 codeString += '}\n'
             if hasCheckHazard and not checkHazardsMet:
-                codeString += """}
-                else{
+                codeString += """} else {
                     //The current stage is not doing anything since one of the following stages
                     //is blocked to a data hazard.
                     //Note that I need to return controll to the scheduler, otherwise
@@ -471,11 +464,10 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                     codeString += """std::cerr << "Stage: """ + pipeStage.name + """ - Instruction " << this->curInstruction->getInstructionName() << " Mnemonic = " << this->curInstruction->getMnemonic() << " at PC = " << std::hex << std::showbase << this->curInstruction->fetchPC << " stalled on a data hazard" << std::endl;
                     std::cerr << "Stalled registers: " << this->curInstruction->printBusyRegs() << std::endl << std::endl;
                     """
-                codeString += """if(this->hasToFlush){
-                        if(this->curInstruction->toDestroy){
+                codeString += """if(this->hasToFlush) {
+                        if(this->curInstruction->toDestroy) {
                             delete this->curInstruction;
-                        }
-                        else{
+                        } else {
                             this->curInstruction->inPipeline = false;
                         }
                         // First of all I have to free any used resource in case there are any
@@ -510,7 +502,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
         """
         for pipeStageInner in self.pipes:
             if pipeStageInner != pipeStage:
-                waitPipeBeginCode += """if(!this->stage_""" + pipeStageInner.name + """->stageBeginning){
+                waitPipeBeginCode += """if(!this->stage_""" + pipeStageInner.name + """->stageBeginning) {
                     wait(this->stage_""" + pipeStageInner.name + """->stageBeginningEv);
                 }
                 """
@@ -525,7 +517,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
         """
         for pipeStageInner in self.pipes:
             if pipeStageInner != pipeStage:
-                waitPipeEndCode += """if(!this->stage_""" + pipeStageInner.name + """->stageEnded){
+                waitPipeEndCode += """if(!this->stage_""" + pipeStageInner.name + """->stageEnded) {
                     wait(this->stage_""" + pipeStageInner.name + """->stageEndedEv);
                 }
                 """
@@ -553,7 +545,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             # the other to update the alias
             codeString = '// Now we update the registers to propagate the values in the pipeline\n'
             for reg in self.regs:
-                codeString += 'if(this->' + reg.name + '.hasToPropagate){\n'
+                codeString += 'if(this->' + reg.name + '.hasToPropagate) {\n'
                 ########
                 if trace and not combinedTrace:
                     codeString += 'std::cerr << "Propagating register ' + reg.name + '" << std::endl;\n'
@@ -561,8 +553,8 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                 codeString += 'this->' + reg.name + '.propagate();\n'
                 codeString += '}\n'
             for regB in self.regBanks:
-                codeString += 'for(int i = 0; i < ' + str(regB.numRegs) + '; i++){\n'
-                codeString += 'if(this->' + regB.name + '[i].hasToPropagate){\n'
+                codeString += 'for(int i = 0; i < ' + str(regB.numRegs) + '; i++) {\n'
+                codeString += 'if(this->' + regB.name + '[i].hasToPropagate) {\n'
                 ########
                 if trace and not combinedTrace:
                     codeString += 'std::cerr << "Propagating register ' + regB.name + '[" << std::dec << i << "]" << std::endl;\n'
@@ -575,7 +567,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             for i in reversed(range(0, len(self.pipes) -1)):
                 for alias in self.aliasRegs:
                     if not alias.isFixed:
-                        codeString += 'if(this->' + alias.name + '_' + self.pipes[i + 1].name + '.getPipeReg() != this->' + alias.name + '_' + self.pipes[i].name + '.getPipeReg()){\n'
+                        codeString += 'if(this->' + alias.name + '_' + self.pipes[i + 1].name + '.getPipeReg() != this->' + alias.name + '_' + self.pipes[i].name + '.getPipeReg()) {\n'
                         if trace and not combinedTrace:
                             codeString += 'std::cerr << "Updating alias ' + alias.name + '_' + self.pipes[i + 1].name + '" << std::endl;\n'
                         codeString += 'this->' + alias.name + '_' + self.pipes[i + 1].name + '.propagateAlias(*(this->' + alias.name + '_' + self.pipes[i].name + '.getPipeReg()));\n'
@@ -589,10 +581,10 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                     if checkContiguous:
                         if aliasB.fixedIndices[0] > 0:
                             if aliasB.checkGroup:
-                                codeString += 'if(this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[0].getPipeReg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[0].getPipeReg()){\n'
-                            codeString += 'for(int i = 0; i < ' + str(aliasB.fixedIndices[-1]) + '; i++){\n'
+                                codeString += 'if(this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[0].getPipeReg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[0].getPipeReg()) {\n'
+                            codeString += 'for(int i = 0; i < ' + str(aliasB.fixedIndices[-1]) + '; i++) {\n'
                             if not aliasB.checkGroup:
-                                codeString += 'if(this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[i].getPipeReg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[i].getPipeReg()){\n'
+                                codeString += 'if(this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[i].getPipeReg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[i].getPipeReg()) {\n'
                             if trace and not combinedTrace:
                                 codeString += 'std::cerr << "Updating alias ' + aliasB.name + '_' + self.pipes[i + 1].name + '[" << i << "]" << std::endl;\n'
                             codeString += 'this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[i].propagateAlias(*(this->' + aliasB.name + '_' + self.pipes[i].name + '[i].getPipeReg()));\n'
@@ -600,10 +592,10 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                             codeString += '}\n'
                         if aliasB.fixedIndices[-1] + 1 < aliasB.numRegs:
                             if aliasB.checkGroup:
-                                codeString += 'if(this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[' + str(aliasB.fixedIndices[-1] + 1) + '].getPipeReg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[' + str(aliasB.fixedIndices[-1] + 1) + '].getPipeReg()){\n'
-                            codeString += 'for(int i = ' + str(aliasB.fixedIndices[-1] + 1) + '; i < ' + str(aliasB.numRegs) + '; i++){\n'
+                                codeString += 'if(this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[' + str(aliasB.fixedIndices[-1] + 1) + '].getPipeReg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[' + str(aliasB.fixedIndices[-1] + 1) + '].getPipeReg()) {\n'
+                            codeString += 'for(int i = ' + str(aliasB.fixedIndices[-1] + 1) + '; i < ' + str(aliasB.numRegs) + '; i++) {\n'
                             if not aliasB.checkGroup:
-                                codeString += 'if(this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[i].getPipeReg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[i].getPipeReg()){\n'
+                                codeString += 'if(this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[i].getPipeReg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[i].getPipeReg()) {\n'
                             if trace and not combinedTrace:
                                 codeString += 'std::cerr << "Updating alias ' + aliasB.name + '_' + self.pipes[i + 1].name + '[" << i << "]" << std::endl;\n'
                             codeString += 'this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[i].propagateAlias(*(this->' + aliasB.name + '_' + self.pipes[i].name + '[i].getPipeReg()));\n'
@@ -612,7 +604,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                     else:
                         for j in range(0, aliasB.numRegs):
                             if not j in aliasB.fixedIndices:
-                                codeString += 'if(this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[' + str(j) + '].getPipeReg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[' + str(j) + '].getPipeReg()){\n'
+                                codeString += 'if(this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[' + str(j) + '].getPipeReg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[' + str(j) + '].getPipeReg()) {\n'
                                 if trace and not combinedTrace:
                                     codeString += 'std::cerr << "Updating alias ' + aliasB.name + '_' + self.pipes[i + 1].name + '[" << ' + str(i) + ' << "]" << std::endl;\n'
                                 codeString += 'this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[' + str(j) + '].propagateAlias(*(this->' + aliasB.name + '_' + self.pipes[i].name + '[' + str(j) + '].getPipeReg()));\n'
@@ -621,15 +613,14 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             codeString += """
             // Finally registers are unlocked, so that stalls due to data hazards can be resolved
             std::map<unsigned int, std::vector<Register *> >::iterator unlockQueueIter, unlockQueueEnd;
-            for(unlockQueueIter = BasePipeStage::unlockQueue.begin(), unlockQueueEnd = BasePipeStage::unlockQueue.end(); unlockQueueIter != unlockQueueEnd; unlockQueueIter++){
+            for(unlockQueueIter = BasePipeStage::unlockQueue.begin(), unlockQueueEnd = BasePipeStage::unlockQueue.end(); unlockQueueIter != unlockQueueEnd; unlockQueueIter++) {
                 std::vector<Register *>::iterator regToUnlockIter, regToUnlockEnd;
-                if(unlockQueueIter->first == 0){
-                    for(regToUnlockIter = unlockQueueIter->second.begin(), regToUnlockEnd = unlockQueueIter->second.end(); regToUnlockIter != regToUnlockEnd; regToUnlockIter++){
+                if(unlockQueueIter->first == 0) {
+                    for(regToUnlockIter = unlockQueueIter->second.begin(), regToUnlockEnd = unlockQueueIter->second.end(); regToUnlockIter != regToUnlockEnd; regToUnlockIter++) {
                         (*regToUnlockIter)->unlock();
                     }
-                }
-                else{
-                    for(regToUnlockIter = unlockQueueIter->second.begin(), regToUnlockEnd = unlockQueueIter->second.end(); regToUnlockIter != regToUnlockEnd; regToUnlockIter++){
+                } else {
+                    for(regToUnlockIter = unlockQueueIter->second.begin(), regToUnlockEnd = unlockQueueIter->second.end(); regToUnlockIter != regToUnlockEnd; regToUnlockIter++) {
                         (*regToUnlockIter)->unlock(unlockQueueIter->first);
                     }
                 }
@@ -759,18 +750,18 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             constructorCode += 'this->undumpedHistElems = 0;\n'
             # Now, before the processor elements is destructed I have to make sure that the history dump file is correctly closed
             destrCode = """#ifdef ENABLE_HISTORY
-            if(this->historyEnabled){
+            if(this->historyEnabled) {
                 //Now, in case the queue dump file has been specified, I have to check if I need to save it
-                if(this->histFile){
-                    if(this->undumpedHistElems > 0){
+                if(this->histFile) {
+                    if(this->undumpedHistElems > 0) {
                         std::vector<std::string> histVec;
                         boost::circular_buffer<HistoryInstrType>::const_reverse_iterator beg, end;
                         unsigned int histRead = 0;
-                        for(histRead = 0, beg = this->instHistoryQueue.rbegin(), end = this->instHistoryQueue.rend(); beg != end && histRead < this->undumpedHistElems; beg++, histRead++){
+                        for(histRead = 0, beg = this->instHistoryQueue.rbegin(), end = this->instHistoryQueue.rend(); beg != end && histRead < this->undumpedHistElems; beg++, histRead++) {
                             histVec.push_back(beg->toStr());
                         }
                         std::vector<std::string>::const_reverse_iterator histVecBeg, histVecEnd;
-                        for(histVecBeg = histVec.rbegin(), histVecEnd = histVec.rend(); histVecBeg != histVecEnd; histVecBeg++){
+                        for(histVecBeg = histVec.rbegin(), histVecEnd = histVec.rend(); histVecBeg != histVecEnd; histVecBeg++) {
                             this->histFile <<  *histVecBeg << std::endl;
                         }
                     }
