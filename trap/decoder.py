@@ -441,6 +441,12 @@ class decoderCreator:
             codeString = self.createPatternDecoder(self.rootNote)
         else:
             codeString = self.createTableDecoder(self.rootNote)
+        codeString += '// Invalid pattern\nreturn '
+        if self.invalid_instr:
+            codeString += str(self.invalid_instr.id)
+        else:
+            codeString += str(self.instrNum)
+        codeString += ';\n'
         code = cxx_writer.writer_code.Code(codeString)
         parameters = [cxx_writer.writer_code.Parameter('instrCode', fetchSizeType)]
         decodeMethod = cxx_writer.writer_code.Method('decode', code, cxx_writer.writer_code.intType, 'pu', parameters, const = True, noException = True)
