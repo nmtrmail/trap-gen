@@ -100,9 +100,10 @@ class CodeWriter:
                 totalIndent = ''
                 for i in range(0, self.indentSize):
                     singleIndent += ' '
-                for i in range(0, indent * self.indentSize):
-                    self.file.write(' ')
-                    totalIndent += ' '
+                if (not line.startswith('#')):
+                    for i in range(0, indent * self.indentSize):
+                        self.file.write(' ')
+                        totalIndent += ' '
                 printOnFile(self.go_new_line(line, singleIndent, totalIndent, split, force), self.file)
             else:
                 printOnFile('', self.file)

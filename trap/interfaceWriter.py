@@ -304,6 +304,7 @@ def getCPPIf(self, model, namespace):
     codeLimitCode = cxx_writer.writer_code.Code('return this->PROGRAM_LIMIT;')
     codeLimitMethod = cxx_writer.writer_code.Method('getCodeLimit', codeLimitCode, wordType, 'pu')
     ifClassElements.append(codeLimitMethod)
+
     for elem in [self.abi.LR, self.abi.PC, self.abi.SP, self.abi.FP, self.abi.retVal]:
         if not elem:
             continue

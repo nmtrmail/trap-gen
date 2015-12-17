@@ -56,9 +56,9 @@ def getCPPExternalPorts(self, model, namespace):
     swapDEndianessCode += str(archWordType) + ' datum2 = (' + str(archWordType) + ')(datum >> ' + str(self.wordSize*self.byteSize) + ');\nthis->swapEndianess(datum2);\n'
     swapDEndianessCode += 'datum = datum1 | (((' + str(archDWordType) + ')datum2) << ' + str(self.wordSize*self.byteSize) + ');\n#endif\n'
 
-    swapEndianessCode = """//Now the code for endianess conversion: the processor is always modeled
-            //with the host endianess; in case they are different, the endianess
-            //is turned
+    swapEndianessCode = """// Now the code for endianess conversion: the processor is always modeled
+            // with the host endianess; in case they are different, the endianess
+            // is turned
             """
     if self.isBigEndian:
         swapEndianessDefine = '#ifdef LITTLE_ENDIAN_BO\n'
@@ -179,7 +179,7 @@ def getCPPExternalPorts(self, model, namespace):
                 trans.set_streaming_width(sizeof(datum));
                 trans.set_byte_enable_ptr(0);
                 trans.set_dmi_allowed(false);
-                trans.set_response_status( tlm::TLM_INCOMPLETE_RESPONSE );
+                trans.set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);
                 this->initSocket->b_transport(trans, delay);
 
                 if(trans.is_response_error()) {
@@ -190,7 +190,7 @@ def getCPPExternalPorts(self, model, namespace):
                     this->dmi_data.init();
                     this->dmi_ptr_valid = this->initSocket->get_direct_mem_ptr(trans, this->dmi_data);
                 }
-                //Now lets keep track of time
+                // Now lets keep track of time
             """
         if not model.startswith('acc'):
             readCode += """this->quantKeeper.set(delay);
@@ -315,7 +315,7 @@ def getCPPExternalPorts(self, model, namespace):
                     this->dmi_data.init();
                     this->dmi_ptr_valid = this->initSocket->get_direct_mem_ptr(trans, this->dmi_data);
                 }
-                //Now lets keep track of time
+                // Now lets keep track of time
             """
         if not model.startswith('acc'):
             writeCode += """this->quantKeeper.set(delay);
@@ -395,16 +395,16 @@ def getCPPExternalPorts(self, model, namespace):
     datumParam = cxx_writer.writer_code.Parameter('datum', archByteType)
     writeMemAliasCode = swapEndianessDefine
     for alias in self.memAlias:
-        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*((' + str(archByteType) + '* )&' + alias.alias + '_temp) = (' + str(archByteType) + ')datum;\nreturn;\n}\n'
-        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '* )&' + alias.alias + '_temp) + 1) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
-        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 1) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '* )&' + alias.alias + '_temp) + 2) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
-        writeMemAliasCode += 'if(address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '* )&' + alias.alias + '_temp) + 3) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
+        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*((' + str(archByteType) + '*)&' + alias.alias + '_temp) = (' + str(archByteType) + ')datum;\nreturn;\n}\n'
+        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '*)&' + alias.alias + '_temp) + 1) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
+        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 1) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '*)&' + alias.alias + '_temp) + 2) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
+        writeMemAliasCode += 'if(address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '*)&' + alias.alias + '_temp) + 3) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
     writeMemAliasCode += '#else\n'
     for alias in self.memAlias:
-        writeMemAliasCode += 'if(address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*((' + str(archByteType) + '* )&' + alias.alias + '_temp) = (' + str(archByteType) + ')datum;\nreturn;\n}\n'
-        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 1) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '* )&' + alias.alias + '_temp) + 1) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
-        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '* )&' + alias.alias + '_temp) + 2) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
-        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '* )&' + alias.alias + '_temp) + 3) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
+        writeMemAliasCode += 'if(address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*((' + str(archByteType) + '*)&' + alias.alias + '_temp) = (' + str(archByteType) + ')datum;\nreturn;\n}\n'
+        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 1) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '*)&' + alias.alias + '_temp) + 1) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
+        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '*)&' + alias.alias + '_temp) + 2) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
+        writeMemAliasCode += 'if(address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '*)&' + alias.alias + '_temp) + 3) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
     writeMemAliasCode += '#endif\n'
     writeBody = cxx_writer.writer_code.Code(writeMemAliasCode + checkWatchPointCode + writeCode)
     writeDecl = cxx_writer.writer_code.Method('write_byte', writeBody, cxx_writer.writer_code.voidType, 'pu', [addressParam, datumParam], noException = True)
@@ -560,10 +560,10 @@ def getGetIRQPorts(self, namespace):
         blockTransportCode = """unsigned char* ptr = trans.get_data_ptr();
             sc_dt::uint64 adr = trans.get_address();
             if(*ptr == 0) {
-                //Lower the interrupt
+                // Lower the interrupt
                 this->irqSignal = -1;
             } else {
-                //Raise the interrupt
+                // Raise the interrupt
                 this->irqSignal = adr;
             }
             trans.set_response_status(tlm::TLM_OK_RESPONSE);
@@ -580,6 +580,7 @@ def getGetIRQPorts(self, namespace):
         tlmPortElements.append(debugTransportDecl)
 
         nblockTransportCode = """THROW_EXCEPTION("Method not yet implemented");
+        return tlm::TLM_COMPLETED;
         """
         nblockTransportBody = cxx_writer.writer_code.Code(nblockTransportCode)
         nblockTransportBody.addInclude('trap_utils.hpp')
@@ -836,7 +837,7 @@ def getIRQTests(self, trace, combinedTrace, namespace):
     for irq in self.irqs:
         from isa import resolveBitType
         irqType = resolveBitType('BIT<' + str(irq.portWidth) + '>')
-        archElemsDeclStr += '\n//Fake interrupt line\n' + str(irqType) + ' ' + irq.name + ';\n'
+        archElemsDeclStr += '\n// Fake interrupt line\n' + str(irqType) + ' ' + irq.name + ';\n'
         testNum = 0
         for test in irq.tests:
             testName = 'irq_test_' + irq.name + '_' + str(testNum)
@@ -905,7 +906,7 @@ def getIRQTests(self, trace, combinedTrace, namespace):
             code += destrDecls
             curTest = cxx_writer.writer_code.Code(code)
             curTest.addInclude('instructions.hpp')
-            wariningDisableCode = '#ifdef _WIN32\n#pragma warning( disable : 4101 )\n#endif\n'
+            wariningDisableCode = '#ifdef _WIN32\n#pragma warning(disable : 4101)\n#endif\n'
             includeUnprotectedCode = '#define private public\n#define protected public\n#include \"registers.hpp\"\n#include \"memory.hpp\"\n#undef private\n#undef protected\n'
             curTest.addInclude(['boost/test/test_tools.hpp', 'customExceptions.hpp', wariningDisableCode, includeUnprotectedCode, 'alias.hpp'])
             curTestFunction = cxx_writer.writer_code.Function(testName, curTest, cxx_writer.writer_code.voidType)

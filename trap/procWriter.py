@@ -51,7 +51,7 @@ except:
 
 try:
     import re
-    p = re.compile( '([a-z]|[A-Z])*')
+    p = re.compile('([a-z]|[A-Z])*')
     nxVersion = p.sub('', NX.__version__)
     if nxVersion.count('.') > 1:
         nxVersion = '.'.join(nxVersion.split('.')[:2])
@@ -988,7 +988,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         if(this->historyEnabled) {
             // First I add the new element to the queue
             this->instHistoryQueue.push_back(instrQueueElem);
-            //Now, in case the queue dump file has been specified, I have to check if I need to save it
+            // Now, in case the queue dump file has been specified, I have to check if I need to save it
             if(this->histFile) {
                 this->undumpedHistElems++;
                 if(undumpedHistElems == this->instHistoryQueue.capacity()) {
@@ -1057,7 +1057,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     initString = procInitCode(self, model)
     resetOpTemp.prependCode(initString + '\n')
     if self.beginOp:
-        resetOpTemp.appendCode('//user-defined initialization\nthis->beginOp();\n')
+        resetOpTemp.appendCode('// user-defined initialization\nthis->beginOp();\n')
     resetOpTemp.appendCode('this->resetCalled = true;')
     resetOpMethod = cxx_writer.writer_code.Method('resetOp', resetOpTemp, cxx_writer.writer_code.voidType, 'pu')
     processorElements.append(resetOpMethod)
@@ -1121,7 +1121,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         quantumKeeperType = cxx_writer.writer_code.Type('tlm_utils::tlm_quantumkeeper', 'tlm_utils/tlm_quantumkeeper.h')
         quantumKeeperAttribute = cxx_writer.writer_code.Attribute('quantKeeper', quantumKeeperType, 'pri')
         processorElements.append(quantumKeeperAttribute)
-        bodyInits += 'this->quantKeeper.set_global_quantum( this->latency*100 );\nthis->quantKeeper.reset();\n'
+        bodyInits += 'this->quantKeeper.set_global_quantum(this->latency*100);\nthis->quantKeeper.reset();\n'
 
     for par in self.parameters:
         attribute = cxx_writer.writer_code.Attribute(par.name, par.type, 'pri')
@@ -1385,7 +1385,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     if model.startswith('func'):
         destrCode += """#ifdef ENABLE_HISTORY
         if(this->historyEnabled) {
-            //Now, in case the queue dump file has been specified, I have to check if I need to save the yet undumped elements
+            // Now, in case the queue dump file has been specified, I have to check if I need to save the yet undumped elements
             if(this->histFile) {
                 if(this->undumpedHistElems > 0) {
                     std::vector<std::string> histVec;
@@ -1424,14 +1424,14 @@ def getTestMainCode(self):
     global testNames
     code = ''
     for test in testNames:
-        code += 'boost::unit_test::framework::master_test_suite().add( BOOST_TEST_CASE( &' + test + ' ) );\n'
+        code += 'boost::unit_test::framework::master_test_suite().add(BOOST_TEST_CASE(&' + test + '));\n'
     code += '\nreturn 0;'
     initCode = cxx_writer.writer_code.Code(code)
     initCode.addInclude('boost/test/included/unit_test.hpp')
     parameters = [cxx_writer.writer_code.Parameter('argc', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('argv[]', cxx_writer.writer_code.charPtrType)]
     initFunction = cxx_writer.writer_code.Function('init_unit_test_suite', initCode, cxx_writer.writer_code.Type('boost::unit_test::test_suite').makePointer(), parameters)
 
-    code = 'return boost::unit_test::unit_test_main( &init_unit_test_suite, argc, argv );'
+    code = 'return boost::unit_test::unit_test_main(&init_unit_test_suite, argc, argv);'
     mainCode = cxx_writer.writer_code.Code(code)
     mainCode.addInclude('systemc.h')
     mainCode.addInclude('boost/test/included/unit_test.hpp')
@@ -1522,20 +1522,18 @@ def getMainCode(self, model, namespace):
         if(vm.count("frequency") != 0) {
             latency = 1/(vm["frequency"].as<double>());
         }
-        //Now we can procede with the actual instantiation of the processor
+        // Now we can procede with the actual instantiation of the processor
         """ + processor_name + """ procInst(\"""" + self.name + """\", sc_time(latency, SC_US));
         """
     else:
         code += """
-        //Now we can procede with the actual instantiation of the processor
+        // Now we can procede with the actual instantiation of the processor
         """ + processor_name + """ procInst(\"""" + self.name + """\");
         """
     instrMemName = ''
     instrDissassName = ''
     if len(self.tlmPorts) > 0:
-        code += """//Here we instantiate the memory and connect it
-        //wtih the processor
-        """
+        code += """// Here we instantiate the memory and connect it with the processor"""
         if self.tlmFakeMemProperties and self.tlmFakeMemProperties[2]:
             code += 'SparseMemory'
         else:
@@ -1563,14 +1561,14 @@ def getMainCode(self, model, namespace):
 
     code += """
     std::cout << std::endl << "Loading the application and initializing the tools ..." << std::endl;
-    //And with the loading of the executable code
+    // And with the loading of the executable code
     boost::filesystem::path applicationPath = boost::filesystem::system_complete(boost::filesystem::path(vm["application"].as<std::string>()));
     if (!boost::filesystem::exists(applicationPath)) {
         std::cerr << "ERROR: specified application " << vm["application"].as<std::string>() << " does not exist" << std::endl;
         return -1;
     }
     ExecLoader loader(vm["application"].as<std::string>());
-    //Lets copy the binary code into memory
+    // Lets copy the binary code into memory
     unsigned char * programData = loader.getProgData();
     unsigned int programDim = loader.getProgDim();
     unsigned int progDataStart = loader.getDataStart();
@@ -1589,7 +1587,7 @@ def getMainCode(self, model, namespace):
         }
         return 0;
     }
-    //Finally I can set the processor variables
+    // Finally I can set the processor variables
     procInst.ENTRY_POINT = loader.getProgStart();
     procInst.PROGRAM_LIMIT = programDim + progDataStart;
     procInst.PROGRAM_START = progDataStart;
@@ -1607,8 +1605,8 @@ def getMainCode(self, model, namespace):
         }
         """
     code += """
-    //Initialization of the instruction history management; note that I need to enable both if the debugger is being used
-    //and/or if history needs to be dumped on an output file
+    // Initialization of the instruction history management; note that I need to enable both if the debugger is being used
+    // and/or if history needs to be dumped on an output file
     if(vm.count("debugger") > 0) {
         procInst.enableHistory();
     }
@@ -1621,7 +1619,7 @@ def getMainCode(self, model, namespace):
     """
     if self.abi:
         code += """
-        //Now I initialize the tools (i.e. debugger, os emulator, ...)
+        // Now I initialize the tools (i.e. debugger, os emulator, ...)
         """
         #if model.startswith('acc'):
             #code += 'OSEmulatorCA< ' + str(wordType) + ', -' + str(execOffset*self.wordSize) + ' > osEmu(*(procInst.abiIf), Processor::NOPInstrInstance, ' + str(self.abi.emulOffset) + ');\n'
@@ -1634,8 +1632,8 @@ def getMainCode(self, model, namespace):
         std::vector<std::string> options;
         options.push_back(vm["application"].as<std::string>());
         if(vm.count("arguments") > 0) {
-            //Here we have to parse the command line program arguments; they are
-            //in the form option,option,option ...
+            // Here we have to parse the command line program arguments; they are
+            // in the form option,option,option ...
             std::string packedOpts = vm["arguments"].as<std::string>();
             while(packedOpts.size() > 0) {
                 std::size_t foundComma = packedOpts.find(',');
@@ -1650,8 +1648,8 @@ def getMainCode(self, model, namespace):
         }
         osEmu.set_program_args(options);
         if(vm.count("environment") > 0) {
-            //Here we have to parse the environment; they are
-            //in the form option=value,option=value .....
+            // Here we have to parse the environment; they are
+            // in the form option=value,option=value .....
             std::string packedEnv = vm["environment"].as<std::string>();
             while(packedEnv.size() > 0) {
                 std::size_t foundComma = packedEnv.find(',');
@@ -1674,8 +1672,8 @@ def getMainCode(self, model, namespace):
             }
         }
         if(vm.count("sysconf") > 0) {
-            //Here we have to parse the environment; they are
-            //in the form option=value,option=value .....
+            // Here we have to parse the environment; they are
+            // in the form option=value,option=value .....
             std::string packedEnv = vm["sysconf"].as<std::string>();
             while(packedEnv.size() > 0) {
                 std::size_t foundComma = packedEnv.find(',');
@@ -1736,7 +1734,7 @@ def getMainCode(self, model, namespace):
 
     std::cout << "... tools initialized" << std::endl << std::endl;
 
-    //Now we can start the execution
+    // Now we can start the execution
     boost::timer t;
     sc_start();
     double elapsedSec = t.elapsed();
@@ -1762,13 +1760,13 @@ def getMainCode(self, model, namespace):
         code += 'std::cout << \"Elapsed \" << std::dec << procInst.totalCycles << \" cycles\" << std::endl;\n'
     code += 'std::cout << std::endl;\n'
     if self.endOp:
-        code += '//Ok, simulation has ended: lets call cleanup methods\nprocInst.endOp();\n'
+        code += '// Ok, simulation has ended: lets call cleanup methods\nprocInst.endOp();\n'
     code += """
     return 0;
     """
     mainCode = cxx_writer.writer_code.Code(code)
     mainCode.addInclude("""#ifdef _WIN32
-#pragma warning( disable : 4101 )
+#pragma warning(disable : 4101)
 #endif""")
 
     mainCode.addInclude('#define WIN32_LEAN_AND_MEAN')

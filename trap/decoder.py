@@ -304,9 +304,9 @@ class decoderCreator:
                 return self.getSubInstrCode(self.instrSub[instrId]) + '// Instruction ' + self.instrName[subtree.instrId] + '\nreturn ' + str(subtree.instrId) + ';\n'
             else:
                 if self.invalid_instr:
-                    return '// Non-valid pattern\nreturn ' + str(self.invalid_instr.id) + ';\n'
+                    return '// Invalid pattern\nreturn ' + str(self.invalid_instr.id) + ';\n'
                 else:
-                    return '// Non-valid pattern\nreturn ' + str(self.instrNum) + ';\n'
+                    return '// Invalid pattern\nreturn ' + str(self.instrNum) + ';\n'
         if self.decodingTree.out_degree(subtree) != 2:
             raise Exception('subtree ' + str(subtree) + ' should have two out edges, while it has ' + str(self.decodingTree.out_degree(subtree)))
         if nxVersion < 0.99:
@@ -342,17 +342,16 @@ class decoderCreator:
                 code += self.getSubInstrCode(self.instrSub[nodeIf.instrId]) + '// Instruction ' + self.instrName[nodeIf.instrId] + '\nreturn ' + str(nodeIf.instrId) + ';\n'
             else:
                 if self.invalid_instr:
-                    code += '// Non-valid pattern\nreturn ' + str(self.invalid_instr.id) + ';\n'
+                    code += '// Invalid pattern\nreturn ' + str(self.invalid_instr.id) + ';\n'
                 else:
-                    code += '// Non-valid pattern\nreturn ' + str(self.instrNum) + ';\n'
+                    code += '// Invalid pattern\nreturn ' + str(self.instrNum) + ';\n'
         elif nodeIf.splitFunction.pattern:
             #code += '\n' + str(nodeIf.patterns) + '\n'
             code += self.createPatternDecoder(nodeIf)
         else:
             #code += '\n' + str(nodeIf.patterns) + '\n'
             code += self.createTableDecoder(nodeIf)
-        code += '}\n'
-        code += 'else{\n'
+        code += '} else {\n'
         if nodeElse.instrId != None:
             if nodeElse.instrId != -1:
                 #code += '\n' + str(nodeElse.patterns) + '\n'
@@ -377,9 +376,9 @@ class decoderCreator:
                 return self.getSubInstrCode(self.instrSub[instrId]) + '// Instruction ' + self.instrName[subtree.instrId] + '\nreturn ' + str(subtree.instrId) + ';\n'
             else:
                 if self.invalid_instr:
-                    return '// Non-valid pattern\nreturn ' + str(self.invalid_instr.id) + ';\n'
+                    return '// Invalid pattern\nreturn ' + str(self.invalid_instr.id) + ';\n'
                 else:
-                    return '// Non-valid pattern\nreturn ' + str(self.instrNum) + ';\n'
+                    return '// Invalid pattern\nreturn ' + str(self.instrNum) + ';\n'
         if nxVersion < 0.99:
             outEdges = self.decodingTree.edges(subtree)
         else:
@@ -400,24 +399,24 @@ class decoderCreator:
             if numFs == len(mask) - 2:
                 hasToDeclareMask = False
         if hasToDeclareMask:
-            code = 'switch(instrCode & ' + mask + '){\n'
+            code = 'switch(instrCode & ' + mask + ') {\n'
         else:
-            code = 'switch(instrCode){\n'
+            code = 'switch(instrCode) {\n'
         for edge in outEdges:
             if nxVersion > 0.99:
                 decodePattern = edge[-1]['decodePattern'][0]
             else:
                 decodePattern = edge[-1][0]
-            code += 'case ' + hex(decodePattern) + ':{\n'
+            code += 'case ' + hex(decodePattern) + ': {\n'
             if edge[1].instrId != None:
                 if edge[1].instrId != -1:
                     #code += '\n' + str(edge[1].patterns) + '\n'
                     code += self.getSubInstrCode(self.instrSub[edge[1].instrId]) + '// Instruction ' + self.instrName[edge[1].instrId] + '\nreturn ' + str(edge[1].instrId) + ';\n'
                 else:
                     if self.invalid_instr:
-                        code += '// Non-valid pattern\nreturn ' + str(self.invalid_instr.id) + ';\n'
+                        code += '// Invalid pattern\nreturn ' + str(self.invalid_instr.id) + ';\n'
                     else:
-                        code += '// Non-valid pattern\nreturn ' + str(self.instrNum) + ';\n'
+                        code += '// Invalid pattern\nreturn ' + str(self.instrNum) + ';\n'
             elif edge[1].splitFunction.pattern:
                 #code += '\n' + str(edge[1].patterns) + '\n'
                 code += self.createPatternDecoder(edge[1])
@@ -425,7 +424,7 @@ class decoderCreator:
                 #code += '\n' + str(edge[1].patterns) + '\n'
                 code += self.createTableDecoder(edge[1])
             code += 'break;}\n'
-        code += 'default:{\n// Non-valid pattern\nreturn '
+        code += 'default: {\n// Invalid pattern\nreturn '
         if self.invalid_instr:
             code += str(self.invalid_instr.id)
         else:

@@ -245,8 +245,8 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                     numNOPS = 0;
                 #endif
                     wait(this->latency);
-                    //Ok, either the pipeline is empty or there is not tool which needs the pipeline
-                    //to be empty: I can procede with the execution
+                    // Ok, either the pipeline is empty or there is not tool which needs the pipeline
+                    // to be empty: I can procede with the execution
             """
 
             # Lets start with the code for the instruction queue
@@ -279,7 +279,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             if(this->historyEnabled) {
                 // First I add the new element to the queue
                 this->instHistoryQueue.push_back(instrQueueElem);
-                //Now, in case the queue dump file has been specified, I have to check if I need to save it
+                // Now, in case the queue dump file has been specified, I have to check if I need to save it
                 if(this->histFile) {
                     this->undumpedHistElems++;
                     if(undumpedHistElems == this->instHistoryQueue.capacity()) {
@@ -326,11 +326,11 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             codeString += 'this->succStage->nextInstruction = this->curInstruction;\n'
             if hasCheckHazard:
                 codeString += """} else {
-                    //The current stage is not doing anything since one of the following stages
-                    //is blocked to a data hazard.
+                    // The current stage is not doing anything since one of the following stages
+                    // is blocked to a data hazard.
                     this->waitPipeBegin();
-                    //Note that I need to return controll to the scheduler, otherwise
-                    //I will be impossible to procede, this thread will always execute
+                    // Note that I need to return controll to the scheduler, otherwise
+                    // I will be impossible to procede, this thread will always execute
                     wait(this->latency);
                     this->waitPipeEnd();
                     if(this->hasToFlush) {
@@ -417,7 +417,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             codeString += """// flushing current stage
             if(this->curInstruction->flushPipeline || flushAnnulled) {
                 this->curInstruction->flushPipeline = false;
-                //Now I have to flush the preceding pipeline stages
+                // Now I have to flush the preceding pipeline stages
                 this->prevStage->flush();
             }
             """
@@ -454,10 +454,10 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                 codeString += '}\n'
             if hasCheckHazard and not checkHazardsMet:
                 codeString += """} else {
-                    //The current stage is not doing anything since one of the following stages
-                    //is blocked to a data hazard.
-                    //Note that I need to return controll to the scheduler, otherwise
-                    //I will be impossible to procede, this thread will always execute
+                    // The current stage is not doing anything since one of the following stages
+                    // is blocked to a data hazard.
+                    // Note that I need to return controll to the scheduler, otherwise
+                    // I will be impossible to procede, this thread will always execute
                     wait(this->latency);
                 """
                 if trace and hasCheckHazard and pipeStage.checkHazard and not combinedTrace:
@@ -563,7 +563,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                 codeString += '}\n}\n'
             # Now lets procede to the update of the alias: for each stage alias I have to copy the reference
             # of the general pipeline register from one stage to the other
-            codeString += '\n//Here we update the aliases, so that what they point to is updated in the pipeline\n'
+            codeString += '\n// Here we update the aliases, so that what they point to is updated in the pipeline\n'
             for i in reversed(range(0, len(self.pipes) -1)):
                 for alias in self.aliasRegs:
                     if not alias.isFixed:
@@ -751,7 +751,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             # Now, before the processor elements is destructed I have to make sure that the history dump file is correctly closed
             destrCode = """#ifdef ENABLE_HISTORY
             if(this->historyEnabled) {
-                //Now, in case the queue dump file has been specified, I have to check if I need to save it
+                // Now, in case the queue dump file has been specified, I have to check if I need to save it
                 if(this->histFile) {
                     if(this->undumpedHistElems > 0) {
                         std::vector<std::string> histVec;
