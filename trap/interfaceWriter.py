@@ -168,6 +168,8 @@ def getCPPIf(self, model, namespace):
     ifClassElements.append(entryStateAttribute)
     exitStateAttribute = cxx_writer.writer_code.Attribute('routineExitState', cxx_writer.writer_code.intType, 'pri')
     ifClassElements.append(exitStateAttribute)
+    exitValueAttribute = cxx_writer.writer_code.Attribute('exitValue', cxx_writer.writer_code.uintType, 'pri')
+    ifClassElements.append(exitValueAttribute)
     vector_strType = cxx_writer.writer_code.TemplateType('std::vector', [cxx_writer.writer_code.stringType], 'vector')
     vector_v_strType = cxx_writer.writer_code.TemplateType('std::vector', [vector_strType], 'vector')
     entrySequenceAttribute = cxx_writer.writer_code.Attribute('routineEntrySequence', vector_v_strType, 'pri')
@@ -300,6 +302,14 @@ def getCPPIf(self, model, namespace):
     stateParam = cxx_writer.writer_code.Parameter('state', cxx_writer.writer_code.ucharPtrType)
     setStateMethod = cxx_writer.writer_code.Method('setState', setStateCode, cxx_writer.writer_code.voidType, 'pu', [stateParam], noException = True)
     ifClassElements.append(setStateMethod)
+
+    exitValueCode = cxx_writer.writer_code.Code('this->exitValue = value;')
+    exitValueParam = cxx_writer.writer_code.Parameter('value', wordType)
+    exitValueMethod = cxx_writer.writer_code.Method('setExitValue', exitValueCode, cxx_writer.writer_code.voidType, 'pu', [exitValueParam], noException = True)
+    ifClassElements.append(exitValueMethod)
+    exitValueCode = cxx_writer.writer_code.Code('return this->exitValue;')
+    exitValueMethod = cxx_writer.writer_code.Method('getExitValue', exitValueCode, wordType, 'pu', noException = True)
+    ifClassElements.append(exitValueMethod)
 
     codeLimitCode = cxx_writer.writer_code.Code('return this->PROGRAM_LIMIT;')
     codeLimitMethod = cxx_writer.writer_code.Method('getCodeLimit', codeLimitCode, wordType, 'pu')
