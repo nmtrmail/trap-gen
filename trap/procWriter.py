@@ -1123,10 +1123,6 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         processorElements.append(quantumKeeperAttribute)
         bodyInits += 'this->quantKeeper.set_global_quantum(this->latency*100);\nthis->quantKeeper.reset();\n'
 
-    for par in self.parameters:
-        attribute = cxx_writer.writer_code.Attribute(par.name, par.type, 'pri')
-        processorElements.append(attribute)
-
     # Lets now add the registers, the reg banks, the aliases, etc.
     (bodyInits, bodyDestructor, abiIfInit) = createRegsAttributes(self, model, processorElements, initElements, bodyAliasInit, aliasInit, bodyInits)
 
@@ -1164,6 +1160,10 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         totCyclesAttribute = cxx_writer.writer_code.Attribute('totalCycles', cxx_writer.writer_code.uintType, 'pu')
         processorElements.append(totCyclesAttribute)
         bodyInits += 'this->totalCycles = 0;\n'
+
+    for par in self.parameters:
+        attribute = cxx_writer.writer_code.Attribute(par.name, par.type, 'pri')
+        processorElements.append(attribute)
 
     # Some variables for profiling: they enable measuring the number of cycles spent among two program portions
     # (they actually count SystemC time and then divide it by the processor frequency)

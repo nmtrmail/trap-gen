@@ -350,9 +350,9 @@ class ClassDeclaration(DumpElement):
                 else:
                     i.writeDeclaration(writer)
         # Now I create the normal members
-        if self.private:
-            writer.write('private:\n')
-            for i in self.private:
+        if self.public:
+            writer.write('\npublic:\n')
+            for i in self.public:
                 if self.template:
                     try:
                         i.writeImplementation(writer)
@@ -370,9 +370,9 @@ class ClassDeclaration(DumpElement):
                         pass
                 else:
                     i.writeDeclaration(writer)
-        if self.public:
-            writer.write('\npublic:\n')
-            for i in self.public:
+        if self.private:
+            writer.write('private:\n')
+            for i in self.private:
                 if self.template:
                     try:
                         i.writeImplementation(writer)
