@@ -704,8 +704,24 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
                 setParamsCode += 'this->' + name + '.' + updateMetodName + '(this->' + correspondence[0] + '[this->' + name + '_bit]);\n'
     # now I need to declare the fields for the variable parts of the
     # instruction
+    archVars = []
+    for behaviors in self.postbehaviors.values() + self.prebehaviors.values():
+        for beh in behaviors:
+            if (model.startswith('acc') and beh.name in self.behaviorAcc) or (model.startswith('func') and beh.name in self.behaviorFun):
+                archVars += beh.archVars
     for name, length in self.machineCode.bitFields:
-        if name in self.machineBits.keys() + self.machineCode.bitValue.keys() + self.machineCode.bitCorrespondence.keys() + self.bitCorrespondence.keys():
+        if name in self.machineCode.bitCorrespondence.keys() + self.bitCorrespondence.keys():
+            continue
+            # NOTE; This one-liner saved 50+ compilation errors:
+            # Fixed bitfields of an instruction would otherwise not be passed.
+            # This usually makes sense, except when we want to use a generic
+            # operation, where the calling instructions possibly have different
+            # fixed-values for a given bitfield, upon which the operation must
+            # decide what to do. So we add an additional check where we see
+            # whether the field will be used in some operation, in which case
+            # we do keep the fixed-value of the bitfield as an instruction
+            # member.
+        if name in self.machineBits.keys() + self.machineCode.bitValue.keys() and name not in archVars:
             continue
         classElements.append(cxx_writer.writer_code.Attribute(name, cxx_writer.writer_code.uintType, 'pri'))
         mask = ''
