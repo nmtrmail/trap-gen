@@ -1419,10 +1419,17 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
 #########################################################################################
 
 def getTestMainCode(self):
+    """Returns the code for a formatting class called from within the boost
+    test framework that outputs values in hex."""
+    code = """output << std::showbase << std::hex << value;"""
+    formatCode = cxx_writer.writer_code.Code(code)
+    parameters = [cxx_writer.writer_code.Parameter('output', cxx_writer.writer_code.Type('std::ostream').makeRef()), cxx_writer.writer_code.Parameter('value', cxx_writer.writer_code.Type('::boost::unit_test::const_string'))]
+    formatMethod = cxx_writer.writer_code.Method('log_entry_value', formatCode, cxx_writer.writer_code.voidType, 'pu', parameters)
+    formatClass = cxx_writer.writer_code.ClassDeclaration('trap_log_formatter', [formatMethod], [cxx_writer.writer_code.Type('::boost::unit_test::output::compiler_log_formatter')])
     """Returns the code for the file which contains the main
     routine for the execution of the tests."""
     global testNames
-    code = ''
+    code = 'trap_log_formatter* trap_log_formatter_ptr = new trap_log_formatter;\nboost::unit_test::unit_test_log.set_formatter(trap_log_formatter_ptr);\n'
     for test in testNames:
         code += 'boost::unit_test::framework::master_test_suite().add(BOOST_TEST_CASE(&' + test + '));\n'
     code += '\nreturn 0;'
@@ -1437,7 +1444,7 @@ def getTestMainCode(self):
     mainCode.addInclude('boost/test/included/unit_test.hpp')
     parameters = [cxx_writer.writer_code.Parameter('argc', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('argv', cxx_writer.writer_code.charPtrType.makePointer())]
     mainFunction = cxx_writer.writer_code.Function('sc_main', mainCode, cxx_writer.writer_code.intType, parameters)
-    return [initFunction, mainFunction]
+    return [formatClass, initFunction, mainFunction]
 
 def getMainCode(self, model, namespace):
     """Returns the code which instantiate the processor
