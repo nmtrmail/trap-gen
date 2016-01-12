@@ -96,7 +96,13 @@ class FileDumper:
         for member in self.members:
             try:
                 for include in member.getIncludes():
-                    if include and not include in self.includes:
+                    if include.startswith('#include'):
+                        includefile = include.lstrip('#include ')
+                        includefile.strip()
+                        includefile = includefile[1:-1]
+                    else:
+                        includefile = include
+                    if include and not include in self.includes and not includefile in self.includes and not includefile == self.name:
                         self.includes.append(include)
             except AttributeError:
                 pass
@@ -104,30 +110,30 @@ class FileDumper:
             writer.write('\n')
         # This is to choose between the #include <xxx> and #include "xxx" syntax.
         # By sorting the includes in three different lists we can group them logically.
-        projectfiles = ['alias.hpp', 'decoder.hpp', 'externalPins.hpp', 'externalPorts.hpp', 'instructions.hpp', 'interface.hpp', 'irqPorts.hpp', 'memory.hpp', 'processor.hpp', 'registers.hpp']
-        projectincludes = []
+        defines = []
         trapfiles = ['analyzer.hpp', 'ABIIf.hpp', 'GDBConnectionManager.hpp', 'GDBStub.hpp', 'MemoryAT.hpp', 'MemoryLT.hpp', 'PINTarget.hpp', 'SparseMemoryAT.hpp', 'SparseMemoryLT.hpp', 'ToolsIf.hpp', 'WatchpointManager.hpp', 'customExceptions.hpp', 'debugger/BreakpointManager.hpp', 'instructionBase.hpp', 'libbfd_elfFrontend.hpp', 'libbfd_execLoader.hpp', 'libelf_elfFrontend.hpp', 'libelf_execLoader.hpp', 'memAccessType.hpp', 'osEmulator.hpp', 'profInfo.hpp', 'profiler.hpp', 'syscCallB.hpp', 'trap.hpp', 'trap_utils.hpp']
         trapincludes = []
         sysincludes = []
         for include in self.includes:
             include = include.lstrip()
-            if include.startswith('#'):
+            if include.startswith('#include'):
                 writer.write(include + '\n')
+            elif include.startswith('#'):
+                defines.append(include)
             elif include != self.name:
-                if include in projectfiles:
-                    projectincludes.append(include)
-                elif include in trapfiles:
+                if include in trapfiles:
                     trapincludes.append(include)
                 else:
                     sysincludes.append(include)
-        for include in projectincludes:
-            writer.write('#include "' + include + '"\n')
         writer.write('\n')
         for include in trapincludes:
             writer.write('#include <' + include + '>\n')
         writer.write('\n')
         for include in sysincludes:
             writer.write('#include <' + include + '>\n')
+        writer.write('\n')
+        for include in defines:
+           writer.write(include + '\n')
         writer.write('\n')
         # Now I simply have to print in order all the members
         for member in self.members:

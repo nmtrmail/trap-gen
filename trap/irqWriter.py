@@ -38,7 +38,7 @@ import cxx_writer
 
 def getGetIRQInstr(self, model, trace, namespace):
     from pipelineWriter import hasCheckHazard
-    instructionType = cxx_writer.writer_code.Type('Instruction', 'instructions.hpp')
+    instructionType = cxx_writer.writer_code.Type('Instruction', '#include \"instructions.hpp\"')
     emptyBody = cxx_writer.writer_code.Code('')
 
     IRQInstrClasses = []

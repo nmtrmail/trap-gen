@@ -86,7 +86,7 @@ def getCPPExternalPorts(self, model, namespace):
     }
     """
 
-    memIfType = cxx_writer.writer_code.Type('MemoryInterface', 'memory.hpp')
+    memIfType = cxx_writer.writer_code.Type('MemoryInterface', '#include \"memory.hpp\"')
     tlm_dmiType = cxx_writer.writer_code.Type('tlm::tlm_dmi', 'tlm.h')
     TLMMemoryType = cxx_writer.writer_code.Type('TLMMemory')
     tlminitsocketType = cxx_writer.writer_code.TemplateType('tlm_utils::simple_initiator_socket', [TLMMemoryType, self.wordSize*self.byteSize], 'tlm_utils/simple_initiator_socket.h')
@@ -680,7 +680,7 @@ def getGetPINPorts(self, namespace):
         pinPortElements = []
 
         tlm_dmiType = cxx_writer.writer_code.Type('tlm::tlm_dmi', 'tlm.h')
-        PinPortType = cxx_writer.writer_code.Type('PinTLM_out_' + str(port.portWidth))
+        PinPortType = cxx_writer.writer_code.Type('#include \"PinTLM_out_' + str(port.portWidth) + '\"')
         tlminitsocketType = cxx_writer.writer_code.TemplateType('tlm_utils::multi_passthrough_initiator_socket', [PinPortType, port.portWidth, 'tlm::tlm_base_protocol_types', 1, 'sc_core::SC_ZERO_OR_MORE_BOUND'], 'tlm_utils/multi_passthrough_initiator_socket.h')
         payloadType = cxx_writer.writer_code.Type('tlm::tlm_generic_payload', 'tlm.h')
         pinPortInit = []
@@ -905,10 +905,10 @@ def getIRQTests(self, trace, combinedTrace, namespace):
                 code += ', (' + str(self.bitSizes[1]) + ')' + hex(value) + ');\n\n'
             code += destrDecls
             curTest = cxx_writer.writer_code.Code(code)
-            curTest.addInclude('instructions.hpp')
+            curTest.addInclude('#include \"instructions.hpp\"')
             wariningDisableCode = '#ifdef _WIN32\n#pragma warning(disable : 4101)\n#endif\n'
             includeUnprotectedCode = '#define private public\n#define protected public\n#include \"registers.hpp\"\n#include \"memory.hpp\"\n#undef private\n#undef protected\n'
-            curTest.addInclude(['boost/test/test_tools.hpp', 'customExceptions.hpp', wariningDisableCode, includeUnprotectedCode, 'alias.hpp'])
+            curTest.addInclude(['boost/test/test_tools.hpp', 'customExceptions.hpp', wariningDisableCode, includeUnprotectedCode, '#include \"alias.hpp\"'])
             curTestFunction = cxx_writer.writer_code.Function(testName, curTest, cxx_writer.writer_code.voidType)
 
             testFuns.append(curTestFunction)

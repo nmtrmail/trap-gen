@@ -364,7 +364,7 @@ def createPipeStage(self, processorElements, initElements):
     """Creates the pipeleine stages and the code necessary to initialize them"""
     regsNames = [i.name for i in self.regBanks + self.regs]
     for pipeStage in reversed(self.pipes):
-        pipelineType = cxx_writer.writer_code.Type(pipeStage.name.upper() + '_PipeStage', 'pipeline.hpp')
+        pipelineType = cxx_writer.writer_code.Type(pipeStage.name.upper() + '_PipeStage', '#include \"pipeline.hpp\"')
         curStageAttr = cxx_writer.writer_code.Attribute(pipeStage.name + '_stage', pipelineType, 'pu')
         processorElements.append(curStageAttr)
         curPipeInit = ['\"' + pipeStage.name + '\"']
@@ -413,7 +413,7 @@ def createPipeStage(self, processorElements, initElements):
         if pipeStage == self.pipes[0]:
             curPipeInit = ['profTimeEnd', 'profTimeStart', 'toolManager'] + curPipeInit
         initElements.append('\n' + pipeStage.name + '_stage(' + ', '.join(curPipeInit)  + ')')
-    NOPIntructionType = cxx_writer.writer_code.Type('NOPInstruction', 'instructions.hpp')
+    NOPIntructionType = cxx_writer.writer_code.Type('NOPInstruction', '#include \"instructions.hpp\"')
     NOPinstructionsAttribute = cxx_writer.writer_code.Attribute('NOPInstrInstance', NOPIntructionType.makePointer(), 'pu', True)
     processorElements.append(NOPinstructionsAttribute)
 
@@ -552,7 +552,7 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
     bodyDestructor = ''
     abiIfInit = ''
 
-    pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', 'registers.hpp')
+    pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', '#include \"registers.hpp\"')
 
     regsNames = [i.name for i in self.regBanks + self.regs]
     checkToolPipeStage = self.pipes[-1]
@@ -576,7 +576,7 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
             if reg.wbStageOrder:
                 # The atribute is of a special type since write back has to be performed in
                 # a special order
-                customPipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister_' + str(reg.wbStageOrder)[1:-1].replace(', ', '_').replace('\'', ''), 'registers.hpp')
+                customPipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister_' + str(reg.wbStageOrder)[1:-1].replace(', ', '_').replace('\'', ''), '#include \"registers.hpp\"')
                 attribute = cxx_writer.writer_code.Attribute(reg.name + '_pipe', customPipeRegisterType, 'pu')
             else:
                 attribute = cxx_writer.writer_code.Attribute(reg.name + '_pipe', pipeRegisterType, 'pu')
@@ -911,9 +911,9 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     fetchWordType = self.bitSizes[1]
     includes = fetchWordType.getIncludes()
     if self.abi:
-        interfaceType = cxx_writer.writer_code.Type(self.name + '_ABIIf', 'interface.hpp')
+        interfaceType = cxx_writer.writer_code.Type(self.name + '_ABIIf', '#include \"interface.hpp\"')
     ToolsManagerType = cxx_writer.writer_code.TemplateType('ToolsManager', [fetchWordType], 'ToolsIf.hpp')
-    IntructionType = cxx_writer.writer_code.Type('Instruction', 'instructions.hpp')
+    IntructionType = cxx_writer.writer_code.Type('Instruction', '#include \"instructions.hpp\"')
     CacheElemType = cxx_writer.writer_code.Type('CacheElem')
     IntructionTypePtr = IntructionType.makePointer()
     emptyBody = cxx_writer.writer_code.Code('')
@@ -1090,7 +1090,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     decodeMethod = cxx_writer.writer_code.Method('decode', decodeCode, IntructionTypePtr, 'pu', decodeParams)
     processorElements.append(decodeMethod)
     if not model.startswith('acc'):
-        decoderAttribute = cxx_writer.writer_code.Attribute('decoder', cxx_writer.writer_code.Type('Decoder', 'decoder.hpp'), 'pri')
+        decoderAttribute = cxx_writer.writer_code.Attribute('decoder', cxx_writer.writer_code.Type('Decoder', '#include \"decoder.hpp\"'), 'pri')
         processorElements.append(decoderAttribute)
 
     ####################################################################################
@@ -1128,7 +1128,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
 
     # Finally memories, TLM ports, etc.
     if self.memory:
-        attribute = cxx_writer.writer_code.Attribute(self.memory[0], cxx_writer.writer_code.Type('LocalMemory', 'memory.hpp'), 'pu')
+        attribute = cxx_writer.writer_code.Attribute(self.memory[0], cxx_writer.writer_code.Type('LocalMemory', '#include \"memory.hpp\"'), 'pu')
         initMemCode = self.memory[0] + '(' + str(self.memory[1])
         if self.memory[2] and not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
             initMemCode += ', totalCycles'
@@ -1142,7 +1142,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         initElements.append(initMemCode)
         processorElements.append(attribute)
     for tlmPortName in self.tlmPorts.keys():
-        attribute = cxx_writer.writer_code.Attribute(tlmPortName, cxx_writer.writer_code.Type('TLMMemory', 'externalPorts.hpp'), 'pu')
+        attribute = cxx_writer.writer_code.Attribute(tlmPortName, cxx_writer.writer_code.Type('TLMMemory', '#include \"externalPorts.hpp\"'), 'pu')
         initPortCode = tlmPortName + '(\"' + tlmPortName + '\"'
         if self.systemc and model.endswith('LT') and not model.startswith('acc'):
             initPortCode += ', this->quantKeeper'
@@ -1248,9 +1248,9 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # Iterrupt ports
     for irqPort in self.irqs:
         if irqPort.tlm:
-            irqPortType = cxx_writer.writer_code.Type('IntrTLMPort_' + str(irqPort.portWidth), 'irqPorts.hpp')
+            irqPortType = cxx_writer.writer_code.Type('IntrTLMPort_' + str(irqPort.portWidth), '#include \"irqPorts.hpp\"')
         else:
-            irqPortType = cxx_writer.writer_code.Type('IntrSysCPort_' + str(irqPort.portWidth), 'irqPorts.hpp')
+            irqPortType = cxx_writer.writer_code.Type('IntrSysCPort_' + str(irqPort.portWidth), '#include \"irqPorts.hpp\"')
         from isa import resolveBitType
         irqWidthType = resolveBitType('BIT<' + str(irqPort.portWidth) + '>')
         irqSignalAttr = cxx_writer.writer_code.Attribute(irqPort.name, irqWidthType, 'pri')
@@ -1269,7 +1269,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
             pinPortName += 'in_'
         else:
             pinPortName += 'out_'
-        pinPortType = cxx_writer.writer_code.Type(pinPortName + str(pinPort.portWidth), 'externalPins.hpp')
+        pinPortType = cxx_writer.writer_code.Type(pinPortName + str(pinPort.portWidth), '#include \"externalPins.hpp\"')
         pinPortAttr = cxx_writer.writer_code.Attribute(pinPort.name, pinPortType, 'pu')
         processorElements.append(pinPortAttr)
         initElements.append(pinPort.name + '(\"' + pinPort.name + '_PIN\")')
@@ -1312,7 +1312,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
 
     # Lets declare the interrupt instructions in case we have any
     for irq in self.irqs:
-        IRQIntructionType = cxx_writer.writer_code.Type('IRQ_' + irq.name + '_Instruction', 'instructions.hpp')
+        IRQIntructionType = cxx_writer.writer_code.Type('IRQ_' + irq.name + '_Instruction', '#include \"instructions.hpp\"')
         IRQinstructionAttribute = cxx_writer.writer_code.Attribute(irq.name + '_irqInstr', IRQIntructionType.makePointer(), 'pu')
         processorElements.append(IRQinstructionAttribute)
 
@@ -1798,8 +1798,8 @@ def getMainCode(self, model, namespace):
             mainCode.addInclude('SparseMemoryAT.hpp')
         else:
             mainCode.addInclude('MemoryAT.hpp')
-    mainCode.addInclude('processor.hpp')
-    mainCode.addInclude('instructions.hpp')
+    mainCode.addInclude('#include \"processor.hpp\"')
+    mainCode.addInclude('#include \"instructions.hpp\"')
     mainCode.addInclude('trap_utils.hpp')
     mainCode.addInclude('systemc.h')
     mainCode.addInclude('elfFrontend.hpp')

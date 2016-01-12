@@ -851,11 +851,11 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
             regTypeName += '_const_' + str(reg.constValue)
         if type(reg.delay) == type(0) and not model.startswith('acc') and reg.delay > 0:
             regTypeName += '_delay_' + str(reg.delay)
-        resourceType[reg.name] = cxx_writer.writer_code.Type(regTypeName, 'registers.hpp')
+        resourceType[reg.name] = cxx_writer.writer_code.Type(regTypeName, '#include \"registers.hpp\"')
         if reg in self.regBanks:
             if (reg.constValue and len(reg.constValue) < reg.numRegs)  or ((reg.delay and len(reg.delay) < reg.numRegs) and not model.startswith('acc')):
                 resourceType[reg.name + '_baseType'] = resourceType[reg.name]
-                resourceType[reg.name] = cxx_writer.writer_code.Type('RegisterBankClass', 'registers.hpp')
+                resourceType[reg.name] = cxx_writer.writer_code.Type('RegisterBankClass', '#include \"registers.hpp\"')
             else:
                 resourceType[reg.name] = resourceType[reg.name].makePointer()
     realRegClasses = []
@@ -879,7 +879,7 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
             hasRegBankClass = True
             break
     if hasRegBankClass:
-        registerType = cxx_writer.writer_code.Type('Register', 'registers.hpp')
+        registerType = cxx_writer.writer_code.Type('Register', '#include \"registers.hpp\"')
         regBankElements = []
         regBankElements.append(cxx_writer.writer_code.Attribute('registers', registerType.makePointer().makePointer(), 'pri'))
         regBankElements.append(cxx_writer.writer_code.Attribute('size', cxx_writer.writer_code.uintType, 'pri'))
@@ -956,8 +956,8 @@ def getCPPAlias(self, namespace):
     of the register. In addition there is the updateAlias operation which updates
     the register this alias points to (and eventually the offset)."""
     regWidthType = regMaxType
-    registerType = cxx_writer.writer_code.Type('Register', 'registers.hpp')
-    aliasType = cxx_writer.writer_code.Type('Alias', 'alias.hpp')
+    registerType = cxx_writer.writer_code.Type('Register', '#include \"registers.hpp\"')
+    aliasType = cxx_writer.writer_code.Type('Alias', '#include \"alias.hpp\"')
     aliasElements = []
     global resourceType
     from procWriter import resourceType
@@ -1235,9 +1235,9 @@ def getCPPPipelineAlias(self, namespace):
     regWidthType = regMaxType
     # If the cycle accurate processor is used, then each alias contains also the pipeline
     # register, i.e. the registers with the copies (latches) for each pipeline stage
-    pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', 'registers.hpp')
-    registerType = cxx_writer.writer_code.Type('Register', 'registers.hpp')
-    aliasType = cxx_writer.writer_code.Type('Alias', 'alias.hpp')
+    pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', '#include \"registers.hpp\"')
+    registerType = cxx_writer.writer_code.Type('Register', '#include \"registers.hpp\"')
+    aliasType = cxx_writer.writer_code.Type('Alias', '#include \"alias.hpp\"')
     aliasElements = []
     global resourceType
     from procWriter import resourceType

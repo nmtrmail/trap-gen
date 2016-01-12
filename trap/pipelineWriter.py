@@ -57,8 +57,8 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
     constructorInit = []
     baseConstructorInit = ''
     pipeType = cxx_writer.writer_code.Type('BasePipeStage')
-    IntructionType = cxx_writer.writer_code.Type('Instruction', includes = ['instructions.hpp'])
-    registerType = cxx_writer.writer_code.Type('Register', includes = ['registers.hpp'])
+    IntructionType = cxx_writer.writer_code.Type('Instruction', includes = ['#include \"instructions.hpp\"'])
+    registerType = cxx_writer.writer_code.Type('Register', includes = ['#include \"registers.hpp\"'])
 
     stageEndedFlag = cxx_writer.writer_code.Attribute('stageEnded', cxx_writer.writer_code.boolType, 'pu')
     pipelineElements.append(stageEndedFlag)
@@ -76,14 +76,14 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
     stageBeginningEvent = cxx_writer.writer_code.Attribute('stageBeginningEv', cxx_writer.writer_code.sc_eventType, 'pu')
     pipelineElements.append(stageBeginningEvent)
 
-    NOPIntructionType = cxx_writer.writer_code.Type('NOPInstruction', 'instructions.hpp')
+    NOPIntructionType = cxx_writer.writer_code.Type('NOPInstruction', '#include \"instructions.hpp\"')
     NOPinstructionsAttribute = cxx_writer.writer_code.Attribute('NOPInstrInstance', NOPIntructionType.makePointer(), 'pu')
     pipelineElements.append(NOPinstructionsAttribute)
     constructorCode += 'this->NOPInstrInstance = NULL;\n'
 
     # Lets declare the interrupt instructions in case we have any and we also declare the signal attribute
     for irq in self.irqs:
-        IRQIntructionType = cxx_writer.writer_code.Type('IRQ_' + irq.name + '_Instruction', 'instructions.hpp')
+        IRQIntructionType = cxx_writer.writer_code.Type('IRQ_' + irq.name + '_Instruction', '#include \"instructions.hpp\"')
         IRQinstructionAttribute = cxx_writer.writer_code.Attribute(irq.name + '_irqInstr', IRQIntructionType.makePointer(), 'pu')
         pipelineElements.append(IRQinstructionAttribute)
         constructorCode += 'this->' + irq.name + '_irqInstr = NULL;\n'
@@ -525,7 +525,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
         waitPipeEndDecl = cxx_writer.writer_code.Method('waitPipeEnd', waitPipeEndBody, cxx_writer.writer_code.voidType, 'pri', noException = True)
         curPipeElements.append(waitPipeEndDecl)
 
-        IntructionType = cxx_writer.writer_code.Type('Instruction', 'instructions.hpp')
+        IntructionType = cxx_writer.writer_code.Type('Instruction', '#include \"instructions.hpp\"')
         IntructionTypePtr = IntructionType.makePointer()
 
         pipelineStageMap = {}
@@ -631,7 +631,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             refreshRegistersDecl = cxx_writer.writer_code.Method('refreshRegisters', refreshRegistersBody, cxx_writer.writer_code.voidType, 'pri', noException = True)
             curPipeElements.append(refreshRegistersDecl)
             # Here I declare the references to the pipeline registers and to the alias
-            pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', 'registers.hpp')
+            pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', '#include \"registers.hpp\"')
             for reg in self.regs:
                 if self.fetchReg[0] != reg.name:
                     attribute = cxx_writer.writer_code.Attribute(reg.name, pipeRegisterType.makeRef(), 'pri')
@@ -643,7 +643,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                 constructorParams = [cxx_writer.writer_code.Parameter(regB.name, pipeRegisterType.makePointer())] + constructorParams
                 constructorInit.append(regB.name + '(' + regB.name + ')')
                 curPipeElements.append(attribute)
-            aliasType = cxx_writer.writer_code.Type('Alias', 'alias.hpp')
+            aliasType = cxx_writer.writer_code.Type('Alias', '#include \"alias.hpp\"')
             for pipeStageInner in self.pipes:
                 for alias in self.aliasRegs:
                     attribute = cxx_writer.writer_code.Attribute(alias.name + '_' + pipeStageInner.name, aliasType.makeRef(), 'pri')
@@ -660,17 +660,17 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             if self.memory:
                 # I perform the fetch from the local memory
                 memName = self.memory[0]
-                memType = cxx_writer.writer_code.Type('LocalMemory', 'memory.hpp').makeRef()
+                memType = cxx_writer.writer_code.Type('LocalMemory', '#include \"memory.hpp\"').makeRef()
             else:
                 for name, isFetch  in self.tlmPorts.items():
                     if isFetch:
                         memName = name
-                        memType = cxx_writer.writer_code.Type('TLMMemory', 'externalPorts.hpp').makeRef()
+                        memType = cxx_writer.writer_code.Type('TLMMemory', '#include \"externalPorts.hpp\"').makeRef()
             constructorParams = [cxx_writer.writer_code.Parameter(memName, memType)] + constructorParams
             constructorInit.append(memName + '(' + memName + ')')
             memRefAttr = cxx_writer.writer_code.Attribute(memName, memType, 'pri')
             curPipeElements.append(memRefAttr)
-            decoderAttribute = cxx_writer.writer_code.Attribute('decoder', cxx_writer.writer_code.Type('Decoder', 'decoder.hpp'), 'pu')
+            decoderAttribute = cxx_writer.writer_code.Attribute('decoder', cxx_writer.writer_code.Type('Decoder', '#include \"decoder.hpp\"'), 'pu')
             curPipeElements.append(decoderAttribute)
             # I also have to add the map containig the ISA instructions to this stage
             instructionsAttribute = cxx_writer.writer_code.Attribute('INSTRUCTIONS', IntructionTypePtr.makePointer().makeRef(), 'pri')

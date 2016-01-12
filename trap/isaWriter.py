@@ -281,7 +281,7 @@ def getCppMethod(self, model, processor):
 
 def getCppOperation(self, parameters = False):
     """Returns the code implementing a helper operation"""
-    aliasType = cxx_writer.writer_code.Type('Alias', 'alias.hpp')
+    aliasType = cxx_writer.writer_code.Type('Alias', '#include \"alias.hpp\"')
     for var in self.localvars:
         self.code.addVariable(var)
     self.code.addInclude('trap_utils.hpp')
@@ -302,8 +302,8 @@ def getCppOpClass(self, namespace):
     method corresponding to the current operation"""
     global baseInstrConstrParams
     from procWriter import baseInstrInitElement
-    aliasType = cxx_writer.writer_code.Type('Alias', 'alias.hpp')
-    instructionType = cxx_writer.writer_code.Type('Instruction', 'instructions.hpp')
+    aliasType = cxx_writer.writer_code.Type('Alias', '#include \"alias.hpp\"')
+    instructionType = cxx_writer.writer_code.Type('Instruction', '#include \"instructions.hpp\"')
     emptyBody = cxx_writer.writer_code.Code('')
     for var in self.localvars:
         self.code.addVariable(var)
@@ -362,8 +362,8 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     all the different behaviors contained in the type hierarchy of this class"""
     pipeline = processor.pipes
     externalClock = processor.externalClock
-    aliasType = cxx_writer.writer_code.Type('Alias', 'alias.hpp')
-    instructionType = cxx_writer.writer_code.Type('Instruction', 'instructions.hpp')
+    aliasType = cxx_writer.writer_code.Type('Alias', '#include \"alias.hpp\"')
+    instructionType = cxx_writer.writer_code.Type('Instruction', '#include \"instructions.hpp\"')
     emptyBody = cxx_writer.writer_code.Code('')
     classElements = []
     baseClasses = []
@@ -982,7 +982,7 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
         curTest = cxx_writer.writer_code.Code(code)
         wariningDisableCode = '#ifdef _WIN32\n#pragma warning(disable : 4101\n#endif\n'
         includeUnprotectedCode = '#define private public\n#define protected public\n#include \"instructions.hpp\"\n#include \"registers.hpp\"\n#include \"memory.hpp\"\n#undef private\n#undef protected\n'
-        curTest.addInclude(['boost/test/test_tools.hpp', 'customExceptions.hpp', wariningDisableCode, includeUnprotectedCode, 'alias.hpp'])
+        curTest.addInclude(['boost/test/test_tools.hpp', 'customExceptions.hpp', wariningDisableCode, includeUnprotectedCode, '#include \"alias.hpp\"'])
         curTestFunction = cxx_writer.writer_code.Function(self.name + '_' + str(len(tests)), curTest, cxx_writer.writer_code.voidType)
         from procWriter import testNames
         testNames.append(self.name + '_' + str(len(tests)))
@@ -991,7 +991,7 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
 
 def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
     """I go over each instruction and print the class representing it"""
-    memoryType = cxx_writer.writer_code.Type('MemoryInterface', 'memory.hpp')
+    memoryType = cxx_writer.writer_code.Type('MemoryInterface', '#include \"memory.hpp\"')
     registerType = cxx_writer.writer_code.Type('Register')
     unlockQueueType = cxx_writer.writer_code.TemplateType('std::map', ['unsigned int', cxx_writer.writer_code.TemplateType('std::vector', [registerType.makePointer()], 'vector')], 'map')
 
@@ -1213,7 +1213,7 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
             baseInitElement += aliasB.name + ', '
             instructionElements.append(attribute)
     else:
-        pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', 'registers.hpp')
+        pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', '#include \"registers.hpp\"')
         for reg in processor.regs:
             attribute = cxx_writer.writer_code.Attribute(reg.name + '_pipe', pipeRegisterType.makeRef(), 'pu')
             baseInstrConstrParams.append(cxx_writer.writer_code.Parameter(reg.name + '_pipe', pipeRegisterType.makeRef()))
@@ -1256,14 +1256,14 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
                 baseInitElement += aliasB.name + '_' + pipeStage.name + ', '
                 instructionElements.append(attribute)
     if processor.memory:
-        attribute = cxx_writer.writer_code.Attribute(processor.memory[0], cxx_writer.writer_code.Type('LocalMemory', 'memory.hpp').makeRef(), 'pro')
-        baseInstrConstrParams.append(cxx_writer.writer_code.Parameter(processor.memory[0], cxx_writer.writer_code.Type('LocalMemory', 'memory.hpp').makeRef()))
+        attribute = cxx_writer.writer_code.Attribute(processor.memory[0], cxx_writer.writer_code.Type('LocalMemory', '#include \"memory.hpp\"').makeRef(), 'pro')
+        baseInstrConstrParams.append(cxx_writer.writer_code.Parameter(processor.memory[0], cxx_writer.writer_code.Type('LocalMemory', '#include \"memory.hpp\"').makeRef()))
         initElements.append(processor.memory[0] + '(' + processor.memory[0] + ')')
         baseInitElement += processor.memory[0] + ', '
         instructionElements.append(attribute)
     for tlmPorts in processor.tlmPorts.keys():
-        attribute = cxx_writer.writer_code.Attribute(tlmPorts, cxx_writer.writer_code.Type('TLMMemory', 'externalPorts.hpp').makeRef(), 'pro')
-        baseInstrConstrParams.append(cxx_writer.writer_code.Parameter(tlmPorts, cxx_writer.writer_code.Type('TLMMemory', 'externalPorts.hpp').makeRef()))
+        attribute = cxx_writer.writer_code.Attribute(tlmPorts, cxx_writer.writer_code.Type('TLMMemory', '#include \"externalPorts.hpp\"').makeRef(), 'pro')
+        baseInstrConstrParams.append(cxx_writer.writer_code.Parameter(tlmPorts, cxx_writer.writer_code.Type('TLMMemory', '#include \"externalPorts.hpp\"').makeRef()))
         initElements.append(tlmPorts + '(' + tlmPorts + ')')
         baseInitElement += tlmPorts + ', '
         instructionElements.append(attribute)
@@ -1278,7 +1278,7 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
                 pinPortName += 'in_'
             else:
                 pinPortName += 'out_'
-            pinPortType = cxx_writer.writer_code.Type(pinPortName + str(pinPort.portWidth), 'externalPins.hpp')
+            pinPortType = cxx_writer.writer_code.Type(pinPortName + str(pinPort.portWidth), '#include \"externalPins.hpp\"')
             attribute = cxx_writer.writer_code.Attribute(pinPort.name, pinPortType.makeRef(), 'pro')
             baseInstrConstrParams.append(cxx_writer.writer_code.Parameter(pinPort.name, pinPortType.makeRef()))
             initElements.append(pinPort.name + '(' + pinPort.name + ')')

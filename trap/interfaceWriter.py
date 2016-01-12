@@ -53,7 +53,7 @@ def getCPPIf(self, model, namespace):
 
     wordType = self.bitSizes[1]
     includes = wordType.getIncludes()
-    pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', 'registers.hpp')
+    pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', '#include \"registers.hpp\"')
 
     instrHistType = cxx_writer.writer_code.Type('HistoryInstrType', 'instructionBase.hpp')
     histQueueType = cxx_writer.writer_code.TemplateType('boost::circular_buffer', [instrHistType], 'boost/circular_buffer.hpp')
@@ -71,7 +71,7 @@ def getCPPIf(self, model, namespace):
     ifClassElements.append(progLimitAttr)
     baseInstrConstrParams.append(cxx_writer.writer_code.Parameter('PROGRAM_LIMIT', wordType.makeRef()))
     initElements.append('PROGRAM_LIMIT(PROGRAM_LIMIT)')
-    memIfType = cxx_writer.writer_code.Type('MemoryInterface', 'memory.hpp')
+    memIfType = cxx_writer.writer_code.Type('MemoryInterface', '#include \"memory.hpp\"')
     for memName in self.abi.memories.keys():
         ifClassElements.append(cxx_writer.writer_code.Attribute(memName, memIfType.makeRef(), 'pri'))
         baseInstrConstrParams.append(cxx_writer.writer_code.Parameter(memName, memIfType.makeRef()))
