@@ -46,6 +46,7 @@ class FileDumper:
     developer_name = ''
     developer_email = ''
     banner = ''
+    def_prefix = ''
 
     def __init__(self, name, isHeader):
         self.name = name
@@ -90,8 +91,8 @@ class FileDumper:
         # Now I can start priting the actual code: lets create the writer
         writer = Writer.CodeWriter(fileHnd)
         if self.isHeader:
-            writer.write('#ifndef ' + self.name.replace('.','_').upper() + '\n')
-            writer.write('#define ' + self.name.replace('.','_').upper() + '\n')
+            writer.write('#ifndef ' + FileDumper.def_prefix + self.name.replace('.','_').upper() + '\n')
+            writer.write('#define ' + FileDumper.def_prefix + self.name.replace('.','_').upper() + '\n')
         # as a first thing I compute the includes and print them
         for member in self.members:
             try:

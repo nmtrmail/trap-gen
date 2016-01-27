@@ -1099,6 +1099,7 @@ class Processor:
             defString = '#define ' + model[:-2].upper() + '_MODEL\n'
             defString += '#define ' + model[-2:].upper() + '_IF\n'
             defCode = cxx_writer.writer_code.Define(defString)
+            cxx_writer.writer_code.FileDumper.def_prefix = self.name.upper() + '_CORE_' +  model[:-2].upper() + '_' + model[-2:].upper() + '_'
 
             # Now I also set the processor class name: note that even if each model has a
             # separate namespace, some buggy dynamic linkers complain, so we must also
