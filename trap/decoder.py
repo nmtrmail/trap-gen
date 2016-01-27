@@ -53,6 +53,8 @@ except:
     traceback.print_exc()
     raise Exception('Error while determining the version of module networkx, try changing version, at least 0.36 required (newest non-development versions are usually ok)')
 
+import operator
+
 def expandPatterns(curPattern, genericPattern, tablePattern):
     """taken in input the current pattern and the generic one,
     it computes all the possible combinations of the pattern"""
@@ -295,7 +297,7 @@ class decoderCreator:
                     value += '1'
                 else:
                     value += '0'
-            code += 'if((instrCode & ' + hex(int(mask, 2)) + ') == ' + hex(int(value, 2)) + ' ){\n// Instruction ' + instr.name + '\nreturn ' + str(instr.id) + ';\n}\n'
+            code += 'if ((instrCode & ' + hex(int(mask, 2)) + ') == ' + hex(int(value, 2)) + ') {\n// Instruction ' + instr.name + '\nreturn ' + str(instr.id) + ';\n}\n'
         return code
 
     def createPatternDecoder(self, subtree):
@@ -455,7 +457,7 @@ class decoderCreator:
         # Here I declare the type which shall be contained in the cache
         if instructionCache:
             emptyBody = cxx_writer.writer_code.Code('')
-            IntructionTypePtr = cxx_writer.writer_code.Type('Instruction', 'instructions.hpp').makePointer()
+            IntructionTypePtr = cxx_writer.writer_code.Type('Instruction', '#include \"instructions.hpp\"').makePointer()
             instrAttr = cxx_writer.writer_code.Attribute('instr', IntructionTypePtr, 'pu')
             countAttr = cxx_writer.writer_code.Attribute('count', cxx_writer.writer_code.uintType, 'pu')
             cacheTypeElements = [instrAttr, countAttr]
@@ -492,6 +494,7 @@ class decoderCreator:
                 pattern = pattern[0]
             except:
                 pass
+
             for i in range(0, len(pattern)):
                 if pattern[i] == None:
                     if ranGen.random() > 0.5:

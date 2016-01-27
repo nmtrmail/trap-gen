@@ -103,13 +103,13 @@ def getCPPRegClass(self, model, regType, namespace):
 
     ################ Methods used for the update of delayed registers ######################
     if not model.startswith('acc') and type(self.delay) != type({}) and self.delay > 0:
-        clockCycleCode = """if(this->updateSlot[0]) {
+        clockCycleCode = """if (this->updateSlot[0]) {
                     this->value = this->values[0];
                     this->updateSlot[0] = false;
                 }
                 """
         for i in range(1, self.delay):
-            clockCycleCode += """if(this->updateSlot[""" + str(i) + """]) {
+            clockCycleCode += """if (this->updateSlot[""" + str(i) + """]) {
                         this->values[""" + str(i - 1) + """] = this->values[""" + str(i) + """];
                         this->updateSlot[""" + str(i) + """] = false;
                         this->updateSlot[""" + str(i - 1) + """] = true;
@@ -146,14 +146,14 @@ def getCPPRegClass(self, model, regType, namespace):
         delays.reverse()
         if self.offset:
             for i in delays:
-                readNewValueCode += """if(this->updateSlot[""" + str(i) + """]) {
+                readNewValueCode += """if (this->updateSlot[""" + str(i) + """]) {
                             return this->values[""" + str(i) + """] + """ + str(self.offset) + """;
                         }
                         """
             readNewValueCode += 'return this->value + ' + str(self.offset) + ';\n'
         else:
             for i in delays:
-                readNewValueCode += """if(this->updateSlot[""" + str(i) + """]) {
+                readNewValueCode += """if (this->updateSlot[""" + str(i) + """]) {
                             return this->values[""" + str(i) + """];
                         }
                         """
@@ -464,13 +464,13 @@ def getCPPPipelineReg(self, trace, combinedTrace, namespace):
     # the locked status of the corresponding stage register (used for bypass operations, where
     # we do not wait for the WB, but we take the value from a pipeline register)
 
-    lockBody = cxx_writer.writer_code.Code("""for(int i = 0; i < """ + str(len(self.pipes)) + """; i++) {
+    lockBody = cxx_writer.writer_code.Code("""for (int i = 0; i < """ + str(len(self.pipes)) + """; i++) {
         this->reg_stage[i]->lock();
     }
     this->reg_all->lock();""")
     lockMethod = cxx_writer.writer_code.Method('lock', lockBody, cxx_writer.writer_code.voidType, 'pu', virtual = True, noException = True)
     registerElements.append(lockMethod)
-    unlockBody = cxx_writer.writer_code.Code("""for(int i = 0; i < """ + str(len(self.pipes)) + """; i++) {
+    unlockBody = cxx_writer.writer_code.Code("""for (int i = 0; i < """ + str(len(self.pipes)) + """; i++) {
         this->reg_stage[i]->unlock();
     }
     this->reg_all->unlock();""")
@@ -494,7 +494,7 @@ def getCPPPipelineReg(self, trace, combinedTrace, namespace):
     registerElements.append(forceValueMethod)
 
     writeAllCode = '*(this->reg_all) = value;\n'
-    writeAllCode += 'for(int i = 0; i < ' + str(len(self.pipes)) + '; i++) {\n'
+    writeAllCode += 'for (int i = 0; i < ' + str(len(self.pipes)) + '; i++) {\n'
     writeAllCode += '*(this->reg_stage[i]) = value;\n}\n'
     writeAllBody = cxx_writer.writer_code.Code(writeAllCode)
     writeAllParam = [cxx_writer.writer_code.Parameter('value', regMaxType.makeRef().makeConst())]
@@ -513,7 +513,7 @@ def getCPPPipelineReg(self, trace, combinedTrace, namespace):
     regReadUpdate = ''
     firstStages = 0
     for pipeStage in self.pipes:
-        regReadUpdate += 'if(this->reg_all->timeStamp > this->reg_stage[' + str(firstStages) + ']->timeStamp) {\n'
+        regReadUpdate += 'if (this->reg_all->timeStamp > this->reg_stage[' + str(firstStages) + ']->timeStamp) {\n'
         ######
         if trace and not combinedTrace:
             regReadUpdate += 'std::cerr << "Propagating stage all into stage ' + str(firstStages) + '" << std::endl;\n'
@@ -526,8 +526,8 @@ def getCPPPipelineReg(self, trace, combinedTrace, namespace):
         else:
             firstStages += 1
     propagateCode = 'bool hasChanges = false;\n'
-    #propagateCode += 'if(!this->hasToPropagate) {\nreturn;\n}\n'
-    propagateCode += 'if(this->reg_stage[' + str(len(self.pipes) - 1) + ']->timeStamp > this->reg_all->timeStamp) {\n'
+    #propagateCode += 'if (!this->hasToPropagate) {\nreturn;\n}\n'
+    propagateCode += 'if (this->reg_stage[' + str(len(self.pipes) - 1) + ']->timeStamp > this->reg_all->timeStamp) {\n'
     ######
     if trace and not combinedTrace:
         propagateCode += 'std::cerr << "Propagating stage ' + str(len(self.pipes) - 1) + ' into reg_all" << std::endl;\n'
@@ -535,8 +535,8 @@ def getCPPPipelineReg(self, trace, combinedTrace, namespace):
     propagateCode += 'hasChanges = true;\n'
     propagateCode += 'this->reg_all->timeStamp = this->reg_stage[' + str(len(self.pipes) - 1) + ']->timeStamp;\n'
     propagateCode += 'this->reg_all->forceValue(*(this->reg_stage[' + str(len(self.pipes) - 1) + ']));\n}\n'
-    propagateCode += 'for(int i = ' + str(len(self.pipes) - 2) + '; i >= ' + str(firstStages) + '; i--) {\n'
-    propagateCode += 'if(this->reg_stage[i]->timeStamp > this->reg_stage[i + 1]->timeStamp) {\n'
+    propagateCode += 'for (int i = ' + str(len(self.pipes) - 2) + '; i >= ' + str(firstStages) + '; i--) {\n'
+    propagateCode += 'if (this->reg_stage[i]->timeStamp > this->reg_stage[i + 1]->timeStamp) {\n'
     ######
     if trace and not combinedTrace:
         propagateCode += 'std::cerr << "Propagating stage " << std::dec << i << " into stage " << std::dec << i + 1 << std::endl;\n'
@@ -554,7 +554,7 @@ def getCPPPipelineReg(self, trace, combinedTrace, namespace):
     # Now here I have to define the method to get/set the pointer to the various
     # registers
     regIndexParam = cxx_writer.writer_code.Parameter('regIndex', cxx_writer.writer_code.intType, initValue = '-1')
-    getRegisterBody = cxx_writer.writer_code.Code("""if(regIndex < 0) {
+    getRegisterBody = cxx_writer.writer_code.Code("""if (regIndex < 0) {
         return this->reg_all;
     } else {
         return this->reg_stage[regIndex];
@@ -562,14 +562,14 @@ def getCPPPipelineReg(self, trace, combinedTrace, namespace):
     getRegisterMethod = cxx_writer.writer_code.Method('getRegister', getRegisterBody, registerType.makePointer(), 'pu', [regIndexParam], inline = True, noException = True)
     registerElements.append(getRegisterMethod)
     regPointerParam = cxx_writer.writer_code.Parameter('regPtr', registerType.makePointer())
-    getRegisterBody = cxx_writer.writer_code.Code("""if(regIndex < 0) {
-        if(this->reg_all != NULL) {
+    getRegisterBody = cxx_writer.writer_code.Code("""if (regIndex < 0) {
+        if (this->reg_all != NULL) {
             THROW_EXCEPTION("Error, trying to initialize main register after the pipeline register initialization has already completed");
         }
         this->reg_all = regPtr;
         this->reg_all->hasToPropagate = &(this->hasToPropagate);
     } else {
-        if(this->reg_stage[regIndex] != NULL) {
+        if (this->reg_stage[regIndex] != NULL) {
             THROW_EXCEPTION("Error, trying to initialize register " << regIndex << " after the pipeline register initialization has already completed");
         }
         this->reg_stage[regIndex] = regPtr;
@@ -640,11 +640,11 @@ def getCPPPipelineReg(self, trace, combinedTrace, namespace):
     for order in orders:
         registerElements = []
         propagateCode = 'bool hasChanges = false;\n'
-        #propagateCode += 'if(!this->hasToPropagate) {\nreturn;\n}\n'
+        #propagateCode += 'if (!this->hasToPropagate) {\nreturn;\n}\n'
         for pipeStage in order:
             if pipeStage != order[0]:
                 propagateCode += 'else '
-            propagateCode += 'if(this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']->timeStamp > this->reg_all->timeStamp) {\n'
+            propagateCode += 'if (this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']->timeStamp > this->reg_all->timeStamp) {\n'
             ######
             if trace and not combinedTrace:
                 propagateCode += 'std::cerr << "Propagating stage ' + str(pipeNumbers[pipeStage]) + ' into all stages" << std::endl;\n'
@@ -652,7 +652,7 @@ def getCPPPipelineReg(self, trace, combinedTrace, namespace):
             propagateCode += 'hasChanges = true;\n'
             propagateCode += 'this->reg_all->forceValue(*(this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']));\n'
             propagateCode += 'this->reg_all->timeStamp = this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']->timeStamp;\n'
-            propagateCode += 'for(int i = 0; i < ' + str(len(self.pipes)) + '; i++) {\n'
+            propagateCode += 'for (int i = 0; i < ' + str(len(self.pipes)) + '; i++) {\n'
             propagateCode += 'this->reg_stage[i]->forceValue(*(this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']));\n'
             propagateCode += 'this->reg_stage[i]->timeStamp = this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']->timeStamp;\n'
             propagateCode += '}\n}\n'
@@ -728,27 +728,27 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         lockBody = cxx_writer.writer_code.Code('this->lockedLatency = -1;\nthis->numLocked++;')
         lockMethod = cxx_writer.writer_code.Method('lock', lockBody, cxx_writer.writer_code.voidType, 'pu', virtual = True, noException = True)
         registerElements.append(lockMethod)
-        unlockBody = cxx_writer.writer_code.Code('this->lockedLatency = -1;\nif(this->numLocked > 0) {\nthis->numLocked--;\n}')
+        unlockBody = cxx_writer.writer_code.Code('this->lockedLatency = -1;\nif (this->numLocked > 0) {\nthis->numLocked--;\n}')
         unlockMethod = cxx_writer.writer_code.Method('unlock', unlockBody, cxx_writer.writer_code.voidType, 'pu', virtual = True, noException = True)
         registerElements.append(unlockMethod)
         latencyParam = cxx_writer.writer_code.Parameter('wbLatency', cxx_writer.writer_code.intType)
-        unlockBody = cxx_writer.writer_code.Code("""if(wbLatency > 0) {
+        unlockBody = cxx_writer.writer_code.Code("""if (wbLatency > 0) {
             this->lockedLatency = wbLatency;
         } else {
             this->lockedLatency = -1;
-            if(this->numLocked > 0) {
+            if (this->numLocked > 0) {
                 this->numLocked--;
             }
         }""")
         unlockMethod = cxx_writer.writer_code.Method('unlock', unlockBody, cxx_writer.writer_code.voidType, 'pu', [latencyParam], virtual = True, noException = True)
         registerElements.append(unlockMethod)
-        isLockedBody = cxx_writer.writer_code.Code("""if(this->lockedLatency > 0) {
+        isLockedBody = cxx_writer.writer_code.Code("""if (this->lockedLatency > 0) {
             this->lockedLatency--;
-            if(this->lockedLatency == 0) {
+            if (this->lockedLatency == 0) {
                 this->numLocked--;
             }
         }
-        if(this->numLocked > 0) {
+        if (this->numLocked > 0) {
             return true;
         } else {
             this->numLocked = 0;
@@ -883,7 +883,7 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         regBankElements = []
         regBankElements.append(cxx_writer.writer_code.Attribute('registers', registerType.makePointer().makePointer(), 'pri'))
         regBankElements.append(cxx_writer.writer_code.Attribute('size', cxx_writer.writer_code.uintType, 'pri'))
-        setNewRegisterBody = cxx_writer.writer_code.Code("""if(numReg > this->size - 1) {
+        setNewRegisterBody = cxx_writer.writer_code.Code("""if (numReg > this->size - 1) {
             THROW_EXCEPTION("Register number " << numReg << " is out of register bank boundaries");
         } else {
             this->registers[numReg] = newReg;
@@ -893,17 +893,17 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         setNewRegisterMethod = cxx_writer.writer_code.Method('setNewRegister', setNewRegisterBody, cxx_writer.writer_code.voidType, 'pu', setNewRegisterParams)
         regBankElements.append(setNewRegisterMethod)
         setSizeBody = cxx_writer.writer_code.Code("""
-            for(unsigned int i = 0; i < this->size; i++) {
-                if(this->registers[i] != NULL) {
+            for (unsigned int i = 0; i < this->size; i++) {
+                if (this->registers[i] != NULL) {
                     delete this->registers[i];
                 }
             }
-            if(this->registers != NULL) {
+            if (this->registers != NULL) {
                 delete [] this->registers;
             }
             this->size = size;
             this->registers = new """ + str(registerType.makePointer()) + """[this->size];
-            for(unsigned int i = 0; i < this->size; i++) {
+            for (unsigned int i = 0; i < this->size; i++) {
                 this->registers[i] = NULL;
             }
         """)
@@ -917,7 +917,7 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         regBankClass = cxx_writer.writer_code.ClassDeclaration('RegisterBankClass', regBankElements, namespaces = [namespace])
         constructorBody = cxx_writer.writer_code.Code("""this->size = size;
             this->registers = new """ + str(registerType.makePointer()) + """[this->size];
-            for(unsigned int i = 0; i < this->size; i++) {
+            for (unsigned int i = 0; i < this->size; i++) {
                 this->registers[i] = NULL;
             }
         """)
@@ -930,12 +930,12 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         publicRegBankConstr = cxx_writer.writer_code.Constructor(constructorBody, 'pu')
         regBankClass.addConstructor(publicRegBankConstr)
         destructorBody = cxx_writer.writer_code.Code("""
-            for(unsigned int i = 0; i < this->size; i++) {
-                if(this->registers[i] != NULL) {
+            for (unsigned int i = 0; i < this->size; i++) {
+                if (this->registers[i] != NULL) {
                     delete this->registers[i];
                 }
             }
-            if(this->registers != NULL) {
+            if (this->registers != NULL) {
                 delete [] this->registers;
             }
         """)
@@ -1063,12 +1063,12 @@ def getCPPAlias(self, namespace):
     publicAliasConstrInit += ['offset(initAlias->offset + offset)', 'defaultOffset(offset)']
     publicAliasConstr = cxx_writer.writer_code.Constructor(constructorBody, 'pu', constructorParams, publicAliasConstrInit)
     destructorBody = cxx_writer.writer_code.Code("""std::list<Alias *>::iterator referredIter, referredEnd;
-        for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
-            if((*referredIter)->referringAliases == this) {
+        for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+            if ((*referredIter)->referringAliases == this) {
                 (*referredIter)->referringAliases = NULL;
             }
         }
-        if(this->referringAliases != NULL) {
+        if (this->referringAliases != NULL) {
             this->referringAliases->referredAliases.remove(this);
         }
         this->referringAliases = NULL;""")
@@ -1087,10 +1087,10 @@ def getCPPAlias(self, namespace):
     this->offset = newAlias.offset + newOffset;
     this->defaultOffset = newOffset;
     std::list<Alias *>::iterator referredIter, referredEnd;
-    for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+    for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
         (*referredIter)->newReferredAlias(newAlias.reg, newAlias.offset + newOffset);
     }
-    if(this->referringAliases != NULL) {
+    if (this->referringAliases != NULL) {
         this->referringAliases->referredAliases.remove(this);
     }
     this->referringAliases = &newAlias;
@@ -1106,12 +1106,12 @@ def getCPPAlias(self, namespace):
     """
     updateCode += """this->reg = newAlias.reg;
     std::list<Alias *>::iterator referredIter, referredEnd;
-    for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+    for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
     """
     updateCode += '(*referredIter)->newReferredAlias(newAlias.reg, newAlias.offset);'
     updateCode += """
     }
-    if(this->referringAliases != NULL) {
+    if (this->referringAliases != NULL) {
         this->referringAliases->referredAliases.remove(this);
     }
     this->referringAliases = &newAlias;
@@ -1126,10 +1126,10 @@ def getCPPAlias(self, namespace):
     this->offset = newOffset;
     this->defaultOffset = 0;
     std::list<Alias *>::iterator referredIter, referredEnd;
-    for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+    for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
         (*referredIter)->newReferredAlias(&newAlias, newOffset);
     }
-    if(this->referringAliases != NULL) {
+    if (this->referringAliases != NULL) {
         this->referringAliases->referredAliases.remove(this);
     }
     this->referringAliases = NULL;
@@ -1145,10 +1145,10 @@ def getCPPAlias(self, namespace):
     """
     updateCode += """this->reg = &newAlias;
     std::list<Alias *>::iterator referredIter, referredEnd;
-    for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+    for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
         (*referredIter)->newReferredAlias(&newAlias);
     }
-    if(this->referringAliases != NULL) {
+    if (this->referringAliases != NULL) {
         this->referringAliases->referredAliases.remove(this);
     }
     this->referringAliases = NULL;
@@ -1160,7 +1160,7 @@ def getCPPAlias(self, namespace):
 
     directSetCode = 'this->reg = newAlias.reg;\n'
     directSetCode += 'this->offset = newAlias.offset;\n'
-    directSetCode += """if(this->referringAliases != NULL) {
+    directSetCode += """if (this->referringAliases != NULL) {
         this->referringAliases->referredAliases.remove(this);
     }
     this->referringAliases = &newAlias;
@@ -1172,7 +1172,7 @@ def getCPPAlias(self, namespace):
     aliasElements.append(directSetDecl)
 
     directSetBody = cxx_writer.writer_code.Code("""this->reg = &newAlias;
-    if(this->referringAliases != NULL) {
+    if (this->referringAliases != NULL) {
         this->referringAliases->referredAliases.remove(this);
     }
     this->referringAliases = NULL;""")
@@ -1183,7 +1183,7 @@ def getCPPAlias(self, namespace):
     updateCode = """this->reg = newAlias;
     this->offset = newOffset + this->defaultOffset;
     std::list<Alias *>::iterator referredIter, referredEnd;
-    for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+    for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
         (*referredIter)->newReferredAlias(newAlias, newOffset);
     }
     """
@@ -1196,7 +1196,7 @@ def getCPPAlias(self, namespace):
     updateCode = 'this->offset = this->defaultOffset;\n'
     updateCode += """this->reg = newAlias;
     std::list<Alias *>::iterator referredIter, referredEnd;
-    for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+    for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
         (*referredIter)->newReferredAlias(newAlias);
     }"""
     updateBody = cxx_writer.writer_code.Code(updateCode)
@@ -1255,7 +1255,7 @@ def getCPPPipelineAlias(self, namespace):
 
     ################ Lock and Unlock methods used for hazards detection ######################
     pipeIdParam = cxx_writer.writer_code.Parameter('pipeId', cxx_writer.writer_code.uintType)
-    setpipeIdBody = cxx_writer.writer_code.Code('if(this->pipeId < 0) {\nthis->pipeId = pipeId;\n} else {\nTHROW_ERROR(\"Error, pipeline Id of alias can only be set during alias initialization; it already has value \" << this->pipeId);\n}')
+    setpipeIdBody = cxx_writer.writer_code.Code('if (this->pipeId < 0) {\nthis->pipeId = pipeId;\n} else {\nTHROW_ERROR(\"Error, pipeline Id of alias can only be set during alias initialization; it already has value \" << this->pipeId);\n}')
     setpipeIdMethod = cxx_writer.writer_code.Method('setPipeId', setpipeIdBody, cxx_writer.writer_code.voidType, 'pu', [pipeIdParam])
     aliasElements.append(setpipeIdMethod)
     getPipeRegBody = cxx_writer.writer_code.Code('return this->pipelineReg;')
@@ -1361,12 +1361,12 @@ def getCPPPipelineAlias(self, namespace):
     publicAliasConstrInit = ['pipelineReg(initAlias->pipelineReg), pipeId(pipeId)']
     publicAliasConstr = cxx_writer.writer_code.Constructor(constructorBody, 'pu', constructorParams, publicAliasConstrInit)
     destructorBody = cxx_writer.writer_code.Code("""std::list<Alias *>::iterator referredIter, referredEnd;
-        for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
-            if((*referredIter)->referringAliases == this) {
+        for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+            if ((*referredIter)->referringAliases == this) {
                 (*referredIter)->referringAliases = NULL;
             }
         }
-        if(this->referringAliases != NULL) {
+        if (this->referringAliases != NULL) {
             this->referringAliases->referredAliases.remove(this);
         }
         this->referringAliases = NULL;""")
@@ -1383,12 +1383,12 @@ def getCPPPipelineAlias(self, namespace):
     # Update method: updates the register pointed by this alias: Standard Alias
     updateCode = """this->pipelineReg = newAlias.pipelineReg;
     std::list<Alias *>::iterator referredIter, referredEnd;
-    for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+    for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
     """
     updateCode += '(*referredIter)->newReferredAlias(newAlias.pipelineReg);'
     updateCode += """
     }
-    if(this->referringAliases != NULL) {
+    if (this->referringAliases != NULL) {
         this->referringAliases->referredAliases.remove(this);
     }
     this->referringAliases = &newAlias;
@@ -1401,10 +1401,10 @@ def getCPPPipelineAlias(self, namespace):
 
     updateCode = """this->pipelineReg = &newAlias;
     std::list<Alias *>::iterator referredIter, referredEnd;
-    for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+    for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
         (*referredIter)->newReferredAlias(&newAlias);
     }
-    if(this->referringAliases != NULL) {
+    if (this->referringAliases != NULL) {
         this->referringAliases->referredAliases.remove(this);
     }
     this->referringAliases = NULL;
@@ -1415,12 +1415,12 @@ def getCPPPipelineAlias(self, namespace):
     updateDecl = cxx_writer.writer_code.Method('updateAlias', updateBody, cxx_writer.writer_code.voidType, 'pu', updateParam, inline = False, noException = True)
     aliasElements.append(updateDecl)
 
-    propagateCode = """if(this->referringAliases != NULL) {
+    propagateCode = """if (this->referringAliases != NULL) {
         return;
     }
     this->pipelineReg = &newAlias;
     std::list<Alias *>::iterator referredIter, referredEnd;
-    for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+    for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
         (*referredIter)->newReferredAlias(&newAlias);
     }
     """
@@ -1431,7 +1431,7 @@ def getCPPPipelineAlias(self, namespace):
 
     directSetCode = """this->pipelineReg = newAlias.pipelineReg;
     this->pipeId = newAlias.pipeId;
-    if(this->referringAliases != NULL) {
+    if (this->referringAliases != NULL) {
         this->referringAliases->referredAliases.remove(this);
     }
     this->referringAliases = &newAlias;
@@ -1443,7 +1443,7 @@ def getCPPPipelineAlias(self, namespace):
     aliasElements.append(directSetDecl)
 
     directSetBody = cxx_writer.writer_code.Code("""this->pipelineReg = &newAlias;
-    if(this->referringAliases != NULL) {
+    if (this->referringAliases != NULL) {
         this->referringAliases->referredAliases.remove(this);
     }
     this->referringAliases = NULL;""")
@@ -1453,7 +1453,7 @@ def getCPPPipelineAlias(self, namespace):
 
     updateCode = """this->pipelineReg = newAlias;
     std::list<Alias *>::iterator referredIter, referredEnd;
-    for(referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
+    for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
         (*referredIter)->newReferredAlias(newAlias);
     }"""
     updateBody = cxx_writer.writer_code.Code(updateCode)

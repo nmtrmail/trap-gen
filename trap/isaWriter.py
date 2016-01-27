@@ -552,7 +552,7 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
                     realRegName = regToCheck[:parenthesis] + '_' + checkHazardStage + regToCheck[parenthesis:]
                 else:
                     realRegName = regToCheck + '_' + checkHazardStage
-                printBusyRegsCode += 'if(this->' + realRegName + '.isLocked()) {\n'
+                printBusyRegsCode += 'if (this->' + realRegName + '.isLocked()) {\n'
                 printBusyRegsCode += 'retVal += "' + regToCheck + ' - ";\n'
                 printBusyRegsCode += '}\n'
         printBusyRegsCode += 'return retVal;\n'
@@ -763,13 +763,13 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     #num_allocated = processor.alloc_buffer_size*self.frequency
     #poolDecl = cxx_writer.writer_code.Variable(self.name + '_pool[' + str(num_allocated) + '*sizeof(' + self.name + ')]', cxx_writer.writer_code.ucharType, namespaces = [namespace])
     #operatorNewCode = """
-    #if(""" + self.name + """::allocated < """ + str(num_allocated) + """) {
+    #if (""" + self.name + """::allocated < """ + str(num_allocated) + """) {
         #""" + self.name + """::allocated++;
         #return """ + self.name + """_pool + (""" + self.name + """::allocated - 1)*sizeof(""" + self.name + """);
     #}
     #else {
         #void * newMem = ::malloc(bytesToAlloc);
-        #if(newMem == NULL)
+        #if (newMem == NULL)
             #throw std::bad_alloc();
         #return newMem;
     #}
@@ -782,7 +782,7 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     #operatorNewDecl = cxx_writer.writer_code.MemberOperator('new', operatorNewBody, cxx_writer.writer_code.voidPtrType, 'pu', operatorNewParams)
     #classElements.append(operatorNewDecl)
     #operatorDelCode = """
-        #if(m != NULL && (m < """ + self.name + """_pool || m > (""" + self.name + """_pool + """ + str(num_allocated - 1) + """*sizeof(""" + self.name + """)))) {
+        #if (m != NULL && (m < """ + self.name + """_pool || m > (""" + self.name + """_pool + """ + str(num_allocated - 1) + """*sizeof(""" + self.name + """)))) {
             #::free(m);
         #}
     #"""
@@ -1092,7 +1092,7 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
             bankNames = [i.name for i in processor.regBanks + processor.aliasRegBanks]
             for reg in self.traceRegs:
                 if reg.name in bankNames:
-                    printTraceCode += 'for(int regNum = 0; regNum < ' + str(reg.numRegs) + '; regNum++) {\n'
+                    printTraceCode += 'for (int regNum = 0; regNum < ' + str(reg.numRegs) + '; regNum++) {\n'
                     printTraceCode += 'std::cerr << \"' + reg.name + '[\" << std::dec << regNum << \"] = \" << std::hex << std::showbase << this->' + reg.name + '[regNum] << std::endl;\n}\n'
                 else:
                     printTraceCode += 'std::cerr << \"' + reg.name + ' = \" << std::hex << std::showbase << this->' + reg.name + ' << std::endl;\n'
@@ -1100,7 +1100,7 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
             for reg in processor.regs:
                 printTraceCode += 'std::cerr << \"' + reg.name + ' = \" << std::hex << std::showbase << this->' + reg.name + ' << std::endl;\n'
             for regB in processor.regBanks:
-                printTraceCode += 'for(int regNum = 0; regNum < ' + str(regB.numRegs) + '; regNum++) {\n'
+                printTraceCode += 'for (int regNum = 0; regNum < ' + str(regB.numRegs) + '; regNum++) {\n'
                 printTraceCode += 'std::cerr << \"' + regB.name + '[\" << std::dec << regNum << \"] = \" << std::hex << std::showbase << this->' + regB.name + '[regNum] << std::endl;\n}\n'
         printTraceCode += 'std::cerr << std::endl;\n'
         if model.startswith('acc'):

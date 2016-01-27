@@ -105,7 +105,7 @@ hash_map_include = """
 def getInstrIssueCode(self, trace, combinedTrace, instrVarName, hasCheckHazard = False, pipeStage = None, checkDestroyCode = ''):
     codeString = """try {
             #ifndef DISABLE_TOOLS
-            if(!(this->toolManager.newIssue(curPC, """ + instrVarName + """))) {
+            if (!(this->toolManager.newIssue(curPC, """ + instrVarName + """))) {
             #endif
             numCycles = """ + instrVarName + """->behavior();
     """
@@ -140,7 +140,7 @@ def getInstrIssueCodePipe(self, trace, combinedTrace, instrVarName, hasCheckHaza
     codeString += 'try {\n'
     if pipeStage == self.pipes[0]:
         codeString += """#ifndef DISABLE_TOOLS
-            if(!(this->toolManager.newIssue(""" + instrVarName + """->fetchPC, """ + instrVarName + """))) {
+            if (!(this->toolManager.newIssue(""" + instrVarName + """->fetchPC, """ + instrVarName + """))) {
             #endif
     """
     codeString += """numCycles = """ + instrVarName + """->behavior_""" + pipeStage.name + """(BasePipeStage::unlockQueue);
@@ -151,14 +151,14 @@ def getInstrIssueCodePipe(self, trace, combinedTrace, instrVarName, hasCheckHaza
     if trace:
         if pipeStage == self.pipes[-1]:
             if combinedTrace:
-                codeString += 'if(this->curInstruction != this->NOPInstrInstance) {\n'
+                codeString += 'if (this->curInstruction != this->NOPInstrInstance) {\n'
             codeString += instrVarName + '->printTrace();\n'
             if combinedTrace:
                 codeString += '}\n'
     if pipeStage == self.pipes[0]:
         codeString += """#ifndef DISABLE_TOOLS
                     } else {
-            if(""" + instrVarName + """->toDestroy""" + checkDestroyCode + """) {
+            if (""" + instrVarName + """->toDestroy""" + checkDestroyCode + """) {
                 delete """ + instrVarName + """;
             } else {
                 """ + instrVarName + """->inPipeline = false;
@@ -180,7 +180,7 @@ def getInstrIssueCodePipe(self, trace, combinedTrace, instrVarName, hasCheckHaza
     if hasCheckHazard and unlockHazard:
         codeString +=  instrVarName + '->getUnlock_' + pipeStage.name + '(BasePipeStage::unlockQueue);\n'
     codeString += """
-            if(""" + instrVarName + """->toDestroy""" + checkDestroyCode + """) {
+            if (""" + instrVarName + """->toDestroy""" + checkDestroyCode + """) {
                 delete """ + instrVarName + """;
             } else {
                 """ + instrVarName + """->inPipeline = false;
@@ -226,11 +226,11 @@ def getInterruptCode(self, trace, pipeStage = None):
     for irqPort in orderedIrqList:
         if irqPort != orderedIrqList[0]:
             interruptCode += 'else '
-        interruptCode += 'if('
-        if(irqPort.condition):
+        interruptCode += 'if ('
+        if (irqPort.condition):
             interruptCode += '('
         interruptCode += irqPort.name + ' != -1'
-        if(irqPort.condition):
+        if (irqPort.condition):
             interruptCode += ') && (' + irqPort.condition + ')'
         interruptCode += ') {\n'
         # Now I have to call the actual interrrupt instruction: again, this
@@ -266,7 +266,7 @@ def standardInstrFetch(self, trace, combinedTrace, issueCodeGenerator, hasCheckH
     codeString = 'int instrId = this->decoder.decode(bitString);\n'
     if pipeStage:
         codeString += 'Instruction * instr = this->INSTRUCTIONS[instrId];\n'
-        codeString += 'if(instr->inPipeline) {\n'
+        codeString += 'if (instr->inPipeline) {\n'
         codeString += 'instr = instr->replicate();\n'
         codeString += 'instr->toDestroy = true;\n'
         codeString += '}\n'
@@ -278,7 +278,7 @@ def standardInstrFetch(self, trace, combinedTrace, issueCodeGenerator, hasCheckH
 
     # Here we add the details about the instruction to the current history element
     codeString += """#ifdef ENABLE_HISTORY
-    if(this->historyEnabled) {
+    if (this->historyEnabled) {
         instrQueueElem.name = instr->getInstructionName();
         instrQueueElem.mnemonic = instr->getMnemonic();
     }
@@ -297,15 +297,15 @@ def fetchWithCacheCode(self, fetchCode, trace, combinedTrace, issueCodeGenerator
     codeString += 'template_map< ' + str(self.bitSizes[1]) + ', CacheElem >::iterator cachedInstr = this->instrCache.find(' + mapKey + ');'
     # I have found the instruction in the cache
     codeString += """
-    if(cachedInstr != instrCacheEnd) {
+    if (cachedInstr != instrCacheEnd) {
         Instruction * curInstrPtr = cachedInstr->second.instr;
         // I can call the instruction, I have found it
-        if(curInstrPtr != NULL) {
+        if (curInstrPtr != NULL) {
     """
 
     # Here we add the details about the instruction to the current history element
     codeString += """#ifdef ENABLE_HISTORY
-    if(this->historyEnabled) {
+    if (this->historyEnabled) {
         instrQueueElem.name = curInstrPtr->getInstructionName();
         instrQueueElem.mnemonic = curInstrPtr->getMnemonic();
     }
@@ -313,7 +313,7 @@ def fetchWithCacheCode(self, fetchCode, trace, combinedTrace, issueCodeGenerator
     """
 
     if pipeStage:
-        codeString += 'if(curInstrPtr->inPipeline) {\n'
+        codeString += 'if (curInstrPtr->inPipeline) {\n'
         codeString += 'curInstrPtr = curInstrPtr->replicate();\n'
         codeString += 'curInstrPtr->setParams(bitString);\n'
         codeString += 'curInstrPtr->toDestroy = true;\n'
@@ -328,14 +328,14 @@ def fetchWithCacheCode(self, fetchCode, trace, combinedTrace, issueCodeGenerator
         codeString += fetchCode
     codeString += 'unsigned int & curCount = cachedInstr->second.count;\n'
     codeString += standardInstrFetch(self, trace, combinedTrace, issueCodeGenerator, hasCheckHazard, pipeStage, ' && curCount < ' + str(self.cacheLimit))
-    codeString += """if(curCount < """ + str(self.cacheLimit) + """) {
+    codeString += """if (curCount < """ + str(self.cacheLimit) + """) {
             curCount++;
         } else {
             // ... and then add the instruction to the cache
             cachedInstr->second.instr = instr;
     """
     if pipeStage:
-        codeString += """if(instr->toDestroy) {
+        codeString += """if (instr->toDestroy) {
                 instr->toDestroy = false;
             } else {
             """
@@ -431,7 +431,7 @@ def procInitCode(self, model):
                 writeCompact = False
                 break
         if writeCompact:
-            initString += 'for(int i = 0; i < ' + str(elem.numRegs) + '; i++) {\n'
+            initString += 'for (int i = 0; i < ' + str(elem.numRegs) + '; i++) {\n'
             initString += elem.name + '[i] = 0;\n'
             initString += '}\n'
         else:
@@ -537,7 +537,7 @@ def procInitCode(self, model):
                 initString += reg.name + '_' + pipeStage.name + ' = ' + reg.name + ';\n'
             initString += reg.name + '_pipe.hasToPropagate = false;\n'
         for regB in self.regBanks:
-            initString += 'for(int i = 0; i < ' + str(regB.numRegs) + '; i++) {\n'
+            initString += 'for (int i = 0; i < ' + str(regB.numRegs) + '; i++) {\n'
             for pipeStage in self.pipes:
                 initString += regB.name + '_' + pipeStage.name + '[i] = ' + regB.name + '[i];\n'
             initString += regB.name + '_pipe[i].hasToPropagate = false;\n'
@@ -623,7 +623,7 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
                 processorElements.append(attribute)
         if model.startswith('acc'):
             # Now I need to set the pipeline registers
-            bodyInits += 'for(int i = 0; i < ' + str(regB.numRegs) + '; i++) {\n'
+            bodyInits += 'for (int i = 0; i < ' + str(regB.numRegs) + '; i++) {\n'
             pipeCount = 0
             for pipeStage in self.pipes:
                 bodyInits += 'this->' + regB.name + '_pipe[i].setRegister(&' + regB.name + '_' + pipeStage.name + '[i], ' + str(pipeCount) + ');\n'
@@ -717,7 +717,7 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
     for aliasB in self.aliasRegBanks:
         bodyAliasInit[aliasB.name] = ''
         if model.startswith('acc'):
-            bodyAliasInit[aliasB.name] += 'for(int i = 0; i < ' + str(aliasB.numRegs) + '; i++) {\n'
+            bodyAliasInit[aliasB.name] += 'for (int i = 0; i < ' + str(aliasB.numRegs) + '; i++) {\n'
             curStageId = 0
             for pipeStage in self.pipes:
                 attribute = cxx_writer.writer_code.Attribute(aliasB.name + '_' + pipeStage.name + '[' + str(aliasB.numRegs) + ']', resourceType[aliasB.name], 'pu')
@@ -733,7 +733,7 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
             index = extractRegInterval(aliasB.initAlias)
             curIndex = index[0]
             if model.startswith('acc'):
-                bodyAliasInit[aliasB.name] += 'for(int  i = 0; i < ' + str(aliasB.numRegs) + 'i++) {\n'
+                bodyAliasInit[aliasB.name] += 'for (int  i = 0; i < ' + str(aliasB.numRegs) + 'i++) {\n'
                 for pipeStage in self.pipes:
                     offsetStr = ''
                     if index[0] != 0:
@@ -762,7 +762,7 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
                         indexStr = ''
                         if curIndex != 0:
                             indexStr = ' + ' + str(curIndex)
-                        bodyAliasInit[aliasB.name] += 'for(int i = 0; i < ' + str(index[1] + 1 - index[0]) + '; i++) {\n'
+                        bodyAliasInit[aliasB.name] += 'for (int i = 0; i < ' + str(index[1] + 1 - index[0]) + '; i++) {\n'
                         for pipeStage in self.pipes:
                             if curAlias[:curAlias.find('[')] in regsNames:
                                 bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i' + indexStr + '].updateAlias(this->' + curAlias[:curAlias.find('[')] + '_pipe[i' + offsetStr + ']);\n'
@@ -946,17 +946,17 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         codeString += str(fetchWordType) + ' curPC = ' + fetchAddress + ';\n'
         # Lets insert the code to keep statistics
         if self.systemc:
-            codeString += """if(!startMet && curPC == this->profStartAddr) {
+            codeString += """if (!startMet && curPC == this->profStartAddr) {
                 this->profTimeStart = sc_time_stamp();
             }
-            if(startMet && curPC == this->profEndAddr) {
+            if (startMet && curPC == this->profEndAddr) {
                 this->profTimeEnd = sc_time_stamp();
             }
             """
         # Lets start with the code for the instruction queue
         codeString += """#ifdef ENABLE_HISTORY
         HistoryInstrType instrQueueElem;
-        if(this->historyEnabled) {
+        if (this->historyEnabled) {
         """
         if len(self.tlmPorts) > 0 and model.endswith('LT'):
             codeString += 'instrQueueElem.cycle = (unsigned int)(this->quantKeeper.get_current_time()/this->latency);'
@@ -985,15 +985,15 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         # Lets finish with the code for the instruction queue: I just still have to
         # check if it is time to save to file the instruction queue
         codeString += """#ifdef ENABLE_HISTORY
-        if(this->historyEnabled) {
+        if (this->historyEnabled) {
             // First I add the new element to the queue
             this->instHistoryQueue.push_back(instrQueueElem);
             // Now, in case the queue dump file has been specified, I have to check if I need to save it
-            if(this->histFile) {
+            if (this->histFile) {
                 this->undumpedHistElems++;
-                if(undumpedHistElems == this->instHistoryQueue.capacity()) {
+                if (undumpedHistElems == this->instHistoryQueue.capacity()) {
                     boost::circular_buffer<HistoryInstrType>::const_iterator beg, end;
-                    for(beg = this->instHistoryQueue.begin(), end = this->instHistoryQueue.end(); beg != end; beg++) {
+                    for (beg = this->instHistoryQueue.begin(), end = this->instHistoryQueue.end(); beg != end; beg++) {
                         this->histFile << beg->toStr() << std::endl;
                     }
                     this->undumpedHistElems = 0;
@@ -1006,7 +1006,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         if self.irqs:
             codeString += '}\n'
         if len(self.tlmPorts) > 0 and model.endswith('LT'):
-            codeString += 'this->quantKeeper.inc((numCycles + 1)*this->latency);\nif(this->quantKeeper.need_sync()) {\nthis->quantKeeper.sync();\n}\n'
+            codeString += 'this->quantKeeper.inc((numCycles + 1)*this->latency);\nif (this->quantKeeper.need_sync()) {\nthis->quantKeeper.sync();\n}\n'
         elif model.startswith('acc') or self.systemc or model.endswith('AT'):
             codeString += 'wait((numCycles + 1)*this->latency);\n'
         else:
@@ -1063,7 +1063,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     processorElements.append(resetOpMethod)
 
     # Now I declare the end of elaboration method, called by systemc just before starting the simulation
-    endElabCode = cxx_writer.writer_code.Code('if(!this->resetCalled) {\nthis->resetOp();\n}\nthis->resetCalled = false;')
+    endElabCode = cxx_writer.writer_code.Code('if (!this->resetCalled) {\nthis->resetOp();\n}\nthis->resetCalled = false;')
     endElabMethod = cxx_writer.writer_code.Method('end_of_elaboration', endElabCode, cxx_writer.writer_code.voidType, 'pu')
     processorElements.append(endElabMethod)
     ##########################################################################
@@ -1078,7 +1078,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         decodeBody = 'int instrId = this->' + self.pipes[0].name + '_stage.decoder.decode(bitString);\n'
     else:
         decodeBody = 'int instrId = this->decoder.decode(bitString);\n'
-    decodeBody += """if(instrId >= 0) {
+    decodeBody += """if (instrId >= 0) {
                 Instruction * instr = this->INSTRUCTIONS[instrId];
                 instr->setParams(bitString);
                 return instr;
@@ -1332,7 +1332,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         constrCode += 'this->INSTRUCTIONS[' + str(instr.id) + '] = new ' + name + '(' + baseInstrInitElement +');\n'
     constrCode += 'this->INSTRUCTIONS[' + str(maxInstrId) + '] = new InvalidInstr(' + baseInstrInitElement + ');\n'
     if model.startswith('acc'):
-        constrCode += 'if(' + processor_name + '::numInstances == 1) {\n'
+        constrCode += 'if (' + processor_name + '::numInstances == 1) {\n'
         constrCode += processor_name + '::NOPInstrInstance = new NOPInstruction(' + baseInstrInitElement + ');\n'
         for pipeStage in self.pipes:
             constrCode += pipeStage.name + '_stage.NOPInstrInstance = ' + processor_name + '::NOPInstrInstance;\n'
@@ -1362,18 +1362,18 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
 
     publicConstr = cxx_writer.writer_code.Constructor(constructorBody, 'pu', constructorParams, constructorInit + initElements)
     destrCode = processor_name + """::numInstances--;
-    for(int i = 0; i < """ + str(maxInstrId + 1) + """; i++) {
+    for (int i = 0; i < """ + str(maxInstrId + 1) + """; i++) {
         delete this->INSTRUCTIONS[i];
     }
     delete [] this->INSTRUCTIONS;
     """
     if model.startswith('acc'):
-        destrCode += 'if(' + processor_name + '::numInstances == 0) {\n'
+        destrCode += 'if (' + processor_name + '::numInstances == 0) {\n'
         destrCode += 'delete ' + processor_name + '::NOPInstrInstance;\n'
         destrCode += '}\n'
     if self.instructionCache and not model.startswith('acc'):
         destrCode += """template_map< """ + str(fetchWordType) + """, CacheElem >::const_iterator cacheIter, cacheEnd;
-        for(cacheIter = this->instrCache.begin(), cacheEnd = this->instrCache.end(); cacheIter != cacheEnd; cacheIter++) {
+        for (cacheIter = this->instrCache.begin(), cacheEnd = this->instrCache.end(); cacheIter != cacheEnd; cacheIter++) {
             delete cacheIter->second.instr;
         }
         """
@@ -1384,18 +1384,18 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # Now, before the processor elements is destructed I have to make sure that the history dump file is correctly closed
     if model.startswith('func'):
         destrCode += """#ifdef ENABLE_HISTORY
-        if(this->historyEnabled) {
+        if (this->historyEnabled) {
             // Now, in case the queue dump file has been specified, I have to check if I need to save the yet undumped elements
-            if(this->histFile) {
-                if(this->undumpedHistElems > 0) {
+            if (this->histFile) {
+                if (this->undumpedHistElems > 0) {
                     std::vector<std::string> histVec;
                     boost::circular_buffer<HistoryInstrType>::const_reverse_iterator beg, end;
                     unsigned int histRead = 0;
-                    for(histRead = 0, beg = this->instHistoryQueue.rbegin(), end = this->instHistoryQueue.rend(); beg != end && histRead < this->undumpedHistElems; beg++, histRead++) {
+                    for (histRead = 0, beg = this->instHistoryQueue.rbegin(), end = this->instHistoryQueue.rend(); beg != end && histRead < this->undumpedHistElems; beg++, histRead++) {
                         histVec.push_back(beg->toStr());
                     }
                     std::vector<std::string>::const_reverse_iterator histVecBeg, histVecEnd;
-                    for(histVecBeg = histVec.rbegin(), histVecEnd = histVec.rend(); histVecBeg != histVecEnd; histVecBeg++) {
+                    for (histVecBeg = histVec.rbegin(), histVecEnd = histVec.rend(); histVecBeg != histVecEnd; histVecBeg++) {
                         this->histFile <<  *histVecBeg << std::endl;
                     }
                 }
@@ -1514,11 +1514,11 @@ def getMainCode(self, model, namespace):
     boost::program_options::notify(vm);
 
     // Checking that the parameters are correctly specified
-    if(vm.count("help") != 0) {
+    if (vm.count("help") != 0) {
         std::cout << desc << std::endl;
         return 0;
     }
-    if(vm.count("application") == 0) {
+    if (vm.count("application") == 0) {
         std::cerr << "It is necessary to specify the application which has to be simulated" << " using the --application command line option" << std::endl << std::endl;
         std::cerr << desc << std::endl;
         return -1;
@@ -1526,7 +1526,7 @@ def getMainCode(self, model, namespace):
     """
     if (self.systemc or model.startswith('acc') or model.endswith('AT')) and not self.externalClock:
         code += """double latency = 1; // 1us
-        if(vm.count("frequency") != 0) {
+        if (vm.count("frequency") != 0) {
             latency = 1/(vm["frequency"].as<double>());
         }
         // Now we can procede with the actual instantiation of the processor
@@ -1579,15 +1579,15 @@ def getMainCode(self, model, namespace):
     unsigned char * programData = loader.getProgData();
     unsigned int programDim = loader.getProgDim();
     unsigned int progDataStart = loader.getDataStart();
-    for(unsigned int i = 0; i < programDim; i++) {
+    for (unsigned int i = 0; i < programDim; i++) {
         """ + instrMemName + """.write_byte_dbg(progDataStart + i, programData[i]);
     }
-    if(vm.count("disassembler") != 0) {
+    if (vm.count("disassembler") != 0) {
         std:cout << "Entry Point: " << std::hex << std::showbase << loader.getProgStart() << std::endl << std::endl;
-        for(unsigned int i = 0; i < programDim; i+= """ + str(self.wordSize) + """) {
+        for (unsigned int i = 0; i < programDim; i+= """ + str(self.wordSize) + """) {
             Instruction * curInstr = procInst.decode(""" + instrDissassName + """.read_word_dbg(loader.getDataStart() + i));
             std::cout << std::hex << std::showbase << progDataStart + i << ":    " << """ + instrDissassName + """.read_word_dbg(progDataStart + i);
-            if(curInstr != NULL) {
+            if (curInstr != NULL) {
                  std::cout << "    " << curInstr->getMnemonic();
             }
             std::cout << std::endl;
@@ -1599,10 +1599,11 @@ def getMainCode(self, model, namespace):
     procInst.PROGRAM_LIMIT = programDim + progDataStart;
     procInst.PROGRAM_START = progDataStart;
     """
+
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
         code += """// Now I check if the count of the cycles among two locations (addresses or symbols) is required
         std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decodedRange((""" + str(wordType) + """)-1, (""" + str(wordType) + """)-1);
-        if(vm.count("cycles_range") != 0) {
+        if (vm.count("cycles_range") != 0) {
             // Now, the range is in the form start-end, where start and end can be both integer numbers
             // (both normal and hex) or symbols of the binary file
             std::string cycles_range = vm["cycles_range"].as<std::string>();
@@ -1614,10 +1615,10 @@ def getMainCode(self, model, namespace):
     code += """
     // Initialization of the instruction history management; note that I need to enable both if the debugger is being used
     // and/or if history needs to be dumped on an output file
-    if(vm.count("debugger") > 0) {
+    if (vm.count("debugger") > 0) {
         procInst.enableHistory();
     }
-    if(vm.count("history") > 0) {
+    if (vm.count("history") > 0) {
         #ifndef ENABLE_HISTORY
         std::cout << std::endl << "Unable to initialize instruction history as it has " << "been disabled at compilation time" << std::endl << std::endl;
         #endif
@@ -1638,13 +1639,13 @@ def getMainCode(self, model, namespace):
         osEmu.initSysCalls(vm["application"].as<std::string>());
         std::vector<std::string> options;
         options.push_back(vm["application"].as<std::string>());
-        if(vm.count("arguments") > 0) {
+        if (vm.count("arguments") > 0) {
             // Here we have to parse the command line program arguments; they are
             // in the form option,option,option ...
             std::string packedOpts = vm["arguments"].as<std::string>();
             while(packedOpts.size() > 0) {
                 std::size_t foundComma = packedOpts.find(',');
-                if(foundComma != std::string::npos) {
+                if (foundComma != std::string::npos) {
                     options.push_back(packedOpts.substr(0, foundComma));
                     packedOpts = packedOpts.substr(foundComma + 1);
                 } else {
@@ -1654,14 +1655,14 @@ def getMainCode(self, model, namespace):
             }
         }
         osEmu.set_program_args(options);
-        if(vm.count("environment") > 0) {
+        if (vm.count("environment") > 0) {
             // Here we have to parse the environment; they are
             // in the form option=value,option=value .....
             std::string packedEnv = vm["environment"].as<std::string>();
             while(packedEnv.size() > 0) {
                 std::size_t foundComma = packedEnv.find(',');
                 std::string curEnv;
-                if(foundComma != std::string::npos) {
+                if (foundComma != std::string::npos) {
                     curEnv = packedEnv.substr(0, foundComma);
                     packedEnv = packedEnv.substr(foundComma + 1);
                 } else {
@@ -1670,7 +1671,7 @@ def getMainCode(self, model, namespace):
                 }
                 // Now I have to split the current environment
                 std::size_t equalPos = curEnv.find('=');
-                if(equalPos == std::string::npos) {
+                if (equalPos == std::string::npos) {
                     std::cerr << "Error in the command line environmental options: " << \\
                         "'=' not found in option " << curEnv << std::endl;
                     return -1;
@@ -1678,14 +1679,14 @@ def getMainCode(self, model, namespace):
                 osEmu.set_environ(curEnv.substr(0, equalPos), curEnv.substr(equalPos + 1));
             }
         }
-        if(vm.count("sysconf") > 0) {
+        if (vm.count("sysconf") > 0) {
             // Here we have to parse the environment; they are
             // in the form option=value,option=value .....
             std::string packedEnv = vm["sysconf"].as<std::string>();
             while(packedEnv.size() > 0) {
                 std::size_t foundComma = packedEnv.find(',');
                 std::string curEnv;
-                if(foundComma != std::string::npos) {
+                if (foundComma != std::string::npos) {
                     curEnv = packedEnv.substr(0, foundComma);
                     packedEnv = packedEnv.substr(foundComma + 1);
                 } else {
@@ -1694,7 +1695,7 @@ def getMainCode(self, model, namespace):
                 }
                 // Now I have to split the current environment
                 std::size_t equalPos = curEnv.find('=');
-                if(equalPos == std::string::npos) {
+                if (equalPos == std::string::npos) {
                     std::cerr << "Error in the command line sysconf options: " << \\
                         "'=' not found in option " << curEnv << std::endl;
                     return -1;
@@ -1710,7 +1711,7 @@ def getMainCode(self, model, namespace):
             }
         }
         procInst.toolManager.addTool(osEmu);
-        if(vm.count("debugger") != 0) {
+        if (vm.count("debugger") != 0) {
             procInst.toolManager.addTool(gdbStub);
             gdbStub.initialize();
     """
@@ -1719,13 +1720,13 @@ def getMainCode(self, model, namespace):
         if self.memory:
             code += 'procInst.' + self.memory[0] + '.setDebugger(&gdbStub);\n'
         code += 'gdbStub_ref = &gdbStub;\n}\n'
-    code += """if(vm.count("profiler") != 0) {
+    code += """if (vm.count("profiler") != 0) {
                 std::set<std::string> toIgnoreFuns = osEmu.getRegisteredFunctions();
                 toIgnoreFuns.erase("main");
                 profiler.addIgnoredFunctions(toIgnoreFuns);
                 // Now I check if there is the need to restrict the use of the profiler in a specific
                 // cycles range
-                if(vm.count("prof_range") != 0) {
+                if (vm.count("prof_range") != 0) {
                     std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decodedProfRange = getCycleRange(vm["prof_range"].as<std::string>(), vm["application"].as<std::string>());
                     // Now, the range is in the form start-end, where start and end can be both integer numbers
                     // (both normal and hex) or symbols of the binary file
@@ -1745,7 +1746,7 @@ def getMainCode(self, model, namespace):
     boost::timer t;
     sc_start();
     double elapsedSec = t.elapsed();
-    if(vm.count("profiler") != 0) {
+    if (vm.count("profiler") != 0) {
         profiler.printCsvStats(vm["profiler"].as<std::string>());
     }
     std::cout << std::endl << "Elapsed " << elapsedSec << " sec. (real time)" << std::endl;
@@ -1755,8 +1756,8 @@ def getMainCode(self, model, namespace):
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
         code += 'std::cout << \"Simulated time: \" << ((sc_time_stamp().to_default_time_units())/(sc_time(1, SC_US).to_default_time_units())) << " us" << std::endl;\n'
         code += 'std::cout << \"Elapsed \" << std::dec << (unsigned int)(sc_time_stamp()/sc_time(latency, SC_US)) << \" cycles\" << std::endl;\n'
-        code += """if(decodedRange.first != (""" + str(wordType) + """)-1 || decodedRange.second != (""" + str(wordType) + """)-1) {
-                    if(procInst.profTimeEnd == SC_ZERO_TIME) {
+        code += """if (decodedRange.first != (""" + str(wordType) + """)-1 || decodedRange.second != (""" + str(wordType) + """)-1) {
+                    if (procInst.profTimeEnd == SC_ZERO_TIME) {
                         procInst.profTimeEnd = sc_time_stamp();
                         std::cout << "End address " << std::hex << std::showbase << decodedRange.second << " not found, counting until the end" << std::endl;
                     }
@@ -1815,7 +1816,7 @@ def getMainCode(self, model, namespace):
     parameters = [cxx_writer.writer_code.Parameter('argc', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('argv', cxx_writer.writer_code.charPtrType.makePointer())]
     mainFunction = cxx_writer.writer_code.Function('sc_main', mainCode, cxx_writer.writer_code.intType, parameters)
 
-    stopSimFunction = cxx_writer.writer_code.Code("""if(gdbStub_ref != NULL && gdbStub_ref->simulationPaused) {
+    stopSimFunction = cxx_writer.writer_code.Code("""if (gdbStub_ref != NULL && gdbStub_ref->simulationPaused) {
         std::cerr << std::endl << "Simulation is already paused; ";
         std::cerr << "please use the connected GDB debugger to controll it" << std::endl << std::endl;
     } else {
@@ -1851,16 +1852,16 @@ def getMainCode(self, model, namespace):
     hexMap['f'] = 15;
 
     std::string toConvTemp = toConvert;
-    if(toConvTemp.size() >= 2 && toConvTemp[0] == '0' && (toConvTemp[1] == 'X' || toConvTemp[1] == 'x'))
+    if (toConvTemp.size() >= 2 && toConvTemp[0] == '0' && (toConvTemp[1] == 'X' || toConvTemp[1] == 'x'))
         toConvTemp = toConvTemp.substr(2);
 
     """ + str(wordType) + """ result = 0;
     unsigned int pos = 0;
     std::string::reverse_iterator hexIter, hexIterEnd;
-    for(hexIter = toConvTemp.rbegin(), hexIterEnd = toConvTemp.rend();
+    for (hexIter = toConvTemp.rbegin(), hexIterEnd = toConvTemp.rend();
                     hexIter != hexIterEnd; hexIter++) {
         std::map<char, unsigned int>::iterator mapIter = hexMap.find(*hexIter);
-        if(mapIter == hexMap.end()) {
+        if (mapIter == hexMap.end()) {
             throw std::runtime_error(toConvert + ": wrong hex number");
         }
         result |= (mapIter->second << pos);
@@ -1872,7 +1873,7 @@ def getMainCode(self, model, namespace):
 
     getCycleRangeCode = cxx_writer.writer_code.Code("""std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decodedRange;
         std::size_t foundSep = cycles_range.find('-');
-        if(foundSep == std::string::npos) {
+        if (foundSep == std::string::npos) {
             THROW_EXCEPTION("ERROR: specified address range " << cycles_range << " is not valid, it has to be in the form start-end");
         }
         std::string start = cycles_range.substr(0, foundSep);
@@ -1890,7 +1891,7 @@ def getMainCode(self, model, namespace):
                 trap::ELFFrontend &elfFE = trap::ELFFrontend::getInstance(application);
                 bool valid = true;
                 decodedRange.first = elfFE.getSymAddr(start, valid);
-                if(!valid) {
+                if (!valid) {
                     THROW_EXCEPTION("ERROR: start address range " << start << " does not specify a valid address or a valid symbol");
                 }
             }
@@ -1906,7 +1907,7 @@ def getMainCode(self, model, namespace):
                 trap::ELFFrontend &elfFE = trap::ELFFrontend::getInstance(application);
                 bool valid = true;
                 decodedRange.second = elfFE.getSymAddr(end, valid);
-                if(!valid) {
+                if (!valid) {
                     THROW_EXCEPTION("ERROR: end address range " << end << " does not specify a valid address or a valid symbol");
                 }
             }

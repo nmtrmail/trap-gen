@@ -144,7 +144,7 @@ def getCPPIf(self, model, namespace):
     instrExecutingMethod = cxx_writer.writer_code.Method('isInstrExecuting', instrExecutingCode, cxx_writer.writer_code.boolType, 'pu', noException = True, const = True)
     ifClassElements.append(instrExecutingMethod)
     if self.systemc:
-        waitInstrEndCode = cxx_writer.writer_code.Code('if(this->instrExecuting) {\nwait(this->instrEndEvent);\n}\n')
+        waitInstrEndCode = cxx_writer.writer_code.Code('if (this->instrExecuting) {\nwait(this->instrEndEvent);\n}\n')
         waitInstrEndCode.addInclude('systemc.h')
     else:
         waitInstrEndCode = cxx_writer.writer_code.Code('while(this->instrExecuting) {\n;\n}\n')
@@ -206,9 +206,9 @@ def getCPPIf(self, model, namespace):
     isRoutineEntryBody = """std::vector<std::string> nextNames = this->routineEntrySequence[this->routineEntryState];
     std::vector<std::string>::const_iterator namesIter, namesEnd;
     std::string curName = instr->getInstructionName();
-    for(namesIter = nextNames.begin(), namesEnd = nextNames.end(); namesIter != namesEnd; namesIter++) {
-        if(curName == *namesIter || *namesIter == "") {
-            if(this->routineEntryState == """ + str(len(self.abi.callInstr) -1) + """) {
+    for (namesIter = nextNames.begin(), namesEnd = nextNames.end(); namesIter != namesEnd; namesIter++) {
+        if (curName == *namesIter || *namesIter == "") {
+            if (this->routineEntryState == """ + str(len(self.abi.callInstr) -1) + """) {
                 this->routineEntryState = 0;
                 return true;
             }
@@ -225,9 +225,9 @@ def getCPPIf(self, model, namespace):
     isRoutineExitBody = """std::vector<std::string> nextNames = this->routineExitSequence[this->routineExitState];
     std::vector<std::string>::const_iterator namesIter, namesEnd;
     std::string curName = instr->getInstructionName();
-    for(namesIter = nextNames.begin(), namesEnd = nextNames.end(); namesIter != namesEnd; namesIter++) {
-        if(curName == *namesIter || *namesIter == "") {
-            if(this->routineExitState == """ + str(len(self.abi.returnCallInstr) -1) + """) {
+    for (namesIter = nextNames.begin(), namesEnd = nextNames.end(); namesIter != namesEnd; namesIter++) {
+        if (curName == *namesIter || *namesIter == "") {
+            if (this->routineExitState == """ + str(len(self.abi.returnCallInstr) -1) + """) {
                 this->routineExitState = 0;
                 return true;
             }
@@ -344,10 +344,10 @@ def getCPPIf(self, model, namespace):
     readArgsCode.addInclude(includes)
     readArgsMethod = cxx_writer.writer_code.Method('readArgs', readArgsCode, vectorType, 'pu', noException = True, const = True)
     ifClassElements.append(readArgsMethod)
-    setArgsBody = 'if(args.size() > ' + str(len(self.abi.args)) + ') {\nTHROW_EXCEPTION(\"ABI of processor supports up to ' + str(len(self.abi.args)) + ' arguments: \" << args.size() << \" given\");\n}\n'
+    setArgsBody = 'if (args.size() > ' + str(len(self.abi.args)) + ') {\nTHROW_EXCEPTION(\"ABI of processor supports up to ' + str(len(self.abi.args)) + ' arguments: \" << args.size() << \" given\");\n}\n'
     setArgsBody += str(vectorType) + '::const_iterator argIter = args.begin(), argEnd = args.end();\n'
     for arg in self.abi.args:
-        setArgsBody += 'if(argIter != argEnd) {\n'
+        setArgsBody += 'if (argIter != argEnd) {\n'
         setArgsBody += 'this->' + arg + regWriteCode + '(*argIter'
         if self.abi.offset.has_key(arg) and not model.startswith('acc'):
             setArgsBody += ' - ' + str(self.abi.offset[arg])
@@ -396,7 +396,7 @@ def getCPPIf(self, model, namespace):
             readMemBody += 'return this->' + self.abi.memories.keys()[0] + '.read_word_dbg(address);'
         else:
             for memName, mem_range in self.abi.memories.items():
-                readMemBody += 'if(address >= ' + hex(mem_range[0]) + ' && address <= ' + hex(mem_range[1]) + ') {\n'
+                readMemBody += 'if (address >= ' + hex(mem_range[0]) + ' && address <= ' + hex(mem_range[1]) + ') {\n'
                 readMemBody += 'return this->' + self.abi.memories.keys()[0] + '.read_word_dbg(address);\n} else '
             readMemBody += ' {\nTHROW_EXCEPTION(\"Address \" << std::hex << address << \" out of range\");\n}'
     readMemCode = cxx_writer.writer_code.Code(readMemBody)
@@ -412,7 +412,7 @@ def getCPPIf(self, model, namespace):
             readByteMemBody += 'return this->' + self.abi.memories.keys()[0] + '.read_byte_dbg(address);'
         else:
             for memName, mem_range in self.abi.memories.items():
-                readByteMemBody += 'if(address >= ' + hex(mem_range[0]) + ' && address <= ' + hex(mem_range[1]) + ') {\n'
+                readByteMemBody += 'if (address >= ' + hex(mem_range[0]) + ' && address <= ' + hex(mem_range[1]) + ') {\n'
                 readByteMemBody += 'return this->' + self.abi.memories.keys()[0] + '.read_byte_dbg(address);\n} else '
             readByteMemBody += ' {\nTHROW_EXCEPTION(\"Address \" << std::hex << address << \" out of range\");\n}'
     readByteMemCode = cxx_writer.writer_code.Code(readByteMemBody)
@@ -428,7 +428,7 @@ def getCPPIf(self, model, namespace):
             writeMemBody += 'this->' + self.abi.memories.keys()[0] + '.write_word_dbg(address, datum);'
         else:
             for memName, mem_range in self.abi.memories.items():
-                writeMemBody += 'if(address >= ' + hex(mem_range[0]) + ' && address <= ' + hex(mem_range[1]) + ') {\n'
+                writeMemBody += 'if (address >= ' + hex(mem_range[0]) + ' && address <= ' + hex(mem_range[1]) + ') {\n'
                 writeMemBody += 'this->' + self.abi.memories.keys()[0] + '.write_word_dbg(address, datum);\n} else '
             writeMemBody += ' {\nTHROW_EXCEPTION(\"Address \" << std::hex << address << \" out of range\");\n}'
     writeMemCode = cxx_writer.writer_code.Code(writeMemBody)
@@ -445,7 +445,7 @@ def getCPPIf(self, model, namespace):
             writeMemBody += 'this->' + self.abi.memories.keys()[0] + '.write_byte_dbg(address, datum);'
         else:
             for memName, mem_range in self.abi.memories.items():
-                writeMemBody += 'if(address >= ' + hex(mem_range[0]) + ' && address <= ' + hex(mem_range[1]) + ') {\n'
+                writeMemBody += 'if (address >= ' + hex(mem_range[0]) + ' && address <= ' + hex(mem_range[1]) + ') {\n'
                 writeMemBody += 'this->' + self.abi.memories.keys()[0] + '.write_byte_dbg(address, datum);\n} else '
             writeMemBody += ' {\nTHROW_EXCEPTION(\"Address \" << std::hex << address << \" out of range\");\n}'
     writeMemCode = cxx_writer.writer_code.Code(writeMemBody)
