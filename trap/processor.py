@@ -1235,7 +1235,11 @@ class Processor:
                     implFilePIN.addMember(i)
                     headFilePIN.addMember(i)
             mainFile = cxx_writer.writer_code.FileDumper('main.cpp', False)
-            mainFile.addMember(self.getMainCode(model, namespace))
+            mainCode = self.getMainCode(model, namespace)
+            mainFile.addMember(mainCode)
+            hmainFile = cxx_writer.writer_code.FileDumper('main.hpp', True)
+            mainFile.addInclude('#include \"main.hpp\"')
+            hmainFile.addMember(mainCode)
 
             if (model == 'funcLT') and (not self.systemc) and tests:
                 testFolder = cxx_writer.writer_code.Folder('tests')
@@ -1333,6 +1337,7 @@ class Processor:
                 curFolder.addHeader(headFilePIN)
                 curFolder.addCode(implFilePIN)
             curFolder.addCode(mainFile)
+            curFolder.addHeader(hmainFile)
             curFolder.setMain(mainFile.name)
             curFolder.create()
             if (model == 'funcLT') and (not self.systemc) and tests:

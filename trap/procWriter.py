@@ -1600,6 +1600,9 @@ def getMainCode(self, model, namespace):
     procInst.PROGRAM_START = progDataStart;
     """
 
+    for irq in self.irqs:
+      code += 'initiator_' + str(irq.portWidth) + ' ' + irq.name.lower() + '_initiator(\"' + irq.name.lower() + '_initiator\");\n' + irq.name.lower() + '_initiator.init_socket.bind(procInst.' + irq.name.upper() + '_port.socket);\n'
+
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
         code += """// Now I check if the count of the cycles among two locations (addresses or symbols) is required
         std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decodedRange((""" + str(wordType) + """)-1, (""" + str(wordType) + """)-1);
@@ -1785,6 +1788,7 @@ def getMainCode(self, model, namespace):
     mainCode.addInclude('set')
     mainCode.addInclude('signal.h')
 
+    mainCode.addInclude('tlm_utils/multi_passthrough_initiator_socket.h')
     mainCode.addInclude('boost/program_options.hpp')
     mainCode.addInclude('boost/timer.hpp')
     mainCode.addInclude('boost/filesystem.hpp')
@@ -1937,4 +1941,28 @@ def getMainCode(self, model, namespace):
 
     bannerVariable = cxx_writer.writer_code.Variable('banner', cxx_writer.writer_code.stringType, initValue = bannerInit)
 
-    return [bannerVariable, debuggerVariable, signalFunction, hexToIntFunction, cycleRangeFunction, mainFunction]
+    """Returns the code for a stub initiator socket class to be connected with
+    interrupt ports. Sadly, TLM does not implement SC_ZERO_OR_MORE_BOUND properly,
+    so the interrupt ports have to be connected."""
+    # Create socket classes for each unique port width.
+    for portWidth in list(set([irq.portWidth for irq in self.irqs])):
+        # multi_passthrough_initiator_socket init_socket;
+        tlmInitiatorSocketMember = cxx_writer.writer_code.Attribute('init_socket', cxx_writer.writer_code.Type('tlm_utils::multi_passthrough_initiator_socket<initiator_' + str(portWidth) + ', ' + str(portWidth) + ', tlm::tlm_base_protocol_types>'), visibility = 'pu', initValue = '\"init_socket\"')
+        # nb_transport_bw() {}
+        code = """return tlm::TLM_COMPLETED;"""
+        tlmInitiatorCode = cxx_writer.writer_code.Code(code)
+        parameters = [cxx_writer.writer_code.Parameter('tag', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('payload', cxx_writer.writer_code.Type('tlm::tlm_generic_payload').makeRef()), cxx_writer.writer_code.Parameter('phase', cxx_writer.writer_code.Type('tlm::tlm_phase').makeRef()), cxx_writer.writer_code.Parameter('delay', cxx_writer.writer_code.Type('sc_core::sc_time').makeRef())]
+        tlmInitiatorNBMethod = cxx_writer.writer_code.Method('nb_transport_bw', tlmInitiatorCode, cxx_writer.writer_code.Type('tlm::tlm_sync_enum'), 'pu', parameters)
+        # invalidate_direct_mem_ptr() {}
+        tlmInitiatorCode = cxx_writer.writer_code.Code('')
+        parameters = [cxx_writer.writer_code.Parameter('tag', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('start_range', cxx_writer.writer_code.Type('sc_dt::uint64')), cxx_writer.writer_code.Parameter('end_range', cxx_writer.writer_code.Type('sc_dt::uint64'))]
+        tlmInitiatorDMMethod = cxx_writer.writer_code.Method('invalidate_direct_mem_ptr', tlmInitiatorCode, cxx_writer.writer_code.voidType, 'pu', parameters)
+        # initiator_<portWidth>::initiator_<portWidth>() {}
+        code = 'init_socket.register_nb_transport_bw(this, &initiator_' + str(portWidth) + '::nb_transport_bw);\ninit_socket.register_invalidate_direct_mem_ptr(this, &initiator_' + str(portWidth) + '::invalidate_direct_mem_ptr);'
+        tlmInitiatorCode = cxx_writer.writer_code.Code(code)
+        tlmInitiatorCtor = cxx_writer.writer_code.Constructor(tlmInitiatorCode, visibility = 'pu', parameters = [cxx_writer.writer_code.Parameter('_name', cxx_writer.writer_code.Type('sc_core::sc_module_name'))], initList = ['sc_module(_name)', 'init_socket(\"init_socket\")'])
+        # class initiator_<portWidth> {};
+        tlmInitiatorClass = cxx_writer.writer_code.ClassDeclaration('initiator_'+ str(portWidth), [tlmInitiatorSocketMember, tlmInitiatorNBMethod, tlmInitiatorDMMethod], [cxx_writer.writer_code.Type('sc_core::sc_module')])
+        tlmInitiatorClass.addConstructor(tlmInitiatorCtor)
+
+    return [bannerVariable, debuggerVariable, signalFunction, hexToIntFunction, cycleRangeFunction, tlmInitiatorClass, mainFunction]
