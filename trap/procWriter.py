@@ -229,7 +229,7 @@ def getInterruptCode(self, trace, pipeStage = None):
         interruptCode += 'if ('
         if (irqPort.condition):
             interruptCode += '('
-        interruptCode += irqPort.name + ' != -1'
+        interruptCode += irqPort.name
         if (irqPort.condition):
             interruptCode += ') && (' + irqPort.condition + ')'
         interruptCode += ') {\n'
@@ -543,7 +543,7 @@ def procInitCode(self, model):
             initString += regB.name + '_pipe[i].hasToPropagate = false;\n'
             initString += '}\n'
     for irqPort in self.irqs:
-        initString += 'this->' + irqPort.name + ' = -1;\n'
+        initString += 'this->' + irqPort.name + ' = 0;\n'
     return initString
 
 def createRegsAttributes(self, model, processorElements, initElements, bodyAliasInit, aliasInit, bodyInits):
@@ -1380,7 +1380,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     if self.abi:
         destrCode += 'delete this->abiIf;\n'
     for irq in self.irqs:
-        destrCode += 'delete this->' + irqPort.name + '_irqInstr;\n'
+        destrCode += 'delete this->' + irq.name + '_irqInstr;\n'
     # Now, before the processor elements is destructed I have to make sure that the history dump file is correctly closed
     if model.startswith('func'):
         destrCode += """#ifdef ENABLE_HISTORY
