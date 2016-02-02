@@ -79,13 +79,25 @@ class FileDumper:
         fileHnd = open(self.name, 'wt')
         printOnFile('/***************************************************************************//**', fileHnd)
         for line in FileDumper.banner.split('\n'):
-            printOnFile('*  ' + line, fileHnd)
-        printOnFile('*\n*', fileHnd)
+            # Avoid trailing whitespace
+            if line == '':
+                printOnFile('*', fileHnd)
+            else:
+                printOnFile('* ' + line, fileHnd)
+        printOnFile('*', fileHnd)
         for line in copyright.split('\n'):
-            printOnFile('* ' + line, fileHnd)
+            # Avoid trailing whitespace
+            if line == '':
+                printOnFile('*', fileHnd)
+            else:
+                printOnFile('* ' + line, fileHnd)
         printOnFile('*', fileHnd)
         for line in FileDumper.license_text.split('\n'):
-            printOnFile('* ' + line, fileHnd)
+            # Avoid trailing whitespace
+            if line == '':
+                printOnFile('*', fileHnd)
+            else:
+                printOnFile('* ' + line, fileHnd)
         printOnFile('*******************************************************************************/\n', fileHnd)
 
         # Now I can start priting the actual code: lets create the writer

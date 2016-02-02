@@ -382,7 +382,7 @@ class ClassDeclaration(DumpElement):
                     i.writeDeclaration(writer)
         writer.write('}; // class ' + self.name + '\n\n')
         for namespace in self.namespaces:
-            writer.write('}; // namespace ' + namespace + '\n\n')
+            writer.write('} // namespace ' + namespace + '\n\n')
 
     def writeImplementation(self, writer, namespaces = []):
         if self.template:

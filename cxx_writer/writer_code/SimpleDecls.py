@@ -81,7 +81,7 @@ class Define:
             writer.write('namespace ' + namespace + ' {\n')
         writer.write(self.defineStr)
         for namespace in self.namespace:
-            writer.write('}; // namespace ' + namespace + '\n\n')
+            writer.write('} // namespace ' + namespace + '\n\n')
 
     def getIncludes(self):
         return self.includes
@@ -361,7 +361,7 @@ class Variable(DumpElement):
             writer.write(' = ' + self.initValue)
         writer.write(';\n')
         for namespace in self.namespaces:
-            writer.write('}; // namespace ')
+            writer.write('} // namespace ')
             writer.write(namespace)
             writer.write('\n')
 
@@ -540,7 +540,7 @@ class Enum(DumpElement):
             code += key + ' = ' + str(val) + ' \n,'
         writer.write(code[:-1] + '};\n')
         for namespace in self.namespaces:
-            writer.write('}; // namespace ')
+            writer.write('} // namespace ')
             writer.write(namespace)
             writer.write('\n')
 
@@ -567,7 +567,7 @@ class Union(DumpElement):
             i.writeImplementation(writer)
         writer.write('};\n')
         for namespace in self.namespaces:
-            writer.write('}; // namespace ')
+            writer.write('} // namespace ')
             writer.write(namespace)
             writer.write('\n')
 
@@ -605,7 +605,7 @@ class BitField(DumpElement):
             writer.write('unsigned ' + str(i[0]) + ':' + str(i[1]) + ';\n')
         writer.write('};\n')
         for namespace in self.namespaces:
-            writer.write('}; // namespace ')
+            writer.write('} // namespace ')
             writer.write(namespace)
             writer.write('\n')
 
@@ -632,7 +632,7 @@ class Typedef(DumpElement):
         self.oldType.writeDeclaration(writer)
         writer.write(';\n')
         for namespace in self.namespaces:
-            writer.write('}; // namespace ')
+            writer.write('} // namespace ')
             writer.write(namespace)
             writer.write('\n')
 
