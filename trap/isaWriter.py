@@ -330,30 +330,44 @@ def getCppOpClass(self, namespace):
 def getCPPInstrSwitch(obj, i):
     if type(i) == type(''):
         if i.startswith('%'):
-            getMnemonicCode = 'oss << this->' + i[1:]
+            getMnemonicCode = 'oss << '
             if i[1:] in obj.machineCode.bitCorrespondence.keys() + obj.bitCorrespondence.keys():
-                getMnemonicCode += '_bit'
+                getMnemonicCode += 'std::dec << this->' + i[1:] + '_bit'
+            else:
+                getMnemonicCode += 'std::showbase << std::hex << this->' + i[1:]
             getMnemonicCode += ';\n'
         else:
             getMnemonicCode = 'oss << "' + i + '";\n'
     else:
         # I have a switch
-        if not i[0].startswith('%'):
+        if i[0].startswith('%'):
+            getMnemonicCode = 'switch(this->' + i[0][1:]
+            if i[0][1:] in obj.machineCode.bitCorrespondence.keys() + obj.bitCorrespondence.keys():
+                getMnemonicCode += '_bit'
+            getMnemonicCode += ') {\n'
+            for code, mnemValue in i[1].items():
+                if code != 'default':
+                    getMnemonicCode += 'case '
+                getMnemonicCode += str(code) + ': {\n'
+                if type(mnemValue) == type(''):
+                    getMnemonicCode += 'oss << "' + mnemValue + '";\n'
+                else:
+                    getMnemonicCode += getCPPInstrSwitch(obj, mnemValue)
+                getMnemonicCode += 'break;}\n'
+            getMnemonicCode += '}\n'
+        # I have a computation
+        elif i[0].startswith('$'):
+            getMnemonicCode = 'oss << std::showbase << std::hex << ('
+            for j in i[1:]:
+                if j.startswith('%'):
+                    getMnemonicCode += 'this->' + j[1:]
+                    if j[1:] in obj.machineCode.bitCorrespondence.keys() + obj.bitCorrespondence.keys():
+                        getMnemonicCode += '_bit'
+                else:
+                    getMnemonicCode += j
+            getMnemonicCode += ');\n'
+        else:
             raise Exception('The first element of a multi-word mnemonic must start with %; error in instruction ' + obj.name)
-        getMnemonicCode = 'switch(this->' + i[0][1:]
-        if i[0][1:] in obj.machineCode.bitCorrespondence.keys() + obj.bitCorrespondence.keys():
-            getMnemonicCode += '_bit'
-        getMnemonicCode += ') {\n'
-        for code, mnemValue in i[1].items():
-            if code != 'default':
-                getMnemonicCode += 'case '
-            getMnemonicCode += str(code) + ': {\n'
-            if type(mnemValue) == type(''):
-                getMnemonicCode += 'oss << "' + mnemValue + '";\n'
-            else:
-                getMnemonicCode += getCPPInstrSwitch(obj, mnemValue)
-            getMnemonicCode += 'break;}\n'
-        getMnemonicCode += '}\n'
     return getMnemonicCode
 
 def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):

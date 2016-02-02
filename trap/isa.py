@@ -369,10 +369,17 @@ class Instruction:
                     if not i[1:] in bitFieldNames:
                         raise Exception('The machine code for instruction ' + self.name + ' does not contain field ' + i[1:] + ' specified in the mnemonic')
             else:
-                if not i[0].startswith('%'):
-                    raise Exception('The mnemonic for instruction ' + self.name + ' have the first element ' + i[0][1:] + ' of a multi-variable mnemonic with does not start with %')
-                if not i[0][1:] in bitFieldNames:
-                    raise Exception('The machine code for instruction ' + self.name + ' does not contain field ' + i[0][1:] + ' specified in the mnemonic')
+                if i[0].startswith('%'):
+                    if not i[0][1:] in bitFieldNames:
+                        raise Exception('The machine code for instruction ' + self.name + ' does not contain field ' + i[0][1:] + ' specified in the mnemonic')
+                elif i[0].startswith('$'):
+                    for j in i[1:]:
+                        if type(j) == type(''):
+                            if j.startswith('%'):
+                                if not j[1:] in bitFieldNames:
+                                    raise Exception('The machine code for instruction ' + self.name + ' does not contain field ' + j[1:] + ' specified in the mnemonic')
+                else:
+                    raise Exception('The mnemonic for instruction ' + self.name + ' has a multi-variable part where the first element ' + i[0][1:] + ' does not start with % or $')
         self.mnemonic = mnemonic
         if self.machineCode or self.machineBits:
             raise Exception('The machine code for instruction ' + self.name + ' has already been added')
