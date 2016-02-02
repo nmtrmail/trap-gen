@@ -215,7 +215,7 @@ def computeCurrentPC(self, model):
     if model.startswith('func'):
         if self.fetchReg[1] < 0:
             fetchAddress += str(self.fetchReg[1])
-        else:
+        elif self.fetchReg[1] > 0:
             fetchAddress += ' + ' + str(self.fetchReg[1])
     return fetchAddress
 

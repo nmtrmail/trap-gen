@@ -1347,7 +1347,7 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
         codeString = 'THROW_EXCEPTION(\"Unknown Instruction at PC: \" << std::hex << std::showbase << this->' + processor.fetchReg[0]
         if processor.fetchReg[1] < 0:
             codeString += str(processor.fetchReg[1])
-        else:
+        elif processor.fetchReg[1] > 0:
             codeString += '+' + str(processor.fetchReg[1])
         codeString += ');\nreturn 0;'
     else:
