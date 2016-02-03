@@ -1124,7 +1124,7 @@ def getCPPAlias(self, namespace):
 
     updateCode = """this->reg = &newAlias;
     this->offset = newOffset;
-    this->defaultOffset = 0;
+    this->defaultOffset = newOffset;
     std::list<Alias *>::iterator referredIter, referredEnd;
     for (referredIter = this->referredAliases.begin(), referredEnd = this->referredAliases.end(); referredIter != referredEnd; referredIter++) {
         (*referredIter)->newReferredAlias(&newAlias, newOffset);

@@ -1586,7 +1586,7 @@ def getMainCode(self, model, namespace):
         std:cout << "Entry Point: " << std::hex << std::showbase << loader.getProgStart() << std::endl << std::endl;
         for (unsigned int i = 0; i < programDim; i+= """ + str(self.wordSize) + """) {
             Instruction * curInstr = procInst.decode(""" + instrDissassName + """.read_word_dbg(loader.getDataStart() + i));
-            std::cout << std::hex << std::showbase << progDataStart + i << ":    " << """ + instrDissassName + """.read_word_dbg(progDataStart + i);
+            std::cout << std::hex << std::noshowbase << std::setw(8) << std::setfill(' ') << progDataStart + i << ":   " << std::setw(8) << std::setfill('0') << """ + instrDissassName + """.read_word_dbg(progDataStart + i);
             if (curInstr != NULL) {
                  std::cout << "    " << curInstr->getMnemonic();
             }
@@ -1594,6 +1594,7 @@ def getMainCode(self, model, namespace):
         }
         return 0;
     }
+
     // Finally I can set the processor variables
     procInst.ENTRY_POINT = loader.getProgStart();
     procInst.PROGRAM_LIMIT = programDim + progDataStart;

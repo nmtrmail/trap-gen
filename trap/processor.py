@@ -568,8 +568,8 @@ class Processor:
             if not index:
                 raise Exception('Register ' + fetchReg + ' is not part of the processor architecture')
             if index[0] != index[1]:
-                raise Exception('The fecth register must be a single register while ' + fetchReg + ' was specified')
-            name = fetchReg[:regBankString.index('[')]
+                raise Exception('The fetch register must be a single register while ' + fetchReg + ' was specified')
+            name = fetchReg[:fetchReg.index('[')]
             for i in self.aliasRegBanks + self.regBanks:
                 if i.name == name:
                     if index[0] < i.numRegs:
