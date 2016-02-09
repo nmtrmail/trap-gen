@@ -41,6 +41,8 @@ import isaWriter
 def resolveBitType(typeString):
     """Given a string representing a bit type it returns the more appropriate C++ type
     for the representation of such a type"""
+    if isinstance(typeString, cxx_writer.writer_code.Type):
+      return typeString
     if not isinstance(typeString, type('')):
         raise Exception(str(typeString) + ' Wrong variable type')
     validBitType = '^( )*BIT( )*<( )*[0-9]+( )*>( )*$'
