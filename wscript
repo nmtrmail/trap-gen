@@ -5,7 +5,7 @@ import sys, os
 
 # these variables are mandatory
 top = '.'
-out = '_build_'
+out = 'build'
 VERSION = '0.60'
 APPNAME = 'trap'
 
@@ -492,8 +492,7 @@ def configure(ctx):
 
         extern "C" {
             int sc_main(int argc, char** argv) {
-                wif_trace_file trace("");
-                trace.set_time_unit(1, SC_NS);
+                sc_start();
                 return 0;
             };
         }

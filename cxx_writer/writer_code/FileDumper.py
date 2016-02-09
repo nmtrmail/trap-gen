@@ -233,7 +233,7 @@ class Folder:
             printOnFile('import sys, os\n', wscriptFile)
             printOnFile('# these variables are mandatory', wscriptFile)
             printOnFile('top = \'.\'', wscriptFile)
-            printOnFile('out = \'_build_\'', wscriptFile)
+            printOnFile('out = \'build\'', wscriptFile)
             printOnFile('VERSION = \'' + version + '\'', wscriptFile)
             printOnFile('APPNAME = \'' + projectName + '\'', wscriptFile)
         else:
