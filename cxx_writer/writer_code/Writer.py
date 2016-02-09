@@ -137,40 +137,42 @@ class CodeWriter:
         # Find the split char nearest to the target line width.
         found = -1
         for i in range(len(totalIndent), len(totalIndent)+8):
-            if toModify[self.lineWidth-i] == split:
+            if (toModify[self.lineWidth-i] == split and toModify[self.lineWidth-i-1] != "'"):
                 found = self.lineWidth-i
                 break
         # If no split char was found, we retry with whitespace.
         if (found == -1 and split != ' '):
             for i in range(len(totalIndent), len(totalIndent)+8):
-                if toModify[self.lineWidth-i] == ' ':
+                # Bizarre case where we split a single-quoted whitespace - really happened!
+                if (toModify[self.lineWidth-i] == ' ' and toModify[self.lineWidth-i-1] != "'"):
                     found = self.lineWidth-i
                     break
         # If we still found nothing, we search upwards from linewidth.
         if (found == -1):
             for i in range(self.lineWidth-len(totalIndent)+1, endOfLine):
-                if toModify[i] == split:
+                if (toModify[i] == split and toModify[i-1] != "'"):
                     found = i
                     break
         # If still no split char was found, we retry with whitespace.
         if (found == -1 and split != ' '):
             for i in range(self.lineWidth-len(totalIndent)+1, endOfLine):
-                if toModify[i] == ' ':
+                # Bizarre case where we split a single-quoted whitespace - really happened!
+                if (toModify[i] == ' ' and toModify[i-1] != "'"):
                     found = i
                     break
-        # Removed unnecessary line continuation chars except in preprocessing
-        # code and strings.
-        insert = '\n'
-        if (cpp == True) : insert = ' \\\n'
-        if ((toModify.count('"', 0, found) % 2) == 1): insert = ' \\\n'
-        # Add one level of indentation to all lines after the first, unless the
-        # indentation is forced (aligned list of parameters).
-        if (force == False): insert += singleIndent
-        # If the split char is not whitespace, make sure we don't delete it!
-        if (toModify[found] != ' '): insert = toModify[found] + insert
         # Recursion
         if (found != -1):
-            return toModify[:found] + insert + totalIndent + self.go_new_line(toModify[(found+1):endOfLine], singleIndent, totalIndent, split, force, cpp)
+          # Add line continuation chars if splitting preprocessing code or strings.
+          insert = '\n'
+          if (cpp == True) : insert = ' \\\n'
+          elif ((toModify.count('"', 0, found) % 2) == 1): insert = '\\\n'
+#          elif (toModify[found-1] == "'"): found = found + 2
+          # Add one level of indentation to all lines after the first, unless the
+          # indentation is forced (aligned list of parameters).
+          if (force == False): insert += singleIndent
+          # If the split char is not whitespace, make sure we don't delete it!
+          if (toModify[found] != ' '): insert = toModify[found] + insert
+          return toModify[:found] + insert + totalIndent + self.go_new_line(toModify[(found+1):endOfLine], singleIndent, totalIndent, split, force, cpp)
         else:
             return toModify
 
