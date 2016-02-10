@@ -190,6 +190,9 @@ class TemplateType(Type):
                     writer.write(str(i))
                 if writtenTempl < len(self.template):
                     writer.write(', ')
+                # Avoid >> in nested templates
+                if isinstance(i, TemplateType):
+                    writer.write(' ')
             writer.write('>')
         for i in currentModifiers:
             writer.write(' ' + i)
@@ -443,7 +446,7 @@ class Function(DumpElement):
                 writer.write(' throw()', split = ',', indent = indent)
             writer.write(' {\n', split = ',', indent = indent)
             self.body.writeImplementation(writer)
-            writer.write('}\n')
+            writer.write('} // ' + self.name + '()\n')
         else:
             writer.write(')', split = ',', indent = indent)
             try:
@@ -492,9 +495,7 @@ class Function(DumpElement):
             writer.write(' throw()\n', split = ',', indent = indent)
         writer.write(' {\n', split = ',', indent = indent)
         self.body.writeImplementation(writer)
-        writer.write('} // ')
-        writer.write(self.name)
-        writer.write('()\n')
+        writer.write('} // ' + self.name + '()\n')
 
     def getIncludes(self):
         includes = copy.copy(self.retType.getIncludes())
@@ -540,9 +541,7 @@ class Enum(DumpElement):
             code += key + ' = ' + str(val) + ' \n,'
         writer.write(code[:-1] + '};\n')
         for namespace in self.namespaces:
-            writer.write('} // namespace ')
-            writer.write(namespace)
-            writer.write('\n')
+            writer.write('} // namespace ' + namespace + '\n')
 
 class Union(DumpElement):
     """Represents a union"""
@@ -567,9 +566,7 @@ class Union(DumpElement):
             i.writeImplementation(writer)
         writer.write('};\n')
         for namespace in self.namespaces:
-            writer.write('} // namespace ')
-            writer.write(namespace)
-            writer.write('\n')
+            writer.write('} // namespace ' + namespace + '\n')
 
     def getIncludes(self):
         includes = []
@@ -605,9 +602,7 @@ class BitField(DumpElement):
             writer.write('unsigned ' + str(i[0]) + ':' + str(i[1]) + ';\n')
         writer.write('};\n')
         for namespace in self.namespaces:
-            writer.write('} // namespace ')
-            writer.write(namespace)
-            writer.write('\n')
+            writer.write('} // namespace ' + namespace + '\n')
 
     def getIncludes(self):
         return []
@@ -632,9 +627,7 @@ class Typedef(DumpElement):
         self.oldType.writeDeclaration(writer)
         writer.write(';\n')
         for namespace in self.namespaces:
-            writer.write('} // namespace ')
-            writer.write(namespace)
-            writer.write('\n')
+            writer.write('} // namespace ' + namespace + '\n')
 
     def getIncludes(self):
         return copy.copy(self.oldType.getIncludes())

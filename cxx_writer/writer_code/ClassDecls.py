@@ -195,7 +195,7 @@ class Constructor(ClassMember, Function):
             else: writer.write(' ')
         writer.write('{\n', split = ',', indent = indent)
         self.body.writeImplementation(writer)
-        writer.write('}\n\n')
+        writer.write('} // ' + self.name + '()\n\n')
 
 class Destructor(ClassMember, Function):
     def __init__(self, body, visibility, virtual = False):
@@ -351,7 +351,7 @@ class ClassDeclaration(DumpElement):
                     i.writeDeclaration(writer)
         # Now I create the normal members
         if self.public:
-            writer.write('\npublic:\n')
+            writer.write('public:\n')
             for i in self.public:
                 if self.template:
                     try:
@@ -360,8 +360,9 @@ class ClassDeclaration(DumpElement):
                         pass
                 else:
                     i.writeDeclaration(writer)
+            writer.write('\n')
         if self.protected:
-            writer.write('\nprotected:\n')
+            writer.write('protected:\n')
             for i in self.protected:
                 if self.template:
                     try:
@@ -370,6 +371,7 @@ class ClassDeclaration(DumpElement):
                         pass
                 else:
                     i.writeDeclaration(writer)
+            writer.write('\n')
         if self.private:
             writer.write('private:\n')
             for i in self.private:
@@ -380,6 +382,7 @@ class ClassDeclaration(DumpElement):
                         pass
                 else:
                     i.writeDeclaration(writer)
+            writer.write('\n')
         writer.write('}; // class ' + self.name + '\n\n')
         for namespace in self.namespaces:
             writer.write('} // namespace ' + namespace + '\n\n')

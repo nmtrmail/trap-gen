@@ -42,14 +42,14 @@ import unittest
 import sys, os
 sys.path.append(os.path.abspath('..'))
 
-from tests import decoderTest
-from tests import coding
-from tests import regs
+from tests import testIsaCoding
+from tests import testDecoder
+from tests import testRegs
 
 if __name__ == "__main__":
-    suite = unittest.TestLoader().loadTestsFromTestCase(decoderTest.TestDecoder)
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(coding.TestCoding))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(regs.TestRegs))
+    suite = unittest.TestLoader().loadTestsFromTestCase(testIsaCoding.TestCoding)
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testDecoder.TestDecoder))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testRegs.TestRegs))
     runner = unittest.TextTestRunner()
     runner.verbosity = 2
     runner.run(suite)

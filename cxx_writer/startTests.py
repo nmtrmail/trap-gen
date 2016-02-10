@@ -39,15 +39,15 @@
 
 import unittest
 from tests import testWriter
-from tests import testClassDecls
 from tests import testFileDumper
 from tests import testSimpleDecls
+from tests import testClassDecls
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(testWriter.TestWriter)
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testClassDecls.TestClassDecls))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testFileDumper.TestFileDumper))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testSimpleDecls.TestSimpleDecls))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(testClassDecls.TestClassDecls))
     runner = unittest.TextTestRunner()
     runner.verbosity = 2
     runner.run(suite)

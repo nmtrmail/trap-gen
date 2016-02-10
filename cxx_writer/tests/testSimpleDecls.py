@@ -35,8 +35,8 @@
 ####################################################################################
 
 
-import unittest
 import writer_code
+import unittest
 import os
 
 class TestSimpleDecls(unittest.TestCase):
@@ -45,7 +45,7 @@ class TestSimpleDecls(unittest.TestCase):
             os.remove('prova.cpp')
         except:
             pass
-        self.writer = writer_code.CodeWriter('prova.cpp')
+        self.writer = writer_code.CodeWriter('prova.cpp', indentSize = 4, lineWidth = 80)
 
     def tearDown(self):
         del self.writer
@@ -60,7 +60,7 @@ class TestSimpleDecls(unittest.TestCase):
         lines = testFile.readlines()
         testFile.close()
         self.assertEqual(len(lines), 1)
-        self.assertEqual(lines[0], 'std::vector< std::string >')
+        self.assertEqual(lines[0], 'std::vector<std::string>')
 
     def testDoubleTemplateType(self):
         innerType1 = writer_code.stringType
@@ -72,7 +72,7 @@ class TestSimpleDecls(unittest.TestCase):
         lines = testFile.readlines()
         testFile.close()
         self.assertEqual(len(lines), 1)
-        self.assertEqual(lines[0], 'std::map< std::string, int >')
+        self.assertEqual(lines[0], 'std::map<std::string, int>')
 
     def testNestedTemplateType(self):
         innerType1 = writer_code.stringType
@@ -86,7 +86,7 @@ class TestSimpleDecls(unittest.TestCase):
         lines = testFile.readlines()
         testFile.close()
         self.assertEqual(len(lines), 1)
-        self.assertEqual(lines[0], 'std::map< std::string, std::map< int, double > >')
+        self.assertEqual(lines[0], 'std::map<std::string, std::map<int, double> >')
 
     def testSimpleVariable(self):
         type = writer_code.stringType
@@ -175,12 +175,12 @@ class TestSimpleDecls(unittest.TestCase):
         lines = testFile.readlines()
         testFile.close()
         self.assertEqual(len(lines), 3)
-        self.assertEqual(lines[0], 'void dummyFun(){\n')
+        self.assertEqual(lines[0], 'void dummyFun() {\n')
         self.assertEqual(lines[1], '    printf(\"Wow\");\n')
-        self.assertEqual(lines[2], '}\n')
+        self.assertEqual(lines[2], '} // dummyFun()\n')
 
     def testReturnFunction(self):
-        code = writer_code.Code('if(works){\nprintf(\"hummm\\n\");\nreturn 1;\n}\nelse{\nreturn 0;\n}')
+        code = writer_code.Code('if (works) {\nprintf(\"hummm\\n\");\nreturn 1;\n} else {\nreturn 0;\n}')
         retType = writer_code.intType
         function = writer_code.Function('dummyFun', code, retType)
         function.writeImplementation(self.writer)
@@ -188,19 +188,18 @@ class TestSimpleDecls(unittest.TestCase):
         testFile = open('prova.cpp', 'r')
         lines = testFile.readlines()
         testFile.close()
-        self.assertEqual(len(lines), 9)
-        self.assertEqual(lines[0], 'int dummyFun(){\n')
-        self.assertEqual(lines[1], '    if(works){\n')
+        self.assertEqual(len(lines), 8)
+        self.assertEqual(lines[0], 'int dummyFun() {\n')
+        self.assertEqual(lines[1], '    if (works) {\n')
         self.assertEqual(lines[2], '        printf(\"hummm\\n\");\n')
         self.assertEqual(lines[3], '        return 1;\n')
-        self.assertEqual(lines[4], '    }\n')
-        self.assertEqual(lines[5], '    else{\n')
-        self.assertEqual(lines[6], '        return 0;\n')
-        self.assertEqual(lines[7], '    }\n')
-        self.assertEqual(lines[8], '}\n')
+        self.assertEqual(lines[4], '    } else {\n')
+        self.assertEqual(lines[5], '        return 0;\n')
+        self.assertEqual(lines[6], '    }\n')
+        self.assertEqual(lines[7], '} // dummyFun()\n')
 
     def testParameterFunction(self):
-        code = writer_code.Code('if(works){\nprintf(\"hummm\\n\");\nreturn 1;\n}\nelse{\nreturn 0;\n}')
+        code = writer_code.Code('if (works) {\nprintf(\"hummm\\n\");\nreturn 1;\n} else {\nreturn 0;\n}')
         intType = writer_code.intType
         parameters = [writer_code.Parameter('param1', intType)]
         function = writer_code.Function('dummyFun', code, intType, parameters)
@@ -209,19 +208,18 @@ class TestSimpleDecls(unittest.TestCase):
         testFile = open('prova.cpp', 'r')
         lines = testFile.readlines()
         testFile.close()
-        self.assertEqual(len(lines), 9)
-        self.assertEqual(lines[0], 'int dummyFun( int param1 ){\n')
-        self.assertEqual(lines[1], '    if(works){\n')
+        self.assertEqual(len(lines), 8)
+        self.assertEqual(lines[0], 'int dummyFun(int param1) {\n')
+        self.assertEqual(lines[1], '    if (works) {\n')
         self.assertEqual(lines[2], '        printf(\"hummm\\n\");\n')
         self.assertEqual(lines[3], '        return 1;\n')
-        self.assertEqual(lines[4], '    }\n')
-        self.assertEqual(lines[5], '    else{\n')
-        self.assertEqual(lines[6], '        return 0;\n')
-        self.assertEqual(lines[7], '    }\n')
-        self.assertEqual(lines[8], '}\n')
+        self.assertEqual(lines[4], '    } else {\n')
+        self.assertEqual(lines[5], '        return 0;\n')
+        self.assertEqual(lines[6], '    }\n')
+        self.assertEqual(lines[7], '} // dummyFun()\n')
 
     def testTemplateFunction(self):
-        code = writer_code.Code('if(works){\nprintf(\"hummm\\n\");\nreturn 1;\n}\nelse{\nreturn 0;\n}')
+        code = writer_code.Code('if (works) {\nprintf(\"hummm\\n\");\nreturn 1;\n} else {\nreturn 0;\n}')
         intType = writer_code.intType
         parameters = [writer_code.Parameter('param1', intType)]
         function = writer_code.Function('dummyFun', code, intType, parameters, template = ['A'])
@@ -230,19 +228,18 @@ class TestSimpleDecls(unittest.TestCase):
         testFile = open('prova.cpp', 'r')
         lines = testFile.readlines()
         testFile.close()
-        self.assertEqual(len(lines), 9)
-        self.assertEqual(lines[0], 'template < typename A > int dummyFun( int param1 ){\n')
-        self.assertEqual(lines[1], '    if(works){\n')
+        self.assertEqual(len(lines), 8)
+        self.assertEqual(lines[0], 'template <typename A> int dummyFun(int param1) {\n')
+        self.assertEqual(lines[1], '    if (works) {\n')
         self.assertEqual(lines[2], '        printf(\"hummm\\n\");\n')
         self.assertEqual(lines[3], '        return 1;\n')
-        self.assertEqual(lines[4], '    }\n')
-        self.assertEqual(lines[5], '    else{\n')
-        self.assertEqual(lines[6], '        return 0;\n')
-        self.assertEqual(lines[7], '    }\n')
-        self.assertEqual(lines[8], '}\n')
+        self.assertEqual(lines[4], '    } else {\n')
+        self.assertEqual(lines[5], '        return 0;\n')
+        self.assertEqual(lines[6], '    }\n')
+        self.assertEqual(lines[7], '} // dummyFun()\n')
 
     def testInlineFunction(self):
-        code = writer_code.Code('if(works){\nprintf(\"hummm\\n\");\nreturn 1;\n}\nelse{\nreturn 0;\n}')
+        code = writer_code.Code('if (works) {\nprintf(\"hummm\\n\");\nreturn 1;\n} else {\nreturn 0;\n}')
         intType = writer_code.intType
         parameters = [writer_code.Parameter('param1', intType)]
         function = writer_code.Function('dummyFun', code, intType, parameters, inline = True)
@@ -251,16 +248,15 @@ class TestSimpleDecls(unittest.TestCase):
         testFile = open('prova.cpp', 'r')
         lines = testFile.readlines()
         testFile.close()
-        self.assertEqual(len(lines), 9)
-        self.assertEqual(lines[0], 'inline int dummyFun( int param1 ){\n')
-        self.assertEqual(lines[1], '    if(works){\n')
+        self.assertEqual(len(lines), 8)
+        self.assertEqual(lines[0], 'inline int dummyFun(int param1) {\n')
+        self.assertEqual(lines[1], '    if (works) {\n')
         self.assertEqual(lines[2], '        printf(\"hummm\\n\");\n')
         self.assertEqual(lines[3], '        return 1;\n')
-        self.assertEqual(lines[4], '    }\n')
-        self.assertEqual(lines[5], '    else{\n')
-        self.assertEqual(lines[6], '        return 0;\n')
-        self.assertEqual(lines[7], '    }\n')
-        self.assertEqual(lines[8], '}\n')
+        self.assertEqual(lines[4], '    } else {\n')
+        self.assertEqual(lines[5], '        return 0;\n')
+        self.assertEqual(lines[6], '    }\n')
+        self.assertEqual(lines[7], '} // dummyFun()\n')
 
     def testFunctionDoc(self):
         intType = writer_code.intType
@@ -276,6 +272,6 @@ class TestSimpleDecls(unittest.TestCase):
         self.assertEqual(len(lines), 5)
         self.assertEqual(lines[0], '/// Documentation test\n')
         self.assertEqual(lines[1], '/// another line\n')
-        self.assertEqual(lines[2], 'int dummyFun( int param1 ){\n')
+        self.assertEqual(lines[2], 'int dummyFun(int param1) {\n')
         self.assertEqual(lines[3], '\n')
-        self.assertEqual(lines[4], '}\n')
+        self.assertEqual(lines[4], '} // dummyFun()\n')

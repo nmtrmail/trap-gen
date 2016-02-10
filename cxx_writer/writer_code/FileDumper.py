@@ -48,11 +48,13 @@ class FileDumper:
     banner = ''
     def_prefix = ''
 
-    def __init__(self, name, isHeader):
+    def __init__(self, name, isHeader, indentSize = 2, lineWidth = 80):
         self.name = name
         self.members = []
         self.isHeader = isHeader
         self.includes = []
+        self.indentSize = indentSize
+        self.lineWidth = lineWidth
 
     def addMember(self, member):
         try:
@@ -101,7 +103,7 @@ class FileDumper:
         printOnFile('*******************************************************************************/\n', fileHnd)
 
         # Now I can start priting the actual code: lets create the writer
-        writer = Writer.CodeWriter(fileHnd)
+        writer = Writer.CodeWriter(fileHnd, self.indentSize, self.lineWidth)
         if self.isHeader:
             writer.write('#ifndef ' + FileDumper.def_prefix + self.name.replace('.','_').upper() + '\n')
             writer.write('#define ' + FileDumper.def_prefix + self.name.replace('.','_').upper() + '\n')

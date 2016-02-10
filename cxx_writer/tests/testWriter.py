@@ -35,8 +35,8 @@
 ####################################################################################
 
 
-import unittest
 import writer_code
+import unittest
 import os
 
 class TestWriter(unittest.TestCase):
@@ -45,7 +45,7 @@ class TestWriter(unittest.TestCase):
             os.remove('prova.cpp')
         except:
             pass
-        self.writer = writer_code.CodeWriter('prova.cpp')
+        self.writer = writer_code.CodeWriter('prova.cpp', indentSize = 4, lineWidth = 80)
 
     def tearDown(self):
         del self.writer
@@ -168,8 +168,8 @@ class TestWriter(unittest.TestCase):
         self.assertEqual(len(lines), 7)
         self.assertEqual(lines[0], '{\n')
         self.assertEqual(lines[1], '    {\n')
-        self.assertEqual(lines[2], '        one two three four five six seven eight nine ten eleven twelve thirteen fourteen \\\n')
-        self.assertEqual(lines[3], '            fifteen sixteen seventeen eighteen nineteen twentypippo\n')
+        self.assertEqual(lines[2], '        one two three four five six seven eight nine ten eleven twelve thirteen\n')
+        self.assertEqual(lines[3], '            fourteen fifteen sixteen seventeen eighteen nineteen twentypippo\n')
         self.assertEqual(lines[4], '        otherLine\n')
         self.assertEqual(lines[5], '    }\n')
         self.assertEqual(lines[6], '}')
