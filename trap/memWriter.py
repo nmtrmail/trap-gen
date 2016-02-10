@@ -245,7 +245,7 @@ def getCPPMemoryIf(self, model, namespace):
                 readBody = cxx_writer.writer_code.Code(readAliasCode[methName] + checkAddressCode + '\n' + str(methodTypes[methName]) + ' datum = *(' + str(methodTypes[methName].makePointer()) + ')(this->memory + (unsigned long)address);\n' + endianessCode[methName] + '\nreturn datum;')
                 if methName == 'read_word':
                     methodsAttrs[methName].append('inline')
-            readBody.addInclude('trap_utils.hpp')
+            readBody.addInclude('utils/trap_utils.hpp')
             methodsCode[methName] = readBody
         for methName in writeMethodNames + writeMethodNames_dbg:
             methodsAttrs[methName] = []
@@ -304,8 +304,8 @@ def getCPPMemoryIf(self, model, namespace):
                 readBody = cxx_writer.writer_code.Code(readAliasCode[methName] + checkAddressCode + '\n' + str(methodTypes[methName]) + ' datum = *(' + str(methodTypes[methName].makePointer()) + ')(this->memory + (unsigned long)address);\n' + endianessCode[methName] + '\nreturn datum;')
                 if methName == 'read_word':
                     methodsAttrs[methName].append('inline')
-            readBody.addInclude('trap_utils.hpp')
-            readBody.addInclude('memAccessType.hpp')
+            readBody.addInclude('utils/trap_utils.hpp')
+            readBody.addInclude('misc/memAccessType.hpp')
             methodsCode[methName] = readBody
         for methName in writeMethodNames + writeMethodNames_dbg:
             methodsAttrs[methName] = []

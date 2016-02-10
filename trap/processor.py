@@ -1259,7 +1259,7 @@ class Processor:
                     irqTestsFile = cxx_writer.writer_code.FileDumper('irqTests.cpp', False)
                     irqTestsFile.addInclude('#include \"irqTests.hpp\"')
                     if PINClasses:
-                        irqTestsFile.addInclude('PINTarget.hpp')
+                        irqTestsFile.addInclude('misc/PINTarget.hpp')
                         irqTestsFile.addInclude('externalPins.hpp')
                     mainTestFile.addInclude('#include \"irqTests.hpp\"')
                     hirqTestsFile = cxx_writer.writer_code.FileDumper('irqTests.hpp', True)
@@ -1278,7 +1278,7 @@ class Processor:
                     ISATestsFile = cxx_writer.writer_code.FileDumper('isaTests' + str(i) + '.cpp', False)
                     ISATestsFile.addInclude('#include \"isaTests' + str(i) + '.hpp\"')
                     if PINClasses:
-                        ISATestsFile.addInclude('PINTarget.hpp')
+                        ISATestsFile.addInclude('misc/PINTarget.hpp')
                         ISATestsFile.addInclude('externalPins.hpp')
                     mainTestFile.addInclude('#include \"isaTests' + str(i) + '.hpp\"')
                     hISATestsFile = cxx_writer.writer_code.FileDumper('isaTests' + str(i) + '.hpp', True)
@@ -1292,7 +1292,7 @@ class Processor:
                     ISATestsFile = cxx_writer.writer_code.FileDumper('isaTests' + str(numTestFiles) + '.cpp', False)
                     ISATestsFile.addInclude('#include \"isaTests' + str(numTestFiles) + '.hpp\"')
                     if PINClasses:
-                        ISATestsFile.addInclude('PINTarget.hpp')
+                        ISATestsFile.addInclude('misc/PINTarget.hpp')
                         ISATestsFile.addInclude('externalPins.hpp')
                     mainTestFile.addInclude('#include \"isaTests' + str(numTestFiles) + '.hpp\"')
                     hISATestsFile = cxx_writer.writer_code.FileDumper('isaTests' + str(numTestFiles) + '.hpp', True)

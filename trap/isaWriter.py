@@ -247,7 +247,7 @@ def getCppMethod(self, model, processor):
     """Returns the code implementing a helper method"""
     for var in self.localvars:
         self.code.addVariable(var)
-    self.code.addInclude('trap_utils.hpp')
+    self.code.addInclude('utils/trap_utils.hpp')
     import copy
     codeTemp = copy.deepcopy(self.code)
 
@@ -284,7 +284,7 @@ def getCppOperation(self, parameters = False):
     aliasType = cxx_writer.writer_code.Type('Alias', '#include \"alias.hpp\"')
     for var in self.localvars:
         self.code.addVariable(var)
-    self.code.addInclude('trap_utils.hpp')
+    self.code.addInclude('utils/trap_utils.hpp')
     metodParams = []
     if parameters:
         for elem in self.archElems:
@@ -307,7 +307,7 @@ def getCppOpClass(self, namespace):
     emptyBody = cxx_writer.writer_code.Code('')
     for var in self.localvars:
         self.code.addVariable(var)
-    self.code.addInclude('trap_utils.hpp')
+    self.code.addInclude('utils/trap_utils.hpp')
     classElements = []
     # Now I also need to declare the instruction variables and referenced architectural elements
     metodParams = []
@@ -996,7 +996,7 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
         curTest = cxx_writer.writer_code.Code(code)
         wariningDisableCode = '#ifdef _WIN32\n#pragma warning(disable : 4101\n#endif\n'
         includeUnprotectedCode = '#define private public\n#define protected public\n#include \"instructions.hpp\"\n#include \"registers.hpp\"\n#include \"memory.hpp\"\n#undef private\n#undef protected\n'
-        curTest.addInclude(['boost/test/test_tools.hpp', 'customExceptions.hpp', wariningDisableCode, includeUnprotectedCode, '#include \"alias.hpp\"'])
+        curTest.addInclude(['boost/test/test_tools.hpp', 'utils/customExceptions.hpp', wariningDisableCode, includeUnprotectedCode, '#include \"alias.hpp\"'])
         curTestFunction = cxx_writer.writer_code.Function(self.name + '_' + str(len(tests)), curTest, cxx_writer.writer_code.voidType)
         from procWriter import testNames
         testNames.append(self.name + '_' + str(len(tests)))
@@ -1148,7 +1148,7 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
     # Note how the annull operation stops the execution of the current operation
     annullCode = 'throw annull_exception();'
     annullBody = cxx_writer.writer_code.Code(annullCode)
-    annullBody.addInclude('customExceptions.hpp')
+    annullBody.addInclude('utils/customExceptions.hpp')
     annullDecl = cxx_writer.writer_code.Method('annull', annullBody, cxx_writer.writer_code.voidType, 'pu', inline = True)
     instructionElements.append(annullDecl)
 

@@ -432,7 +432,7 @@ def getCPPIf(self, model, namespace):
                 writeMemBody += 'this->' + self.abi.memories.keys()[0] + '.write_word_dbg(address, datum);\n} else '
             writeMemBody += ' {\nTHROW_EXCEPTION(\"Address \" << std::hex << address << \" out of range\");\n}'
     writeMemCode = cxx_writer.writer_code.Code(writeMemBody)
-    writeMemCode.addInclude('trap_utils.hpp')
+    writeMemCode.addInclude('utils/trap_utils.hpp')
     writeMemParam1 = cxx_writer.writer_code.Parameter('address', wordType.makeRef().makeConst())
     writeMemParam2 = cxx_writer.writer_code.Parameter('datum', wordType)
     writeMemMethod = cxx_writer.writer_code.Method('writeMem', writeMemCode, cxx_writer.writer_code.voidType, 'pu', [writeMemParam1, writeMemParam2])

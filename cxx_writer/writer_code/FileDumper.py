@@ -77,7 +77,7 @@ class FileDumper:
         if copyright: copyright = '(c) ' + copyright
 
         fileHnd = open(self.name, 'wt')
-        printOnFile('/***************************************************************************//**', fileHnd)
+        printOnFile('/*******************************************************************************', fileHnd)
         for line in FileDumper.banner.split('\n'):
             # Avoid trailing whitespace
             if line == '':
@@ -124,7 +124,29 @@ class FileDumper:
         # This is to choose between the #include <xxx> and #include "xxx" syntax.
         # By sorting the includes in three different lists we can group them logically.
         defines = []
-        trapfiles = ['analyzer.hpp', 'ABIIf.hpp', 'GDBConnectionManager.hpp', 'GDBStub.hpp', 'MemoryAT.hpp', 'MemoryLT.hpp', 'PINTarget.hpp', 'SparseMemoryAT.hpp', 'SparseMemoryLT.hpp', 'ToolsIf.hpp', 'WatchpointManager.hpp', 'customExceptions.hpp', 'debugger/BreakpointManager.hpp', 'instructionBase.hpp', 'libbfd_elfFrontend.hpp', 'libbfd_execLoader.hpp', 'libelf_elfFrontend.hpp', 'libelf_execLoader.hpp', 'memAccessType.hpp', 'osEmulator.hpp', 'profInfo.hpp', 'profiler.hpp', 'syscCallB.hpp', 'trap.hpp', 'trap_utils.hpp']
+        trapfiles = [
+          'ABIIf.hpp',
+          'ToolsIf.hpp',
+          'debugger/BreakpointManager.hpp',
+          'debugger/GDBConnectionManager.hpp',
+          'debugger/GDBStub.hpp',
+          'debugger/WatchpointManager.hpp',
+          'elfloader/elfFrontend.hpp',
+          'elfloader/execLoader.hpp',
+          'instructionBase.hpp',
+          'misc/MemoryAT.hpp',
+          'misc/MemoryLT.hpp',
+          'misc/PINTarget.hpp',
+          'misc/SparseMemoryAT.hpp',
+          'misc/SparseMemoryLT.hpp',
+          'misc/memAccessType.hpp',
+          'osEmulator/osEmulator.hpp',
+          'osEmulator/syscCallB.hpp',
+          'profiler/profInfo.hpp',
+          'profiler/profiler.hpp',
+          'trap.hpp',
+          'utils/customExceptions.hpp',
+          'utils/trap_utils.hpp']
         trapincludes = []
         sysincludes = []
         for include in self.includes:

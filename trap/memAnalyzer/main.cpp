@@ -44,13 +44,12 @@
 #include <string>
 #include <iostream>
 
+#include "analyzer.hpp"
+#include "misc/memAccessType.hpp"
+#include "utils/trap_utils.hpp"
+
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
-
-#include "trap_utils.hpp"
-
-#include "memAccessType.hpp"
-#include "analyzer.hpp"
 
 using namespace trap;
 

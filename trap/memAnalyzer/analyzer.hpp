@@ -43,12 +43,12 @@
 #ifndef ANALYZER_HPP
 #define ANALYZER_HPP
 
+#include <boost/filesystem.hpp>
+
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <map>
-
-#include <boost/filesystem.hpp>
 
 namespace trap{
 

@@ -1028,7 +1028,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         codeString += '}'
         mainLoopCode = cxx_writer.writer_code.Code(codeString)
         mainLoopCode.addInclude(includes)
-        mainLoopCode.addInclude('customExceptions.hpp')
+        mainLoopCode.addInclude('utils/customExceptions.hpp')
         mainLoopMethod = cxx_writer.writer_code.Method('mainLoop', mainLoopCode, cxx_writer.writer_code.voidType, 'pu')
         processorElements.append(mainLoopMethod)
     ################################################
@@ -1796,28 +1796,28 @@ def getMainCode(self, model, namespace):
 
     if model.endswith('LT'):
         if self.tlmFakeMemProperties and self.tlmFakeMemProperties[2]:
-            mainCode.addInclude('SparseMemoryLT.hpp')
+            mainCode.addInclude('misc/SparseMemoryLT.hpp')
         else:
-            mainCode.addInclude('MemoryLT.hpp')
+            mainCode.addInclude('misc/MemoryLT.hpp')
     else:
         if self.tlmFakeMemProperties and self.tlmFakeMemProperties[2]:
-            mainCode.addInclude('SparseMemoryAT.hpp')
+            mainCode.addInclude('misc/SparseMemoryAT.hpp')
         else:
-            mainCode.addInclude('MemoryAT.hpp')
+            mainCode.addInclude('misc/MemoryAT.hpp')
     mainCode.addInclude('#include \"processor.hpp\"')
     mainCode.addInclude('#include \"instructions.hpp\"')
-    mainCode.addInclude('trap_utils.hpp')
+    mainCode.addInclude('utils/trap_utils.hpp')
     mainCode.addInclude('systemc.h')
-    mainCode.addInclude('elfFrontend.hpp')
-    mainCode.addInclude('execLoader.hpp')
+    mainCode.addInclude('elfloader/elfFrontend.hpp')
+    mainCode.addInclude('elfloader/execLoader.hpp')
     mainCode.addInclude('stdexcept')
     if self.abi:
-        mainCode.addInclude('GDBStub.hpp')
-        mainCode.addInclude('profiler.hpp')
+        mainCode.addInclude('debugger/GDBStub.hpp')
+        mainCode.addInclude('profiler/profiler.hpp')
         #if model.startswith('acc'):
             #mainCode.addInclude('osEmulatorCA.hpp')
         #else:
-        mainCode.addInclude('osEmulator.hpp')
+        mainCode.addInclude('osEmulator/osEmulator.hpp')
     parameters = [cxx_writer.writer_code.Parameter('argc', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('argv', cxx_writer.writer_code.charPtrType.makePointer())]
     mainFunction = cxx_writer.writer_code.Function('sc_main', mainCode, cxx_writer.writer_code.intType, parameters)
 

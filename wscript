@@ -69,7 +69,7 @@ def configure(ctx):
         if int(ctx.env.CC_VERSION[0]) > 3:
             ctx.msg('Checking for compiler version', 'ok - ' + '.'.join(ctx.env.CC_VERSION))
         else:
-            ctx.fatal('Compiler Version ' + '.'.join(ctx.env.CC_VERSION) + ' too old: at least version 4.x required')
+            ctx.fatal('Compiler version ' + '.'.join(ctx.env.CC_VERSION) + ' too old: at least version 4.x required')
     ctx.find_program('objdump', mandatory=1, var='OBJDUMP')
 
     # Check for python
@@ -192,7 +192,7 @@ def configure(ctx):
     ########################################
     ctx.load('boost')
     boostLibs = 'regex thread program_options filesystem system'
-    boostErrorMessage = 'Unable to find ' + boostLibs + ' boost libraries of at least version 1.35, please install them and/or specify their location with the --boost-includes and --boost-libs configuration options. It can also happen that you have more than one boost version installed in a system-wide location: in this case remove the unnecessary versions.'
+    boostErrorMessage = 'Unable to find ' + boostLibs + ' boost libraries of at least version 1.35, please install them and/or specify their location with the --boost-includes and --boost-libs configuration options. It can also happen that you have more than one boost version installed in a system-wide location. In this case remove the unnecessary versions.'
     ctx.check_boost(lib=boostLibs, mandatory=True, errmsg = boostErrorMessage)
     if int(ctx.env.BOOST_VERSION.split('_')[1]) < 35:
         ctx.fatal(boostErrorMessage)
@@ -245,7 +245,7 @@ def configure(ctx):
             foundShared += glob.glob(os.path.join(directory, ctx.env['cxxshlib_PATTERN'].split('%s')[0] + 'iberty*' + ctx.env['cxxshlib_PATTERN'].split('%s')[1]))
             foundStatic += glob.glob(os.path.join(directory, ctx.env['cxxstlib_PATTERN'].split('%s')[0] + 'iberty*' + ctx.env['cxxstlib_PATTERN'].split('%s')[1]))
         if not foundStatic and not foundShared:
-            ctx.fatal('IBERTY library not found, install binutils development package for your distribution and/or specify its localtion with the --with-bfd option')
+            ctx.fatal('IBERTY library not found, install binutils development package for your distribution and/or specify its location with the --with-bfd option')
         tempLibs = []
         staticPaths = []
         for ibertylib in foundStatic:
@@ -358,8 +358,8 @@ def configure(ctx):
                 #endif
                 return 0;
             };
-    """
-        ctx.check_cxx(fragment=binutilsVerCheck, msg='Checking for Binutils Version', use='ELF_LIB', mandatory=1, errmsg='Not supported version, use at least 2.16')
+        """
+        ctx.check_cxx(fragment=binutilsVerCheck, msg='Checking for binutils version', use='ELF_LIB', mandatory=1, errmsg='Unsupported version, use at least 2.16')
 
         # bfd_demangle only appears in 2.18
         binutilsDemangleCheck = """
@@ -372,7 +372,7 @@ def configure(ctx):
                 char * tempRet = bfd_demangle(NULL, NULL, 0);
                 return 0;
             };
-    """
+        """
         if not ctx.check_cxx(fragment=binutilsDemangleCheck, msg='Checking for bfd_demangle', use='ELF_LIB', mandatory=0, okmsg='ok >= 2.18', errmsg='fail, reverting to cplus_demangle'):
             ctx.env.append_unique('DEFINES', 'OLD_BFD')
 
@@ -402,11 +402,11 @@ def configure(ctx):
                     break
             if not elfHeaderFound:
                 ctx.fatal('Unable to find libelf.h and/or gelf.h headers in specified path ' + str(elfIncPath))
-            ctx.check_cxx(lib='elf', uselib_store='ELF_LIB', mandatory=1, libpath = elfLibPath, errmsg='no libelf found: either install it or use libfd, reverting to the GPL version of TRAP (--license=gpl configuration option), if allowed by your distribution')
+            ctx.check_cxx(lib='elf', uselib_store='ELF_LIB', mandatory=1, libpath = elfLibPath, errmsg='libelf not found, either install it or use libfd. Reverting to the GPL version of TRAP (--license=gpl configuration option), if allowed by your distribution')
             ctx.check(header_name='libelf.h', uselib='ELF_LIB', uselib_store='ELF_LIB', features='cxx cprogram', mandatory=1, includes = elfIncPath)
             ctx.check(header_name='gelf.h', uselib='ELF_LIB', uselib_store='ELF_LIB', features='cxx cprogram', mandatory=1, includes = elfIncPath)
         else:
-            ctx.check_cxx(lib='elf', uselib_store='ELF_LIB', mandatory=1, errmsg='no libelf found: either install it or use libfd, reverting to the GPL version of TRAP (--license=gpl configuration option), if allowed by your distribution')
+            ctx.check_cxx(lib='elf', uselib_store='ELF_LIB', mandatory=1, errmsg='libelf not found, either install it or use libfd. Reverting to the GPL version of TRAP (--license=gpl configuration option), if allowed by your distribution')
             ctx.check(header_name='libelf.h', uselib='ELF_LIB', uselib_store='ELF_LIB', features='cxx cprogram', mandatory=1)
             ctx.check(header_name='gelf.h', uselib='ELF_LIB', uselib_store='ELF_LIB', features='cxx cprogram', mandatory=1)
         ctx.check_cxx(fragment="""
@@ -416,7 +416,7 @@ def configure(ctx):
                 void * funPtr = (void *)elf_getphdrnum;
                 return 0;
             }
-        """, msg='Checking for function elf_getphdrnum', use='ELF_LIB', mandatory=1, errmsg='Error, elf_getphdrnum not present in libelf; try to update to a newer version (e.g. at least version 0.144 of the libelf package distributed with Ubuntu)')
+        """, msg='Checking for function elf_getphdrnum', use='ELF_LIB', mandatory=1, errmsg='elf_getphdrnum not found in libelf, update to a newer version >= 0.144')
         
 
     #########################################################
@@ -448,7 +448,7 @@ def configure(ctx):
             return 0;
         }
     }
-"""
+    """
     if ctx.options.systemcdir:
         syscpath = ([os.path.abspath(os.path.expanduser(os.path.expandvars(os.path.join(ctx.options.systemcdir, 'include'))))])
     elif 'SYSTEMC' in os.environ:
@@ -460,7 +460,7 @@ def configure(ctx):
         sysclib = glob.glob(os.path.join(os.path.abspath(os.path.join(syscpath[0], '..')), 'lib-*'))
     ctx.check_cxx(fragment=sysc_fragment_check, lib='systemc', uselib_store='SYSTEMC', mandatory=1, libpath=sysclib, errmsg='not found, use --with-systemc option')
     if not check_dyn_library(ctx, ctx.env['cxxstlib_PATTERN'] % 'systemc', sysclib):
-        ctx.msg(ctx.env['cxxstlib_PATTERN'] % 'systemc' + ' relocabilty', 'Found position dependent code: shared libraries disabled', color='YELLOW')
+        ctx.msg(ctx.env['cxxstlib_PATTERN'] % 'systemc' + ' relocabilty', 'Found position dependent code, shared libraries disabled', color='YELLOW')
         ctx.env['ENABLE_SHARED_64'] = False
 
     ######################################################
@@ -469,7 +469,7 @@ def configure(ctx):
     if not os.path.exists(os.path.join(syscpath[0] , 'sysc' , 'qt')):
         ctx.env.append_unique('DEFINES', 'SC_USE_PTHREADS')
     elif sys.platform == 'cygwin':
-        ctx.fatal('SystemC under cygwin must be compiled with PThread support: recompile it using the "make pthreads" command')
+        ctx.fatal('SystemC under cygwin must be compiled with pthread support, recompile it using the "make pthreads" command')
 
     ##################################################
     # Check for SystemC header and test the library
@@ -477,7 +477,7 @@ def configure(ctx):
     if not sys.platform == 'cygwin':
         systemCerrmsg='Error, at least version 2.2.0 required'
     else:
-        systemCerrmsg='Error, at least version 2.2.0 required.\nSystemC also needs patching under cygwin:\nplease controll that lines 175 and 177 of header systemc.h are commented;\nfor more details refer to http://www.ht-lab.com/howto/sccygwin/sccygwin.html\nhttp://www.dti.dk/_root/media/27325_SystemC_Getting_Started_artikel.pdf'
+        systemCerrmsg='Error, at least version 2.2.0 required.\nSystemC also needs patching under cygwin:\nplease control that lines 175 and 177 of header systemc.h are commented.\nFor more details refer to http://www.ht-lab.com/howto/sccygwin/sccygwin.html\nhttp://www.dti.dk/_root/media/27325_SystemC_Getting_Started_artikel.pdf'
     ctx.check_cxx(fragment="#include <systemc.h>\n" + sysc_fragment_check, header_name='systemc.h', use='SYSTEMC', uselib_store='SYSTEMC', mandatory=1, includes=syscpath)
     ctx.check_cxx(fragment="""
         #include <systemc.h>
@@ -496,7 +496,7 @@ def configure(ctx):
                 return 0;
             };
         }
-""", msg='Checking for SystemC version', use='SYSTEMC', mandatory=1, errmsg=systemCerrmsg)
+    """, msg='Checking for SystemC version', use='SYSTEMC', mandatory=1, errmsg=systemCerrmsg)
 
     if ctx.options.pyinstalldir:
        ctx.env['PYTHON_INSTALL_DIR'] = ctx.options.pyinstalldir
@@ -522,7 +522,7 @@ def options(ctx):
     # Specify which type of license should be applied to TRAP library;
     # note that if GPL then libbfd shall we used, otherwise libelf, and
     # TRAP will be licensed LGPL
-    ctx.add_option('--license', type='string', default='lgpl', help='Spcifies the License with which TRAP will be built [gpl, lgpl]', dest='trap_license' )
+    ctx.add_option('--license', type='string', default='lgpl', help='Specifies the license with which TRAP will be built [gpl, lgpl]', dest='trap_license' )
 
     # Python installation folder
     ctx.add_option('--py-install-dir', type='string', help='Folder where the python files will be installed', dest='pyinstalldir')
@@ -530,9 +530,9 @@ def options(ctx):
     # Specify SystemC path
     ctx.add_option('--with-systemc', type='string', help='SystemC installation directory', dest='systemcdir' )
     # Specify BFD library path
-    ctx.add_option('--with-bfd', type='string', help='BFD installation directory', dest='bfddir' )
+    ctx.add_option('--with-bfd', type='string', help='libbfd installation directory', dest='bfddir' )
     # Specify libELF library path
-    ctx.add_option('--with-elf', type='string', help='libELF installation directory', dest='elfdir' )
+    ctx.add_option('--with-elf', type='string', help='libelf installation directory', dest='elfdir' )
     # Specify support for profilers
     ctx.add_option('-P', '--gprof', default=False, action='store_true', help='Enables profiling with gprof profiler', dest='enable_gprof')
     ctx.add_option('-V', '--vprof', default=False, action='store_true', help='Enables profiling with vprof profiler', dest='enable_vprof')

@@ -40,6 +40,13 @@
  *
 \***************************************************************************/
 
+#include "analyzer.hpp"
+#include "misc/memAccessType.hpp"
+#include "utils/trap_utils.hpp"
+
+#include <boost/filesystem.hpp>
+#include <boost/lexical_cast.hpp>
+
 #include <ctype.h>
 #include <cstring>
 
@@ -48,15 +55,6 @@
 #include <sstream>
 #include <string>
 #include <map>
-
-#include <boost/filesystem.hpp>
-
-#include <boost/lexical_cast.hpp>
-
-#include "trap_utils.hpp"
-
-#include "memAccessType.hpp"
-#include "analyzer.hpp"
 
 ///Given an array of chars (either in hex or decimal form) if converts it to the
 ///corresponding integer representation

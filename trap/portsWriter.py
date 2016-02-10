@@ -250,7 +250,7 @@ def getCPPExternalPorts(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\nreturn this->' + alias.alias + ';\n}\n'
     addressParam = cxx_writer.writer_code.Parameter('address', archWordType.makeRef().makeConst())
     readBody = cxx_writer.writer_code.Code(readMemAliasCode + str(archDWordType) + readCode + swapDEndianessCode + '\nreturn datum;')
-    readBody.addInclude('trap_utils.hpp')
+    readBody.addInclude('utils/trap_utils.hpp')
     readBody.addInclude('tlm.h')
     readDecl = cxx_writer.writer_code.Method('read_dword', readBody, archDWordType, 'pu', [addressParam], noException = True)
     tlmPortElements.append(readDecl)
@@ -422,7 +422,7 @@ def getCPPExternalPorts(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\nreturn this->' + alias.alias + ';\n}\n'
     addressParam = cxx_writer.writer_code.Parameter('address', archWordType.makeRef().makeConst())
     readBody = cxx_writer.writer_code.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(' + str(self.wordSize*2) + ');\ntrans.set_streaming_width(' + str(self.wordSize*2) + ');\n' + str(archDWordType) + ' datum = 0;\n' + readCode2 + swapDEndianessCode + 'return datum;')
-    readBody.addInclude('trap_utils.hpp')
+    readBody.addInclude('utils/trap_utils.hpp')
     readBody.addInclude('tlm.h')
     readDecl = cxx_writer.writer_code.Method('read_dword_dbg', readBody, archDWordType, 'pu', [addressParam], noException = True)
     tlmPortElements.append(readDecl)
@@ -583,7 +583,7 @@ def getGetIRQPorts(self, namespace):
         return tlm::TLM_COMPLETED;
         """
         nblockTransportBody = cxx_writer.writer_code.Code(nblockTransportCode)
-        nblockTransportBody.addInclude('trap_utils.hpp')
+        nblockTransportBody.addInclude('utils/trap_utils.hpp')
         sync_enumType = cxx_writer.writer_code.Type('tlm::tlm_sync_enum', 'tlm.h')
         phaseParam = cxx_writer.writer_code.Parameter('phase', cxx_writer.writer_code.Type('tlm::tlm_phase').makeRef())
         nblockTransportDecl = cxx_writer.writer_code.Method('nb_transport_fw', nblockTransportBody, sync_enumType, 'pu', [tagParam, payloadParam, phaseParam, delayParam])
@@ -703,7 +703,7 @@ def getGetPINPorts(self, namespace):
             SC_REPORT_ERROR("TLM-2", errorStr.c_str());
         }
         """)
-        sendPINBody.addInclude('trap_utils.hpp')
+        sendPINBody.addInclude('utils/trap_utils.hpp')
         sendPINBody.addInclude('tlm.h')
         from isa import resolveBitType
         PINWidthType = resolveBitType('BIT<' + str(port.portWidth) + '>')
@@ -908,7 +908,7 @@ def getIRQTests(self, trace, combinedTrace, namespace):
             curTest.addInclude('#include \"instructions.hpp\"')
             wariningDisableCode = '#ifdef _WIN32\n#pragma warning(disable : 4101)\n#endif\n'
             includeUnprotectedCode = '#define private public\n#define protected public\n#include \"registers.hpp\"\n#include \"memory.hpp\"\n#undef private\n#undef protected\n'
-            curTest.addInclude(['boost/test/test_tools.hpp', 'customExceptions.hpp', wariningDisableCode, includeUnprotectedCode, '#include \"alias.hpp\"'])
+            curTest.addInclude(['boost/test/test_tools.hpp', 'utils/customExceptions.hpp', wariningDisableCode, includeUnprotectedCode, '#include \"alias.hpp\"'])
             curTestFunction = cxx_writer.writer_code.Function(testName, curTest, cxx_writer.writer_code.voidType)
 
             testFuns.append(curTestFunction)

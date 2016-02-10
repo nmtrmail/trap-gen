@@ -888,7 +888,7 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         } else {
             this->registers[numReg] = newReg;
         }""")
-        setNewRegisterBody.addInclude('trap_utils.hpp')
+        setNewRegisterBody.addInclude('utils/trap_utils.hpp')
         setNewRegisterParams = [cxx_writer.writer_code.Parameter('numReg', cxx_writer.writer_code.uintType), cxx_writer.writer_code.Parameter('newReg', registerType.makePointer())]
         setNewRegisterMethod = cxx_writer.writer_code.Method('setNewRegister', setNewRegisterBody, cxx_writer.writer_code.voidType, 'pu', setNewRegisterParams)
         regBankElements.append(setNewRegisterMethod)
