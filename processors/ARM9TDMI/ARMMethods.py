@@ -447,8 +447,8 @@ else{
 }
 """)
 DPI_shift_imm_Op = trap.HelperOperation('DPI_shift_imm', opCode)
-DPI_shift_imm_Op.addInstuctionVar(('operand', 'BIT<32>'))
-DPI_shift_imm_Op.addInstuctionVar(('carry', 'BIT<1>'))
+DPI_shift_imm_Op.addInstructionVar(('operand', 'BIT<32>'))
+DPI_shift_imm_Op.addInstructionVar(('carry', 'BIT<1>'))
 DPI_shift_imm_Op.addUserInstructionElement('shift_amm')
 DPI_shift_imm_Op.addUserInstructionElement('rm')
 DPI_shift_imm_Op.addUserInstructionElement('shift_op')
@@ -541,8 +541,8 @@ switch(shift_op) {
 stall(1);
 """)
 DPI_reg_shift_Op = trap.HelperOperation('DPI_reg_shift', opCode)
-DPI_reg_shift_Op.addInstuctionVar(('operand', 'BIT<32>'))
-DPI_reg_shift_Op.addInstuctionVar(('carry', 'BIT<1>'))
+DPI_reg_shift_Op.addInstructionVar(('operand', 'BIT<32>'))
+DPI_reg_shift_Op.addInstructionVar(('carry', 'BIT<1>'))
 DPI_reg_shift_Op.addUserInstructionElement('rm')
 DPI_reg_shift_Op.addUserInstructionElement('shift_op')
 DPI_reg_shift_Op.addUserInstructionElement('rs')
@@ -559,8 +559,8 @@ else{
 }
 """)
 DPI_imm_Op = trap.HelperOperation('DPI_imm', opCode)
-DPI_imm_Op.addInstuctionVar(('operand', 'BIT<32>'))
-DPI_imm_Op.addInstuctionVar(('carry', 'BIT<1>'))
+DPI_imm_Op.addInstructionVar(('operand', 'BIT<32>'))
+DPI_imm_Op.addInstructionVar(('carry', 'BIT<1>'))
 DPI_imm_Op.addUserInstructionElement('rotate')
 DPI_imm_Op.addUserInstructionElement('immediate')
 # Now I define the behavior used by most of the data processing operations
@@ -580,9 +580,9 @@ if (s == 0x1){
 }
 """)
 UpdatePSRSum = trap.HelperOperation('UpdatePSRSum', opCode)
-UpdatePSRSum.addInstuctionVar(('operand1', 'BIT<32>'))
-UpdatePSRSum.addInstuctionVar(('operand2', 'BIT<32>'))
-UpdatePSRSum.addInstuctionVar(('carry', 'BIT<1>'))
+UpdatePSRSum.addInstructionVar(('operand1', 'BIT<32>'))
+UpdatePSRSum.addInstructionVar(('operand2', 'BIT<32>'))
+UpdatePSRSum.addInstructionVar(('carry', 'BIT<1>'))
 UpdatePSRSum.addUserInstructionElement('s')
 UpdatePSRSum.addUserInstructionElement('rn')
 UpdatePSRSum.addUserInstructionElement('rd')
@@ -606,9 +606,9 @@ if (s == 0x1){
 }
 """)
 UpdatePSRSumWithCarry = trap.HelperOperation('UpdatePSRSumWithCarry', opCode)
-UpdatePSRSumWithCarry.addInstuctionVar(('operand1', 'BIT<32>'))
-UpdatePSRSumWithCarry.addInstuctionVar(('operand2', 'BIT<32>'))
-UpdatePSRSumWithCarry.addInstuctionVar(('carry', 'BIT<1>'))
+UpdatePSRSumWithCarry.addInstructionVar(('operand1', 'BIT<32>'))
+UpdatePSRSumWithCarry.addInstructionVar(('operand2', 'BIT<32>'))
+UpdatePSRSumWithCarry.addInstructionVar(('carry', 'BIT<1>'))
 UpdatePSRSumWithCarry.addUserInstructionElement('s')
 UpdatePSRSumWithCarry.addUserInstructionElement('rn')
 UpdatePSRSumWithCarry.addUserInstructionElement('rd')
@@ -634,9 +634,9 @@ UpdatePSRSub = trap.HelperOperation('UpdatePSRSub', opCode)
 UpdatePSRSub.addUserInstructionElement('s')
 UpdatePSRSub.addUserInstructionElement('rn')
 UpdatePSRSub.addUserInstructionElement('rd')
-UpdatePSRSub.addInstuctionVar(('operand1', 'BIT<32>'))
-UpdatePSRSub.addInstuctionVar(('operand2', 'BIT<32>'))
-UpdatePSRSub.addInstuctionVar(('carry', 'BIT<1>'))
+UpdatePSRSub.addInstructionVar(('operand1', 'BIT<32>'))
+UpdatePSRSub.addInstructionVar(('operand2', 'BIT<32>'))
+UpdatePSRSub.addInstructionVar(('carry', 'BIT<1>'))
 
 
 
@@ -661,9 +661,9 @@ UpdatePSRSubWithCarry = trap.HelperOperation('UpdatePSRSubWithCarry', opCode)
 UpdatePSRSubWithCarry.addUserInstructionElement('s')
 UpdatePSRSubWithCarry.addUserInstructionElement('rn')
 UpdatePSRSubWithCarry.addUserInstructionElement('rd')
-UpdatePSRSubWithCarry.addInstuctionVar(('operand1', 'BIT<32>'))
-UpdatePSRSubWithCarry.addInstuctionVar(('operand2', 'BIT<32>'))
-UpdatePSRSubWithCarry.addInstuctionVar(('carry', 'BIT<1>'))
+UpdatePSRSubWithCarry.addInstructionVar(('operand1', 'BIT<32>'))
+UpdatePSRSubWithCarry.addInstructionVar(('operand2', 'BIT<32>'))
+UpdatePSRSubWithCarry.addInstructionVar(('carry', 'BIT<1>'))
 
 # Now I define the behavior used by most of the data processing operations
 # for the update of the program status register
@@ -684,8 +684,8 @@ UpdatePSRBit = trap.HelperOperation('UpdatePSRBit', opCode)
 UpdatePSRBit.addUserInstructionElement('s')
 UpdatePSRBit.addUserInstructionElement('rn')
 UpdatePSRBit.addUserInstructionElement('rd')
-UpdatePSRBit.addInstuctionVar(('carry', 'BIT<1>'))
-UpdatePSRBit.addInstuctionVar(('result', 'BIT<32>'))
+UpdatePSRBit.addInstructionVar(('carry', 'BIT<1>'))
+UpdatePSRBit.addInstructionVar(('result', 'BIT<32>'))
 
 opCode = cxx_writer.writer_code.Code("""
 if (s == 0x1){
@@ -730,8 +730,8 @@ if (s == 0x1){
 UpdatePSRmul_64 = trap.HelperOperation('UpdatePSRmul_64', opCode)
 UpdatePSRmul_64.addUserInstructionElement('s')
 UpdatePSRmul_64.addUserInstructionElement('rd')
-UpdatePSRmul_64.addInstuctionVar(('carry', 'BIT<1>'))
-UpdatePSRmul_64.addInstuctionVar(('result', 'BIT<64>'))
+UpdatePSRmul_64.addInstructionVar(('carry', 'BIT<1>'))
+UpdatePSRmul_64.addInstructionVar(('result', 'BIT<64>'))
 
 # In case the program counter is the updated register I have
 # to increment the latency of the operation
@@ -792,7 +792,7 @@ else{
 }
 """)
 ls_imm_Op = trap.HelperOperation('LS_imm', opCode)
-ls_imm_Op.addInstuctionVar(('address', 'BIT<32>'))
+ls_imm_Op.addInstructionVar(('address', 'BIT<32>'))
 ls_imm_Op.addUserInstructionElement('p')
 ls_imm_Op.addUserInstructionElement('w')
 ls_imm_Op.addUserInstructionElement('u')
@@ -813,7 +813,7 @@ else{
 }
 """)
 ls_imm_Op_PI = trap.HelperOperation('ls_imm_PI', opCode)
-ls_imm_Op_PI.addInstuctionVar(('address', 'BIT<32>'))
+ls_imm_Op_PI.addInstructionVar(('address', 'BIT<32>'))
 ls_imm_Op_PI.addUserInstructionElement('u')
 ls_imm_Op_PI.addUserInstructionElement('rn')
 ls_imm_Op_PI.addUserInstructionElement('immediate')
@@ -855,7 +855,7 @@ else{
 }
 """)
 ls_reg_Op = trap.HelperOperation('LS_reg', opCode)
-ls_reg_Op.addInstuctionVar(('address', 'BIT<32>'))
+ls_reg_Op.addInstructionVar(('address', 'BIT<32>'))
 ls_reg_Op.addUserInstructionElement('p')
 ls_reg_Op.addUserInstructionElement('w')
 ls_reg_Op.addUserInstructionElement('u')
@@ -877,7 +877,7 @@ else{
 }
 """)
 ls_reg_Op_PI = trap.HelperOperation('LS_reg_PI', opCode)
-ls_reg_Op_PI.addInstuctionVar(('address', 'BIT<32>'))
+ls_reg_Op_PI.addInstructionVar(('address', 'BIT<32>'))
 ls_reg_Op_PI.addUserInstructionElement('u')
 ls_reg_Op_PI.addUserInstructionElement('rn')
 ls_reg_Op_PI.addUserInstructionElement('rm')
@@ -921,8 +921,8 @@ start_address &= 0xFFFFFFFC;
 wb_address &= 0xFFFFFFFC;
 """)
 LSM_reglist_Op = trap.HelperOperation('LSM_reglist', opCode)
-LSM_reglist_Op.addInstuctionVar(('start_address', 'BIT<32>'))
-LSM_reglist_Op.addInstuctionVar(('wb_address', 'BIT<32>'))
+LSM_reglist_Op.addInstructionVar(('start_address', 'BIT<32>'))
+LSM_reglist_Op.addInstructionVar(('wb_address', 'BIT<32>'))
 LSM_reglist_Op.addUserInstructionElement('p')
 LSM_reglist_Op.addUserInstructionElement('u')
 LSM_reglist_Op.addUserInstructionElement('rn')
@@ -1002,7 +1002,7 @@ else{
 }
 """)
 ls_sh_Op = trap.HelperOperation('LS_sh', opCode)
-ls_sh_Op.addInstuctionVar(('address', 'BIT<32>'))
+ls_sh_Op.addInstructionVar(('address', 'BIT<32>'))
 ls_sh_Op.addVariable(('off8', 'BIT<32>'))
 ls_sh_Op.addUserInstructionElement('p')
 ls_sh_Op.addUserInstructionElement('w')

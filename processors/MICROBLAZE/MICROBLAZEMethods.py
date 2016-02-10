@@ -79,7 +79,7 @@ opCode = cxx_writer.writer_code.Code("""
 	
 """)
 IMM_handler = trap.HelperOperation('IMM_handler', opCode)
-IMM_handler.addInstuctionVar(('imm_value', 'BIT<32>'))
+IMM_handler.addInstructionVar(('imm_value', 'BIT<32>'))
 IMM_handler.addUserInstructionElement('imm')
 
 opCode = cxx_writer.writer_code.Code("""

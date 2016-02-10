@@ -1966,4 +1966,7 @@ def getMainCode(self, model, namespace):
         tlmInitiatorClass = cxx_writer.writer_code.ClassDeclaration('initiator_'+ str(portWidth), [tlmInitiatorSocketMember, tlmInitiatorNBMethod, tlmInitiatorDMMethod], [cxx_writer.writer_code.Type('sc_core::sc_module')])
         tlmInitiatorClass.addConstructor(tlmInitiatorCtor)
 
-    return [bannerVariable, debuggerVariable, signalFunction, hexToIntFunction, cycleRangeFunction, tlmInitiatorClass, mainFunction]
+    if self.irqs:
+        return [bannerVariable, debuggerVariable, signalFunction, hexToIntFunction, cycleRangeFunction, tlmInitiatorClass, mainFunction]
+    else:
+        return [bannerVariable, debuggerVariable, signalFunction, hexToIntFunction, cycleRangeFunction, mainFunction]

@@ -331,7 +331,7 @@ opCode = cxx_writer.writer_code.Code("""
 rd = result;
 """)
 WB_plain = trap.HelperOperation('WB_plain', opCode, exception = False)
-WB_plain.addInstuctionVar(('result', 'BIT<32>'))
+WB_plain.addInstructionVar(('result', 'BIT<32>'))
 WB_plain.addUserInstructionElement('rd')
 
 # Write back of the result of most operations, expecially ALUs;
@@ -342,8 +342,8 @@ if(!temp_V){
 }
 """)
 WB_tv = trap.HelperOperation('WB_tv', opCode, exception = False)
-WB_tv.addInstuctionVar(('result', 'BIT<32>'))
-WB_tv.addInstuctionVar(('temp_V', 'BIT<1>'))
+WB_tv.addInstructionVar(('result', 'BIT<32>'))
+WB_tv.addInstructionVar(('temp_V', 'BIT<1>'))
 WB_tv.addUserInstructionElement('rd')
 
 # Modification of the Integer Condition Codes of the Processor Status Register
@@ -355,7 +355,7 @@ PSR[key_ICC_v] = 0;
 PSR[key_ICC_c] = 0;
 """)
 ICC_writeLogic = trap.HelperOperation('ICC_writeLogic', opCode, exception = False)
-ICC_writeLogic.addInstuctionVar(('result', 'BIT<32>'))
+ICC_writeLogic.addInstructionVar(('result', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after an addition operation
@@ -366,9 +366,9 @@ PSR[key_ICC_v] = ((unsigned int)((rs1_op & rs2_op & (~result)) | ((~rs1_op) & (~
 PSR[key_ICC_c] = ((unsigned int)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
 """)
 ICC_writeAdd = trap.HelperOperation('ICC_writeAdd', opCode, exception = False)
-ICC_writeAdd.addInstuctionVar(('result', 'BIT<32>'))
-ICC_writeAdd.addInstuctionVar(('rs1_op', 'BIT<32>'))
-ICC_writeAdd.addInstuctionVar(('rs2_op', 'BIT<32>'))
+ICC_writeAdd.addInstructionVar(('result', 'BIT<32>'))
+ICC_writeAdd.addInstructionVar(('rs1_op', 'BIT<32>'))
+ICC_writeAdd.addInstructionVar(('rs2_op', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a tagged addition operation
@@ -379,10 +379,10 @@ PSR[key_ICC_v] = temp_V;
 PSR[key_ICC_c] = ((unsigned int)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
 """)
 ICC_writeTAdd = trap.HelperOperation('ICC_writeTAdd', opCode, exception = False)
-ICC_writeTAdd.addInstuctionVar(('result', 'BIT<32>'))
-ICC_writeTAdd.addInstuctionVar(('temp_V', 'BIT<1>'))
-ICC_writeTAdd.addInstuctionVar(('rs1_op', 'BIT<32>'))
-ICC_writeTAdd.addInstuctionVar(('rs2_op', 'BIT<32>'))
+ICC_writeTAdd.addInstructionVar(('result', 'BIT<32>'))
+ICC_writeTAdd.addInstructionVar(('temp_V', 'BIT<1>'))
+ICC_writeTAdd.addInstructionVar(('rs1_op', 'BIT<32>'))
+ICC_writeTAdd.addInstructionVar(('rs2_op', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a division operation
@@ -395,9 +395,9 @@ if(!exception){
 }
 """)
 ICC_writeDiv = trap.HelperOperation('ICC_writeDiv', opCode, exception = False)
-ICC_writeDiv.addInstuctionVar(('exception', 'BIT<1>'))
-ICC_writeDiv.addInstuctionVar(('result', 'BIT<32>'))
-ICC_writeDiv.addInstuctionVar(('temp_V', 'BIT<1>'))
+ICC_writeDiv.addInstructionVar(('exception', 'BIT<1>'))
+ICC_writeDiv.addInstructionVar(('result', 'BIT<32>'))
+ICC_writeDiv.addInstructionVar(('temp_V', 'BIT<1>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a tagged addition operation
@@ -410,10 +410,10 @@ if(!temp_V){
 }
 """)
 ICC_writeTVAdd = trap.HelperOperation('ICC_writeTVAdd', opCode, exception = False)
-ICC_writeTVAdd.addInstuctionVar(('result', 'BIT<32>'))
-ICC_writeTVAdd.addInstuctionVar(('temp_V', 'BIT<1>'))
-ICC_writeTVAdd.addInstuctionVar(('rs1_op', 'BIT<32>'))
-ICC_writeTVAdd.addInstuctionVar(('rs2_op', 'BIT<32>'))
+ICC_writeTVAdd.addInstructionVar(('result', 'BIT<32>'))
+ICC_writeTVAdd.addInstructionVar(('temp_V', 'BIT<1>'))
+ICC_writeTVAdd.addInstructionVar(('rs1_op', 'BIT<32>'))
+ICC_writeTVAdd.addInstructionVar(('rs2_op', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a subtraction operation
@@ -424,9 +424,9 @@ PSR[key_ICC_v] = ((unsigned int)((rs1_op & (~rs2_op) & (~result)) | ((~rs1_op) &
 PSR[key_ICC_c] = ((unsigned int)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
 """)
 ICC_writeSub = trap.HelperOperation('ICC_writeSub', opCode, exception = False)
-ICC_writeSub.addInstuctionVar(('result', 'BIT<32>'))
-ICC_writeSub.addInstuctionVar(('rs1_op', 'BIT<32>'))
-ICC_writeSub.addInstuctionVar(('rs2_op', 'BIT<32>'))
+ICC_writeSub.addInstructionVar(('result', 'BIT<32>'))
+ICC_writeSub.addInstructionVar(('rs1_op', 'BIT<32>'))
+ICC_writeSub.addInstructionVar(('rs2_op', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a tagged subtraction operation
@@ -437,10 +437,10 @@ PSR[key_ICC_v] = temp_V;
 PSR[key_ICC_c] = ((unsigned int)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
 """)
 ICC_writeTSub = trap.HelperOperation('ICC_writeTSub', opCode, exception = False)
-ICC_writeTSub.addInstuctionVar(('result', 'BIT<32>'))
-ICC_writeTSub.addInstuctionVar(('temp_V', 'BIT<1>'))
-ICC_writeTSub.addInstuctionVar(('rs1_op', 'BIT<32>'))
-ICC_writeTSub.addInstuctionVar(('rs2_op', 'BIT<32>'))
+ICC_writeTSub.addInstructionVar(('result', 'BIT<32>'))
+ICC_writeTSub.addInstructionVar(('temp_V', 'BIT<1>'))
+ICC_writeTSub.addInstructionVar(('rs1_op', 'BIT<32>'))
+ICC_writeTSub.addInstructionVar(('rs2_op', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a tagged subtraction operation
@@ -453,7 +453,7 @@ if(!temp_V){
 }
 """)
 ICC_writeTVSub = trap.HelperOperation('ICC_writeTVSub', opCode, exception = False)
-ICC_writeTVSub.addInstuctionVar(('result', 'BIT<32>'))
-ICC_writeTVSub.addInstuctionVar(('temp_V', 'BIT<1>'))
-ICC_writeTVSub.addInstuctionVar(('rs1_op', 'BIT<32>'))
-ICC_writeTVSub.addInstuctionVar(('rs2_op', 'BIT<32>'))
+ICC_writeTVSub.addInstructionVar(('result', 'BIT<32>'))
+ICC_writeTVSub.addInstructionVar(('temp_V', 'BIT<1>'))
+ICC_writeTVSub.addInstructionVar(('rs1_op', 'BIT<32>'))
+ICC_writeTVSub.addInstructionVar(('rs2_op', 'BIT<32>'))
