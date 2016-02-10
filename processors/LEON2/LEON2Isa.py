@@ -109,19 +109,19 @@ npcounter = PC;
 #endif
 """
 
-opCodeReadPC = cxx_writer.writer_code.Code(ReadPCFetch)
-opCodeReadNPC = cxx_writer.writer_code.Code(ReadNPCDecode)
+opCodeReadPC = cxx_writer.Code(ReadPCFetch)
+opCodeReadNPC = cxx_writer.Code(ReadNPCDecode)
 
-opCodeRegsImm = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code("""
 address = rs1 + SignExtend(simm13, 13);
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code("""
+opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 readValue = SignExtend(dataMem.read_byte(address), 8);
 """)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 rd = readValue;
 """)
 # Load Integer Instruction Family
@@ -145,13 +145,13 @@ ldsb_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 ldsb_reg_Instr.addVariable(('address', 'BIT<32>'))
 ldsb_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 isa.addInstruction(ldsb_reg_Instr)
-opCodeRegsImmNPC = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsImmNPC = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + SignExtend(simm13, 13);
 """)
-opCodeRegsRegsNPC = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegsNPC = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + rs2;
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000001) != 0;
 #ifdef ACC_MODEL
 if(notAligned){
@@ -159,7 +159,7 @@ if(notAligned){
 }
 #endif
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 if(!notAligned){
     readValue = SignExtend(dataMem.read_half(address), 16);
 }
@@ -169,7 +169,7 @@ else{
 }
 #endif
 """)
-opCodeWbException = cxx_writer.writer_code.Code("""
+opCodeWbException = cxx_writer.Code("""
 if(notAligned){
     RaiseException(pcounter, npcounter, MEM_ADDR_NOT_ALIGNED);
 }
@@ -207,7 +207,7 @@ ldsh_reg_Instr.addVariable(('address', 'BIT<32>'))
 ldsh_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 ldsh_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 isa.addInstruction(ldsh_reg_Instr)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 readValue = dataMem.read_byte(address);
 """)
 ldub_imm_Instr = trap.Instruction('LDUB_imm', True, frequency = 5)
@@ -230,7 +230,7 @@ ldub_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 ldub_reg_Instr.addVariable(('address', 'BIT<32>'))
 ldub_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 isa.addInstruction(ldub_reg_Instr)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 readValue = dataMem.read_half(address);
 """)
 lduh_imm_Instr = trap.Instruction('LDUH_imm', True, frequency = 7)
@@ -263,10 +263,10 @@ lduh_reg_Instr.addVariable(('address', 'BIT<32>'))
 lduh_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 lduh_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 isa.addInstruction(lduh_reg_Instr)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 readValue = dataMem.read_word(address);
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000003) != 0;
 #ifdef ACC_MODEL
 if(notAligned){
@@ -313,22 +313,22 @@ if(notAligned){
 REGS[rd_bit ^ 0x1].lock();
 #endif
 """
-opCodeDecodeImm = cxx_writer.writer_code.Code(ReadNPCDecode + 'address = rs1 + SignExtend(simm13, 13);\n' + notAlignComputeCode)
-opCodeDecodeRegs = cxx_writer.writer_code.Code(ReadNPCDecode + 'address = rs1 + rs2;\n' + notAlignComputeCode)
+opCodeDecodeImm = cxx_writer.Code(ReadNPCDecode + 'address = rs1 + SignExtend(simm13, 13);\n' + notAlignComputeCode)
+opCodeDecodeRegs = cxx_writer.Code(ReadNPCDecode + 'address = rs1 + rs2;\n' + notAlignComputeCode)
 flushCode = """#ifdef ACC_MODEL
 if(notAligned){
     flush();
 }
 #endif
 """
-opCodeExec = cxx_writer.writer_code.Code(flushCode)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code(flushCode)
+opCodeMem = cxx_writer.Code("""
 if(!notAligned){
     readValue = dataMem.read_dword(address);
     stall(1);
 }
 """ + flushCode)
-opCodeWbException = cxx_writer.writer_code.Code("""
+opCodeWbException = cxx_writer.Code("""
 if(notAligned){
     RaiseException(pcounter, npcounter, MEM_ADDR_NOT_ALIGNED);
 }
@@ -377,11 +377,11 @@ ldd_reg_Instr.addVariable(('readValue', 'BIT<64>'))
 ldd_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 isa.addInstruction(ldd_reg_Instr)
 # Here are the load operations accessing alternate space
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + rs2;
 supervisor = PSR[key_S];
 """)
-opCodeWbException = cxx_writer.writer_code.Code("""
+opCodeWbException = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -389,7 +389,7 @@ else{
     rd = readValue;
 }
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(!supervisor){
     flush();
@@ -401,7 +401,7 @@ else{
 }
 #endif
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(!supervisor){
     flush();
@@ -423,7 +423,7 @@ ldsba_reg_Instr.addVariable(('address', 'BIT<32>'))
 ldsba_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 ldsba_reg_Instr.addVariable(('supervisor', 'BIT<1>'))
 isa.addInstruction(ldsba_reg_Instr)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(notAligned || !supervisor){
     flush();
@@ -435,7 +435,7 @@ else{
 }
 #endif
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000001) != 0;
 #ifdef ACC_MODEL
 if(notAligned || !supervisor){
@@ -443,7 +443,7 @@ if(notAligned || !supervisor){
 }
 #endif
 """)
-opCodeWbException = cxx_writer.writer_code.Code("""
+opCodeWbException = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -470,7 +470,7 @@ ldsha_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 ldsha_reg_Instr.addVariable(('supervisor', 'BIT<1>'))
 ldsha_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 isa.addInstruction(ldsha_reg_Instr)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(!supervisor){
     flush();
@@ -482,14 +482,14 @@ else{
 }
 #endif
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(!supervisor){
     flush();
 }
 #endif
 """)
-opCodeWbException = cxx_writer.writer_code.Code("""
+opCodeWbException = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -512,7 +512,7 @@ lduba_reg_Instr.addVariable(('address', 'BIT<32>'))
 lduba_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 lduba_reg_Instr.addVariable(('supervisor', 'BIT<1>'))
 isa.addInstruction(lduba_reg_Instr)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(notAligned || !supervisor){
     flush();
@@ -524,7 +524,7 @@ else{
 }
 #endif
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000001) != 0;
 #ifdef ACC_MODEL
 if(notAligned || !supervisor){
@@ -532,7 +532,7 @@ if(notAligned || !supervisor){
 }
 #endif
 """)
-opCodeWbException = cxx_writer.writer_code.Code("""
+opCodeWbException = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -559,7 +559,7 @@ lduha_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 lduha_reg_Instr.addVariable(('supervisor', 'BIT<1>'))
 lduha_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 isa.addInstruction(lduha_reg_Instr)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(notAligned || !supervisor){
     flush();
@@ -571,7 +571,7 @@ else{
 }
 #endif
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000003) != 0;
 #ifdef ACC_MODEL
 if(notAligned || !supervisor){
@@ -595,14 +595,14 @@ lda_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 lda_reg_Instr.addVariable(('supervisor', 'BIT<1>'))
 lda_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 isa.addInstruction(lda_reg_Instr)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 #ifdef ACC_MODEL
 REGS[rd_bit ^ 0x1].lock();
 #endif
 address = rs1 + rs2;
 supervisor = PSR[key_S];
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000007) != 0;
 #ifdef ACC_MODEL
 if(notAligned || !supervisor){
@@ -610,7 +610,7 @@ if(notAligned || !supervisor){
 }
 #endif
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(notAligned || !supervisor){
     flush();
@@ -622,7 +622,7 @@ else{
 }
 #endif
 """)
-opCodeWbException = cxx_writer.writer_code.Code("""
+opCodeWbException = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -661,15 +661,15 @@ ldda_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 isa.addInstruction(ldda_reg_Instr)
 
 # Store integer instructions
-opCodeRegsImm = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code("""
 address = rs1 + SignExtend(simm13, 13);
 toWrite = (unsigned char)(rd & 0x000000FF);
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code("""
+opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
 toWrite = (unsigned char)(rd & 0x000000FF);
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 dataMem.write_byte(address, toWrite);
 stall(1);
 """)
@@ -692,9 +692,9 @@ stb_reg_Instr.addVariable(('address', 'BIT<32>'))
 stb_reg_Instr.addVariable(('toWrite', 'BIT<8>'))
 isa.addInstruction(stb_reg_Instr)
 toWriteRegCode = 'toWrite = (unsigned short int)(rd & 0x0000FFFF);'
-opCodeRegsImm = cxx_writer.writer_code.Code(ReadNPCDecode + 'address = rs1 + SignExtend(simm13, 13);\n' + toWriteRegCode)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + 'address = rs1 + rs2;\n' + toWriteRegCode)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code(ReadNPCDecode + 'address = rs1 + SignExtend(simm13, 13);\n' + toWriteRegCode)
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + 'address = rs1 + rs2;\n' + toWriteRegCode)
+opCodeMem = cxx_writer.Code("""
 if(!notAligned){
     dataMem.write_half(address, toWrite);
 }
@@ -703,7 +703,7 @@ else{
 }
 stall(1);
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000001) != 0;
 #ifdef ACC_MODEL
 if(notAligned){
@@ -711,7 +711,7 @@ if(notAligned){
 }
 #endif
 """)
-opCodeException = cxx_writer.writer_code.Code("""
+opCodeException = cxx_writer.Code("""
 if(notAligned){
     RaiseException(pcounter, npcounter, MEM_ADDR_NOT_ALIGNED);
 }
@@ -746,15 +746,15 @@ sth_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 sth_reg_Instr.addVariable(('address', 'BIT<32>'))
 sth_reg_Instr.addVariable(('toWrite', 'BIT<16>'))
 isa.addInstruction(sth_reg_Instr)
-opCodeRegsImm = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsImm = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + SignExtend(simm13, 13);
 toWrite = rd;
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + rs2;
 toWrite = rd;
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 if(!notAligned){
     dataMem.write_word(address, toWrite);
 }
@@ -763,7 +763,7 @@ else{
 }
 stall(1);
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000003) != 0;
 #ifdef ACC_MODEL
 if(notAligned){
@@ -808,9 +808,9 @@ else{
     toWrite = REGS[rd_bit - 1] | (((unsigned long long)rd) << 32);
 }
 """
-opCodeRegsImm = cxx_writer.writer_code.Code(ReadNPCDecode + 'address = rs1 + SignExtend(simm13, 13);\n' + readReg)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + 'address = rs1 + rs2;\n' + readReg)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code(ReadNPCDecode + 'address = rs1 + SignExtend(simm13, 13);\n' + readReg)
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + 'address = rs1 + rs2;\n' + readReg)
+opCodeMem = cxx_writer.Code("""
 if(!notAligned){
     dataMem.write_dword(address, toWrite);
 }
@@ -819,7 +819,7 @@ else{
 }
 stall(2);
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000007) != 0;
 #ifdef ACC_MODEL
 if(notAligned){
@@ -859,12 +859,12 @@ std_reg_Instr.addVariable(('address', 'BIT<32>'))
 std_reg_Instr.addVariable(('toWrite', 'BIT<64>'))
 std_reg_Instr.addCheckHazardCode('REGS_decode[rd_bit ^ 0x1].isLocked()', 'decode')
 isa.addInstruction(std_reg_Instr)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + rs2;
 toWrite = (unsigned char)(rd & 0x000000FF);
 supervisor = PSR[key_S];
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 if(supervisor){
     dataMem.write_byte(address, toWrite);
 }
@@ -873,14 +873,14 @@ else{
 }
 stall(1);
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(!supervisor){
     flush();
 }
 #endif
 """)
-opCodeException = cxx_writer.writer_code.Code("""
+opCodeException = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -900,12 +900,12 @@ stba_reg_Instr.addVariable(('supervisor', 'BIT<1>'))
 stba_reg_Instr.addVariable(('address', 'BIT<32>'))
 stba_reg_Instr.addVariable(('toWrite', 'BIT<8>'))
 isa.addInstruction(stba_reg_Instr)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + rs2;
 toWrite = (unsigned short int)(rd & 0x0000FFFF);
 supervisor = PSR[key_S];
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 if(supervisor || !notAligned){
     dataMem.write_half(address, toWrite);
 }
@@ -914,7 +914,7 @@ else{
 }
 stall(1);
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000001) != 0;
 #ifdef ACC_MODEL
 if(!supervisor || notAligned){
@@ -922,7 +922,7 @@ if(!supervisor || notAligned){
 }
 #endif
 """)
-opCodeException = cxx_writer.writer_code.Code("""
+opCodeException = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -946,12 +946,12 @@ stha_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 stha_reg_Instr.addVariable(('address', 'BIT<32>'))
 stha_reg_Instr.addVariable(('toWrite', 'BIT<16>'))
 isa.addInstruction(stha_reg_Instr)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + rs2;
 toWrite = rd;
 supervisor = PSR[key_S];
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 if(supervisor || !notAligned){
     dataMem.write_word(address, toWrite);
 }
@@ -960,7 +960,7 @@ else{
 }
 stall(1);
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000003) != 0;
 #ifdef ACC_MODEL
 if(!supervisor || notAligned){
@@ -985,7 +985,7 @@ sta_reg_Instr.addVariable(('address', 'BIT<32>'))
 sta_reg_Instr.addVariable(('toWrite', 'BIT<32>'))
 isa.addInstruction(sta_reg_Instr)
 
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + rs2;
 if(rd_bit % 2 == 0){
     toWrite = rd || (((unsigned long long)REGS[rd_bit + 1]) << 32);
@@ -995,7 +995,7 @@ else{
 }
 supervisor = PSR[key_S];
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 if(supervisor || !notAligned){
     dataMem.write_dword(address, toWrite);
 }
@@ -1004,7 +1004,7 @@ else{
 }
 stall(1);
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000003) != 0;
 #ifdef ACC_MODEL
 if(!supervisor || notAligned){
@@ -1031,18 +1031,18 @@ stda_reg_Instr.addCheckHazardCode('REGS_decode[rd_bit ^ 0x1].isLocked()', 'decod
 isa.addInstruction(stda_reg_Instr)
 
 # Atomic Load/Store
-opCodeRegsImm = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code("""
 address = rs1 + SignExtend(simm13, 13);
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code("""
+opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 readValue = dataMem.read_byte(address);
 dataMem.write_byte(address, 0xff);
 stall(2);
 """)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 rd = readValue;
 """)
 ldstub_imm_Instr = trap.Instruction('LDSTUB_imm', True, frequency = 1)
@@ -1065,18 +1065,18 @@ ldstub_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 ldstub_reg_Instr.addVariable(('address', 'BIT<32>'))
 ldstub_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 isa.addInstruction(ldstub_reg_Instr)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + rs2;
 supervisor = PSR[key_S];
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(!supervisor){
     flush();
 }
 #endif
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 if(supervisor){
     readValue = dataMem.read_byte(address);
     dataMem.write_byte(address, 0xff);
@@ -1086,7 +1086,7 @@ else{
 }
 stall(2);
 """)
-opCodeWbException = cxx_writer.writer_code.Code("""
+opCodeWbException = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -1111,15 +1111,15 @@ ldstuba_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 isa.addInstruction(ldstuba_reg_Instr)
 
 # Swap
-opCodeRegsImm = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsImm = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + SignExtend(simm13, 13);
 toWrite = rd;
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + rs2;
 toWrite = rd;
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000003) != 0;
 #ifdef ACC_MODEL
 if(notAligned){
@@ -1127,7 +1127,7 @@ if(notAligned){
 }
 #endif
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 if(notAligned){
     flush();
 }
@@ -1137,7 +1137,7 @@ else{
 }
 stall(2);
 """)
-opCodeWbException = cxx_writer.writer_code.Code("""
+opCodeWbException = cxx_writer.Code("""
 if(notAligned){
     RaiseException(pcounter, npcounter, MEM_ADDR_NOT_ALIGNED);
 }
@@ -1177,12 +1177,12 @@ swap_reg_Instr.addVariable(('address', 'BIT<32>'))
 swap_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 swap_reg_Instr.addVariable(('toWrite', 'BIT<32>'))
 isa.addInstruction(swap_reg_Instr)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 address = rs1 + rs2;
 toWrite = rd;
 supervisor = PSR[key_S];
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000003) != 0;
 #ifdef ACC_MODEL
 if(!supervisor || notAligned){
@@ -1190,7 +1190,7 @@ if(!supervisor || notAligned){
 }
 #endif
 """)
-opCodeMem = cxx_writer.writer_code.Code("""
+opCodeMem = cxx_writer.Code("""
 if(!supervisor || notAligned){
     flush();
 }
@@ -1200,7 +1200,7 @@ else{
 }
 stall(2);
 """)
-opCodeWbException = cxx_writer.writer_code.Code("""
+opCodeWbException = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -1230,7 +1230,7 @@ swapa_reg_Instr.addVariable(('toWrite', 'BIT<32>'))
 isa.addInstruction(swapa_reg_Instr)
 
 # sethi
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = 0xfffffc00 & (imm22 << 10);
 """)
 sethi_Instr = trap.Instruction('SETHI', True, frequency = 14)
@@ -1242,14 +1242,14 @@ sethi_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(sethi_Instr)
 
 # Logical Instructions
-opCodeReadRegs1 = cxx_writer.writer_code.Code("""
+opCodeReadRegs1 = cxx_writer.Code("""
 rs1_op = rs1;
 """)
-opCodeReadRegs2 = cxx_writer.writer_code.Code("""
+opCodeReadRegs2 = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = rs2;
 """)
-opCodeExecImm = cxx_writer.writer_code.Code("""
+opCodeExecImm = cxx_writer.Code("""
 result = rs1_op & SignExtend(simm13, 13);
 """)
 and_imm_Instr = trap.Instruction('AND_imm', True, frequency = 10)
@@ -1261,7 +1261,7 @@ and_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 and_imm_Instr.addVariable(('result', 'BIT<32>'))
 and_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 isa.addInstruction(and_imm_Instr)
-opCodeExecReg = cxx_writer.writer_code.Code("""
+opCodeExecReg = cxx_writer.Code("""
 result = rs1_op & rs2_op;
 """)
 and_reg_Instr = trap.Instruction('AND_reg', True, frequency = 7)
@@ -1297,7 +1297,7 @@ andcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 andcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 andcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(andcc_reg_Instr)
-opCodeExecImm = cxx_writer.writer_code.Code("""
+opCodeExecImm = cxx_writer.Code("""
 result = rs1_op & ~(SignExtend(simm13, 13));
 """)
 andn_imm_Instr = trap.Instruction('ANDN_imm', True, frequency = 2)
@@ -1309,7 +1309,7 @@ andn_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 andn_imm_Instr.addVariable(('result', 'BIT<32>'))
 andn_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 isa.addInstruction(andn_imm_Instr)
-opCodeExecReg = cxx_writer.writer_code.Code("""
+opCodeExecReg = cxx_writer.Code("""
 result = rs1_op & ~rs2_op;
 """)
 andn_reg_Instr = trap.Instruction('ANDN_reg', True, frequency = 5)
@@ -1345,7 +1345,7 @@ andncc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 andncc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 andncc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(andncc_reg_Instr)
-opCodeExecImm = cxx_writer.writer_code.Code("""
+opCodeExecImm = cxx_writer.Code("""
 result = rs1_op | SignExtend(simm13, 13);
 """)
 or_imm_Instr = trap.Instruction('OR_imm', True, frequency = 12)
@@ -1357,7 +1357,7 @@ or_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 or_imm_Instr.addVariable(('result', 'BIT<32>'))
 or_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 isa.addInstruction(or_imm_Instr)
-opCodeExecReg = cxx_writer.writer_code.Code("""
+opCodeExecReg = cxx_writer.Code("""
 result = rs1_op | rs2_op;
 """)
 or_reg_Instr = trap.Instruction('OR_reg', True, frequency = 12)
@@ -1393,7 +1393,7 @@ orcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 orcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 orcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(orcc_reg_Instr)
-opCodeExecImm = cxx_writer.writer_code.Code("""
+opCodeExecImm = cxx_writer.Code("""
 result = rs1_op | ~(SignExtend(simm13, 13));
 """)
 orn_imm_Instr = trap.Instruction('ORN_imm', True, frequency = 2)
@@ -1405,7 +1405,7 @@ orn_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 orn_imm_Instr.addVariable(('result', 'BIT<32>'))
 orn_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 isa.addInstruction(orn_imm_Instr)
-opCodeExecReg = cxx_writer.writer_code.Code("""
+opCodeExecReg = cxx_writer.Code("""
 result = rs1_op | ~rs2_op;
 """)
 orn_reg_Instr = trap.Instruction('ORN_reg', True, frequency = 2)
@@ -1440,7 +1440,7 @@ orncc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 orncc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 orncc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(orncc_reg_Instr)
-opCodeExecImm = cxx_writer.writer_code.Code("""
+opCodeExecImm = cxx_writer.Code("""
 result = rs1_op ^ SignExtend(simm13, 13);
 """)
 xor_imm_Instr = trap.Instruction('XOR_imm', True, frequency = 3)
@@ -1452,7 +1452,7 @@ xor_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 xor_imm_Instr.addVariable(('result', 'BIT<32>'))
 xor_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 isa.addInstruction(xor_imm_Instr)
-opCodeExecReg = cxx_writer.writer_code.Code("""
+opCodeExecReg = cxx_writer.Code("""
 result = rs1_op ^ rs2_op;
 """)
 xor_reg_Instr = trap.Instruction('XOR_reg', True, frequency = 7)
@@ -1488,7 +1488,7 @@ xorcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 xorcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 xorcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(xorcc_reg_Instr)
-opCodeExecImm = cxx_writer.writer_code.Code("""
+opCodeExecImm = cxx_writer.Code("""
 result = rs1_op ^ ~(SignExtend(simm13, 13));
 """)
 xnor_imm_Instr = trap.Instruction('XNOR_imm', True, frequency = 2)
@@ -1500,7 +1500,7 @@ xnor_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 xnor_imm_Instr.addVariable(('result', 'BIT<32>'))
 xnor_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 isa.addInstruction(xnor_imm_Instr)
-opCodeExecReg = cxx_writer.writer_code.Code("""
+opCodeExecReg = cxx_writer.Code("""
 result = rs1_op ^ ~rs2_op;
 """)
 xnor_reg_Instr = trap.Instruction('XNOR_reg', True, frequency = 2)
@@ -1538,14 +1538,14 @@ xnorcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(xnorcc_reg_Instr)
 
 # Shift
-opCodeRegsImm = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code("""
 rs1_op = rs1;
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code("""
+opCodeRegsRegs = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = rs2;
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = rs1_op << simm13;
 """)
 sll_imm_Instr = trap.Instruction('SLL_imm', True, frequency = 9)
@@ -1557,7 +1557,7 @@ sll_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 sll_imm_Instr.addVariable(('result', 'BIT<32>'))
 sll_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 isa.addInstruction(sll_imm_Instr)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = rs1_op << (rs2_op & 0x0000001f);
 """)
 sll_reg_Instr = trap.Instruction('SLL_reg', True, frequency = 6)
@@ -1570,7 +1570,7 @@ sll_reg_Instr.addVariable(('result', 'BIT<32>'))
 sll_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 sll_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 isa.addInstruction(sll_reg_Instr)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = ((unsigned int)rs1_op) >> simm13;
 """)
 srl_imm_Instr = trap.Instruction('SRL_imm', True, frequency = 9)
@@ -1582,7 +1582,7 @@ srl_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 srl_imm_Instr.addVariable(('result', 'BIT<32>'))
 srl_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 isa.addInstruction(srl_imm_Instr)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = ((unsigned int)rs1_op) >> (rs2_op & 0x0000001f);
 """)
 srl_reg_Instr = trap.Instruction('SRL_reg', True, frequency = 3)
@@ -1595,7 +1595,7 @@ srl_reg_Instr.addVariable(('result', 'BIT<32>'))
 srl_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 srl_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 isa.addInstruction(srl_reg_Instr)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = ((int)rs1_op) >> simm13;
 """)
 sra_imm_Instr = trap.Instruction('SRA_imm', True, frequency = 7)
@@ -1607,7 +1607,7 @@ sra_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 sra_imm_Instr.addVariable(('result', 'BIT<32>'))
 sra_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 isa.addInstruction(sra_imm_Instr)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = ((int)rs1_op) >> (rs2_op & 0x0000001f);
 """)
 sra_reg_Instr = trap.Instruction('SRA_reg', True, frequency = 2)
@@ -1622,15 +1622,15 @@ sra_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 isa.addInstruction(sra_reg_Instr)
 
 # Add instruction
-opCodeRegsImm = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = SignExtend(simm13, 13);
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code("""
+opCodeRegsRegs = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = rs2;
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = rs1_op + rs2_op;
 """)
 add_imm_Instr = trap.Instruction('ADD_imm', True, frequency = 11)
@@ -1677,7 +1677,7 @@ addcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 addcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 addcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(addcc_reg_Instr)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 #ifndef ACC_MODEL
 result = rs1_op + rs2_op + PSR[key_ICC_c];
 #else
@@ -1732,7 +1732,7 @@ addxcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 addxcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 addxcc_reg_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 isa.addInstruction(addxcc_reg_Instr)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = rs1_op + rs2_op;
 temp_V = ((unsigned int)((rs1_op & rs2_op & (~result)) | ((~rs1_op) & (~rs2_op) & result))) >> 31;
 if(!temp_V && (((rs1_op | rs2_op) & 0x00000003) != 0)){
@@ -1766,15 +1766,15 @@ taddcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 taddcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(taddcc_reg_Instr)
 
-opCodeRegsImmTrap = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsImmTrap = cxx_writer.Code(ReadNPCDecode + """
 rs1_op = rs1;
 rs2_op = SignExtend(simm13, 13);
 """)
-opCodeRegsRegsTrap = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegsTrap = cxx_writer.Code(ReadNPCDecode + """
 rs1_op = rs1;
 rs2_op = rs2;
 """)
-opCodeTrap = cxx_writer.writer_code.Code("""
+opCodeTrap = cxx_writer.Code("""
 if(temp_V){
     RaiseException(pcounter, npcounter, TAG_OVERFLOW);
 }
@@ -1815,15 +1815,15 @@ taddcctv_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(taddcctv_reg_Instr)
 
 # Subtract
-opCodeRegsImm = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = SignExtend(simm13, 13);
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code("""
+opCodeRegsRegs = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = rs2;
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = rs1_op - rs2_op;
 """)
 sub_imm_Instr = trap.Instruction('SUB_imm', True, frequency = 4)
@@ -1870,7 +1870,7 @@ subcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 subcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 subcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(subcc_reg_Instr)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 #ifndef ACC_MODEL
 result = rs1_op - rs2_op - PSR[key_ICC_c];
 #else
@@ -1923,7 +1923,7 @@ subxcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 subxcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 subxcc_reg_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 isa.addInstruction(subxcc_reg_Instr)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 result = rs1_op - rs2_op;
 temp_V = ((unsigned int)((rs1_op & (~rs2_op) & (~result)) | ((~rs1_op) & rs2_op & result))) >> 31;
 if(!temp_V && (((rs1_op | rs2_op) & 0x00000003) != 0)){
@@ -1956,7 +1956,7 @@ tsubcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 tsubcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 tsubcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(tsubcc_reg_Instr)
-opCodeTrap = cxx_writer.writer_code.Code("""
+opCodeTrap = cxx_writer.Code("""
 if(temp_V){
     RaiseException(pcounter, npcounter, TAG_OVERFLOW);
 }
@@ -1997,15 +1997,15 @@ tsubcctv_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(tsubcctv_reg_Instr)
 
 # Multiply Step
-opCodeRegsImm = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = SignExtend(simm13, 13);
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code("""
+opCodeRegsRegs = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = rs2;
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 #ifndef ACC_MODEL
 unsigned int yNew = (((unsigned int)Y) >> 1) | (rs1_op << 31);
 #else
@@ -2054,15 +2054,15 @@ mulscc_reg_Instr.addSpecialRegister('Y', 'inout', 'execute')
 isa.addInstruction(mulscc_reg_Instr)
 
 # Multiply
-opCodeRegsImm = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = SignExtend(simm13, 13);
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code("""
+opCodeRegsRegs = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = rs2;
 """)
-opCodeExecS = cxx_writer.writer_code.Code("""
+opCodeExecS = cxx_writer.Code("""
 long long resultTemp = (long long)(((long long)((int)rs1_op))*((long long)((int)rs2_op)));
 Y = ((unsigned long long)resultTemp) >> 32;
 result = resultTemp & 0x00000000FFFFFFFF;
@@ -2078,7 +2078,7 @@ stall(3);
 stall(1);
 #endif
 """)
-opCodeExecU = cxx_writer.writer_code.Code("""
+opCodeExecU = cxx_writer.Code("""
 unsigned long long resultTemp = (unsigned long long)(((unsigned long long)((unsigned int)rs1_op))*((unsigned long long)((unsigned int)rs2_op)));
 Y = resultTemp >> 32;
 result = resultTemp & 0x00000000FFFFFFFF;
@@ -2224,15 +2224,15 @@ smulcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(smulcc_reg_Instr)
 
 # Multiply Accumulate Instructions
-opCodeRegsImm = cxx_writer.writer_code.Code("""
+opCodeRegsImm = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = SignExtend(simm13, 13);
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code("""
+opCodeRegsRegs = cxx_writer.Code("""
 rs1_op = rs1;
 rs2_op = rs2;
 """)
-opCodeExecS = cxx_writer.writer_code.Code("""
+opCodeExecS = cxx_writer.Code("""
 int resultTemp = ((int)SignExtend(rs1_op & 0x0000ffff, 16))*((int)SignExtend(rs2_op & 0x0000ffff, 16));
 long long resultAcc = ((((long long)(Y & 0x000000ff)) << 32) | (int)ASR[18]) + resultTemp;
 Y = (resultAcc & 0x000000ff00000000LL) >> 32;
@@ -2240,7 +2240,7 @@ ASR[18] = resultAcc & 0x00000000FFFFFFFFLL;
 result = resultAcc & 0x00000000FFFFFFFFLL;
 stall(1);
 """)
-opCodeExecU = cxx_writer.writer_code.Code("""
+opCodeExecU = cxx_writer.Code("""
 unsigned int resultTemp = ((unsigned int)rs1_op & 0x0000ffff)*((unsigned int)rs2_op & 0x0000ffff);
 unsigned long long resultAcc = ((((unsigned long long)(Y & 0x000000ff)) << 32) | (unsigned int)ASR[18]) + resultTemp;
 Y = (resultAcc & 0x000000ff00000000LL) >> 32;
@@ -2298,15 +2298,15 @@ smac_reg_Instr.addSpecialRegister('ASR[18]', 'inout', 'execute')
 isa.addInstruction(smac_reg_Instr)
 
 # Divide
-opCodeRegsImm = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsImm = cxx_writer.Code(ReadNPCDecode + """
 rs1_op = rs1;
 rs2_op = SignExtend(simm13, 13);
 """)
-opCodeRegsRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegsRegs = cxx_writer.Code(ReadNPCDecode + """
 rs1_op = rs1;
 rs2_op = rs2;
 """)
-opCodeExecU = cxx_writer.writer_code.Code("""
+opCodeExecU = cxx_writer.Code("""
 exception = rs2_op == 0;
 if(!exception){
     #ifndef ACC_MODEL
@@ -2324,7 +2324,7 @@ if(!exception){
 }
 stall(34);
 """)
-opCodeExecS = cxx_writer.writer_code.Code("""
+opCodeExecS = cxx_writer.Code("""
 exception = rs2_op == 0;
 if(!exception){
     #ifndef ACC_MODEL
@@ -2347,7 +2347,7 @@ if(!exception){
 }
 stall(34);
 """)
-opCodeTrap = cxx_writer.writer_code.Code("""
+opCodeTrap = cxx_writer.Code("""
 if(exception){
     RaiseException(pcounter, npcounter, DIV_ZERO);
 }
@@ -2517,17 +2517,17 @@ else{
 }
 #endif
 """
-opCodeDecRegs = cxx_writer.writer_code.Code(ReadNPCDecode + 'result = rs1 + rs2;\n' + opCodeDec)
-opCodeDecImm = cxx_writer.writer_code.Code(ReadNPCDecode + 'result = rs1 + SignExtend(simm13, 13);\n' + opCodeDec)
+opCodeDecRegs = cxx_writer.Code(ReadNPCDecode + 'result = rs1 + rs2;\n' + opCodeDec)
+opCodeDecImm = cxx_writer.Code(ReadNPCDecode + 'result = rs1 + SignExtend(simm13, 13);\n' + opCodeDec)
 
-opCodeFlush = cxx_writer.writer_code.Code("""
+opCodeFlush = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(!okNewWin){
     flush();
 }
 #endif
 """)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 if(!okNewWin){
     RaiseException(pcounter, npcounter, WINDOW_OVERFLOW);
 }
@@ -2586,10 +2586,10 @@ else{
 }
 #endif
 """
-opCodeDecRegs = cxx_writer.writer_code.Code(ReadNPCDecode + 'result = rs1 + rs2;\n' + opCodeDec)
-opCodeDecImm = cxx_writer.writer_code.Code(ReadNPCDecode + 'result = rs1 + SignExtend(simm13, 13);\n' + opCodeDec)
+opCodeDecRegs = cxx_writer.Code(ReadNPCDecode + 'result = rs1 + rs2;\n' + opCodeDec)
+opCodeDecImm = cxx_writer.Code(ReadNPCDecode + 'result = rs1 + SignExtend(simm13, 13);\n' + opCodeDec)
 
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 if(!okNewWin){
     RaiseException(pcounter, npcounter, WINDOW_UNDERFLOW);
 }
@@ -2638,7 +2638,7 @@ restore_reg_Instr.addSpecialRegister('PSR', 'inout')
 isa.addInstruction(restore_reg_Instr)
 
 # Branch on Integer Condition Codes
-opCode = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCode = cxx_writer.Code(ReadNPCDecode + """
 switch(cond){
     case 0x8:{
         // Branch Always
@@ -2749,10 +2749,10 @@ branch_Instr.addSpecialRegister('PSR', 'in', 'execute')
 isa.addInstruction(branch_Instr)
 
 # Call and Link
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 REGS[15] = pcounter;
 """)
-opCode = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCode = cxx_writer.Code(ReadNPCDecode + """
 unsigned int target = pcounter + (disp30 << 2);
 #ifdef ACC_MODEL
 PC = target;
@@ -2775,7 +2775,7 @@ call_Instr.addVariable(('oldPC', 'BIT<32>'))
 isa.addInstruction(call_Instr)
 
 # Jump and Link
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 if(trapNotAligned){
     RaiseException(pcounter, npcounter, MEM_ADDR_NOT_ALIGNED);
 }
@@ -2797,13 +2797,13 @@ else{
     #endif
 }
 """
-opCodeDecodeImm = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeDecodeImm = cxx_writer.Code(ReadNPCDecode + """
 unsigned int jumpAddr = rs1 + SignExtend(simm13, 13);
 """ + actualJumpCode)
-opCodeDecodeRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeDecodeRegs = cxx_writer.Code(ReadNPCDecode + """
 unsigned int jumpAddr = rs1 + rs2;
 """ + actualJumpCode)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 stall(1);
 """)
 jump_imm_Instr = trap.Instruction('JUMP_imm', True, frequency = 7)
@@ -2815,7 +2815,7 @@ jump_imm_Instr.setCode(opCodeReadPC, 'fetch')
 jump_imm_Instr.addVariable(('pcounter', 'BIT<32>'))
 jump_imm_Instr.addVariable(('npcounter', 'BIT<32>'))
 jump_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False, functionalModel = False)
-jump_imm_Instr.addVariable(cxx_writer.writer_code.Variable('trapNotAligned', cxx_writer.writer_code.boolType))
+jump_imm_Instr.addVariable(cxx_writer.Variable('trapNotAligned', cxx_writer.boolType))
 isa.addInstruction(jump_imm_Instr)
 jump_reg_Instr = trap.Instruction('JUMP_reg', True, frequency = 3)
 jump_reg_Instr.setMachineCode(dpi_format1, {'op3': [1, 1, 1, 0, 0, 0], 'asi' : [0, 0, 0, 0, 0, 0, 0, 0]}, ('jmpl', ' r', '%rs1', '+r', '%rs2', ' r', '%rd'))
@@ -2826,7 +2826,7 @@ jump_reg_Instr.setCode(opCodeReadPC, 'fetch')
 jump_reg_Instr.addVariable(('pcounter', 'BIT<32>'))
 jump_reg_Instr.addVariable(('npcounter', 'BIT<32>'))
 jump_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False, functionalModel = False)
-jump_reg_Instr.addVariable(cxx_writer.writer_code.Variable('trapNotAligned', cxx_writer.writer_code.boolType))
+jump_reg_Instr.addVariable(cxx_writer.Variable('trapNotAligned', cxx_writer.boolType))
 isa.addInstruction(jump_reg_Instr)
 
 # Return from Trap
@@ -2848,9 +2848,9 @@ if(!exceptionEnabled && supervisor && !invalidWin && !notAligned){
     #endif
 }
 """
-opCodeImm = cxx_writer.writer_code.Code(ReadNPCDecode + 'targetAddr = rs1 + SignExtend(simm13, 13);\n' + opCodeAll)
-opCodeRegs = cxx_writer.writer_code.Code(ReadNPCDecode + 'targetAddr = rs1 + rs2;\n' + opCodeAll)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeImm = cxx_writer.Code(ReadNPCDecode + 'targetAddr = rs1 + SignExtend(simm13, 13);\n' + opCodeAll)
+opCodeRegs = cxx_writer.Code(ReadNPCDecode + 'targetAddr = rs1 + rs2;\n' + opCodeAll)
+opCodeExec = cxx_writer.Code("""
 if(exceptionEnabled || !supervisor || invalidWin || notAligned){
     flush();
 }
@@ -2873,8 +2873,8 @@ else if(!supervisor || invalidWin || notAligned){
 }
 """
 TrapCode += 'else{\n' + updateAliasCode_exception() + '\n}'
-opCodeTrap = cxx_writer.writer_code.Code(TrapCode)
-opCodeFlush = cxx_writer.writer_code.Code("""
+opCodeTrap = cxx_writer.Code(TrapCode)
+opCodeFlush = cxx_writer.Code("""
 #ifdef ACC_MODEL
 if(exceptionEnabled || !supervisor || invalidWin || notAligned){
     flush();
@@ -2894,10 +2894,10 @@ rett_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 rett_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
 rett_imm_Instr.addVariable(('targetAddr', 'BIT<32>'))
 rett_imm_Instr.addVariable(('newCwp', 'BIT<32>'))
-rett_imm_Instr.addVariable(cxx_writer.writer_code.Variable('exceptionEnabled', cxx_writer.writer_code.boolType))
-rett_imm_Instr.addVariable(cxx_writer.writer_code.Variable('invalidWin', cxx_writer.writer_code.boolType))
-rett_imm_Instr.addVariable(cxx_writer.writer_code.Variable('notAligned', cxx_writer.writer_code.boolType))
-rett_imm_Instr.addVariable(cxx_writer.writer_code.Variable('supervisor', cxx_writer.writer_code.boolType))
+rett_imm_Instr.addVariable(cxx_writer.Variable('exceptionEnabled', cxx_writer.boolType))
+rett_imm_Instr.addVariable(cxx_writer.Variable('invalidWin', cxx_writer.boolType))
+rett_imm_Instr.addVariable(cxx_writer.Variable('notAligned', cxx_writer.boolType))
+rett_imm_Instr.addVariable(cxx_writer.Variable('supervisor', cxx_writer.boolType))
 rett_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 rett_imm_Instr.addSpecialRegister('PSR', 'inout')
 isa.addInstruction(rett_imm_Instr)
@@ -2914,17 +2914,17 @@ rett_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 rett_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 rett_reg_Instr.addVariable(('targetAddr', 'BIT<32>'))
 rett_reg_Instr.addVariable(('newCwp', 'BIT<32>'))
-rett_reg_Instr.addVariable(cxx_writer.writer_code.Variable('exceptionEnabled', cxx_writer.writer_code.boolType))
-rett_reg_Instr.addVariable(cxx_writer.writer_code.Variable('invalidWin', cxx_writer.writer_code.boolType))
-rett_reg_Instr.addVariable(cxx_writer.writer_code.Variable('notAligned', cxx_writer.writer_code.boolType))
-rett_reg_Instr.addVariable(cxx_writer.writer_code.Variable('supervisor', cxx_writer.writer_code.boolType))
+rett_reg_Instr.addVariable(cxx_writer.Variable('exceptionEnabled', cxx_writer.boolType))
+rett_reg_Instr.addVariable(cxx_writer.Variable('invalidWin', cxx_writer.boolType))
+rett_reg_Instr.addVariable(cxx_writer.Variable('notAligned', cxx_writer.boolType))
+rett_reg_Instr.addVariable(cxx_writer.Variable('supervisor', cxx_writer.boolType))
 rett_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 rett_reg_Instr.addSpecialRegister('PSR', 'inout')
 isa.addInstruction(rett_reg_Instr)
 
 # Trap on Integer Condition Code; note this instruction also receives the forwarding
 # of the PSR, the same as the branch instruction
-opCode = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCode = cxx_writer.Code(ReadNPCDecode + """
 #ifndef ACC_MODEL
 bool icc_z = PSR[key_ICC_z];
 bool icc_n = PSR[key_ICC_n];
@@ -2963,7 +2963,7 @@ raiseException = (cond == 0x8) ||
             ((cond == 0xf) && !icc_v) ||
             ((cond == 0x7) && icc_v);
 """)
-opCodeTrapImm = cxx_writer.writer_code.Code("""
+opCodeTrapImm = cxx_writer.Code("""
 if(raiseException){
     stall(3);
     RaiseException(pcounter, npcounter, TRAP_INSTRUCTION, (rs1 + SignExtend(imm7, 7)) & 0x0000007F);
@@ -2975,7 +2975,7 @@ else{
 }
 #endif
 """)
-opCodeTrapReg = cxx_writer.writer_code.Code("""
+opCodeTrapReg = cxx_writer.Code("""
 if(raiseException){
     stall(3);
     RaiseException(pcounter, npcounter, TRAP_INSTRUCTION, (rs1 + rs2) & 0x0000007F);
@@ -3001,7 +3001,7 @@ trap_imm_Instr.setCode(opCodeReadPC, 'fetch')
 trap_imm_Instr.addVariable(('pcounter', 'BIT<32>'))
 trap_imm_Instr.addVariable(('npcounter', 'BIT<32>'))
 trap_imm_Instr.addSpecialRegister('PSR', 'in', 'execute')
-trap_imm_Instr.addVariable(cxx_writer.writer_code.Variable('raiseException', cxx_writer.writer_code.boolType))
+trap_imm_Instr.addVariable(cxx_writer.Variable('raiseException', cxx_writer.boolType))
 isa.addInstruction(trap_imm_Instr)
 trap_reg_Instr = trap.Instruction('TRAP_reg', True, frequency = 1)
 trap_reg_Instr.setMachineCode(ticc_format1, {'op3': [1, 1, 1, 0, 1, 0]},
@@ -3017,14 +3017,14 @@ trap_reg_Instr.setCode(opCodeReadPC, 'fetch')
 trap_reg_Instr.addVariable(('pcounter', 'BIT<32>'))
 trap_reg_Instr.addVariable(('npcounter', 'BIT<32>'))
 trap_reg_Instr.addSpecialRegister('PSR', 'in', 'execute')
-trap_reg_Instr.addVariable(cxx_writer.writer_code.Variable('raiseException', cxx_writer.writer_code.boolType))
+trap_reg_Instr.addVariable(cxx_writer.Variable('raiseException', cxx_writer.boolType))
 isa.addInstruction(trap_reg_Instr)
 
 # Read State Register
-opCodeRegs = cxx_writer.writer_code.Code("""
+opCodeRegs = cxx_writer.Code("""
 y_temp = Y;
 """)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 rd = y_temp;
 """)
 readY_Instr = trap.Instruction('READy', True, frequency = 1)
@@ -3036,10 +3036,10 @@ readY_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 readY_Instr.addVariable(('y_temp', 'BIT<32>'))
 readY_Instr.addSpecialRegister('Y', 'in')
 isa.addInstruction(readY_Instr)
-opCodeRegs = cxx_writer.writer_code.Code("""
+opCodeRegs = cxx_writer.Code("""
 asr_temp = ASR[asr];
 """)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 rd = asr_temp;
 """)
 readASR_Instr = trap.Instruction('READasr', True, frequency = 1)
@@ -3049,7 +3049,7 @@ readASR_Instr.setCode(opCodeWb, 'wb')
 readASR_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 readASR_Instr.addVariable(('asr_temp', 'BIT<32>'))
 isa.addInstruction(readASR_Instr)
-opCodeRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegs = cxx_writer.Code(ReadNPCDecode + """
 #ifdef ACC_MODEL
 psr_temp = PSR_execute;
 #else
@@ -3057,7 +3057,7 @@ psr_temp = PSR;
 #endif
 supervisor = (psr_temp & 0x00000080) != 0;
 """)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -3073,14 +3073,14 @@ readPsr_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 readPsr_Instr.setCode(opCodeReadPC, 'fetch')
 readPsr_Instr.addVariable(('pcounter', 'BIT<32>'))
 readPsr_Instr.addVariable(('npcounter', 'BIT<32>'))
-readPsr_Instr.addVariable(cxx_writer.writer_code.Variable('supervisor', cxx_writer.writer_code.boolType))
+readPsr_Instr.addVariable(cxx_writer.Variable('supervisor', cxx_writer.boolType))
 readPsr_Instr.addVariable(('psr_temp', 'BIT<32>'))
 isa.addInstruction(readPsr_Instr)
-opCodeRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegs = cxx_writer.Code(ReadNPCDecode + """
 wim_temp = WIM;
 supervisor = PSR[key_S];
 """)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -3096,14 +3096,14 @@ readWim_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 readWim_Instr.setCode(opCodeReadPC, 'fetch')
 readWim_Instr.addVariable(('pcounter', 'BIT<32>'))
 readWim_Instr.addVariable(('npcounter', 'BIT<32>'))
-readWim_Instr.addVariable(cxx_writer.writer_code.Variable('supervisor', cxx_writer.writer_code.boolType))
+readWim_Instr.addVariable(cxx_writer.Variable('supervisor', cxx_writer.boolType))
 readWim_Instr.addVariable(('wim_temp', 'BIT<32>'))
 isa.addInstruction(readWim_Instr)
-opCodeRegs = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeRegs = cxx_writer.Code(ReadNPCDecode + """
 tbr_temp = TBR;
 supervisor = PSR[key_S];
 """)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 if(!supervisor){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -3119,18 +3119,18 @@ readTbr_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 readTbr_Instr.setCode(opCodeReadPC, 'fetch')
 readTbr_Instr.addVariable(('pcounter', 'BIT<32>'))
 readTbr_Instr.addVariable(('npcounter', 'BIT<32>'))
-readTbr_Instr.addVariable(cxx_writer.writer_code.Variable('supervisor', cxx_writer.writer_code.boolType))
+readTbr_Instr.addVariable(cxx_writer.Variable('supervisor', cxx_writer.boolType))
 readTbr_Instr.addVariable(('tbr_temp', 'BIT<32>'))
 isa.addInstruction(readTbr_Instr)
 
 # Write State Register
-opCodeXorR = cxx_writer.writer_code.Code("""
+opCodeXorR = cxx_writer.Code("""
 result = rs1 ^ rs2;
 """)
-opCodeXorI = cxx_writer.writer_code.Code("""
+opCodeXorI = cxx_writer.Code("""
 result = rs1 ^ SignExtend(simm13, 13);
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 Y = result;
 """)
 writeY_reg_Instr = trap.Instruction('WRITEY_reg', True, frequency = 1)
@@ -3149,7 +3149,7 @@ writeY_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 writeY_imm_Instr.addSpecialRegister('Y', 'out', 'execute')
 writeY_imm_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writeY_imm_Instr)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 ASR[rd] = result;
 """)
 writeASR_reg_Instr = trap.Instruction('WRITEasr_reg', True, frequency = 1)
@@ -3169,21 +3169,21 @@ writeASR_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 writeASR_imm_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writeASR_imm_Instr)
 
-opCodeXorR = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeXorR = cxx_writer.Code(ReadNPCDecode + """
 // Note how we filter writes to EF and EC fields since we do not
 // have neither a co-processor nor the FPU
 result = ((rs1 ^ rs2) & 0x00FFCFFF) | 0xF2000000;
 supervisorException = (PSR[key_S] == 0);
 illegalCWP = (result & 0x0000001f) >= NUM_REG_WIN;
 """)
-opCodeXorI = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeXorI = cxx_writer.Code(ReadNPCDecode + """
 // Note how we filter writes to EF and EC fields since we do not
 // have neither a co-processor nor the FPU
 result = ((rs1 ^ SignExtend(simm13, 13)) & 0x00FFCFFF) | 0xF2000000;
 supervisorException = (PSR[key_S] == 0);
 illegalCWP = (result & 0x0000001f) >= NUM_REG_WIN;
 """)
-opCodeExec = cxx_writer.writer_code.Code("""
+opCodeExec = cxx_writer.Code("""
 if(!(supervisorException || illegalCWP)){
     unsigned int newCwp = (unsigned int)result & 0x0000001f;
     PSR = result;
@@ -3192,7 +3192,7 @@ updateAliasCode_decode()
 + """
 }
 """)
-opCodeTrap = cxx_writer.writer_code.Code("""
+opCodeTrap = cxx_writer.Code("""
 if(supervisorException){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -3210,8 +3210,8 @@ writePsr_reg_Instr.setCode(opCodeReadPC, 'fetch')
 writePsr_reg_Instr.addVariable(('pcounter', 'BIT<32>'))
 writePsr_reg_Instr.addVariable(('npcounter', 'BIT<32>'))
 writePsr_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
-writePsr_reg_Instr.addVariable(cxx_writer.writer_code.Variable('supervisorException', cxx_writer.writer_code.boolType))
-writePsr_reg_Instr.addVariable(cxx_writer.writer_code.Variable('illegalCWP', cxx_writer.writer_code.boolType))
+writePsr_reg_Instr.addVariable(cxx_writer.Variable('supervisorException', cxx_writer.boolType))
+writePsr_reg_Instr.addVariable(cxx_writer.Variable('illegalCWP', cxx_writer.boolType))
 writePsr_reg_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writePsr_reg_Instr)
 writePsr_imm_Instr = trap.Instruction('WRITEpsr_imm', True, frequency = 2)
@@ -3224,19 +3224,19 @@ writePsr_imm_Instr.setCode(opCodeReadPC, 'fetch')
 writePsr_imm_Instr.addVariable(('pcounter', 'BIT<32>'))
 writePsr_imm_Instr.addVariable(('npcounter', 'BIT<32>'))
 writePsr_imm_Instr.addSpecialRegister('PSR', 'out', 'execute')
-writePsr_imm_Instr.addVariable(cxx_writer.writer_code.Variable('supervisorException', cxx_writer.writer_code.boolType))
-writePsr_imm_Instr.addVariable(cxx_writer.writer_code.Variable('illegalCWP', cxx_writer.writer_code.boolType))
+writePsr_imm_Instr.addVariable(cxx_writer.Variable('supervisorException', cxx_writer.boolType))
+writePsr_imm_Instr.addVariable(cxx_writer.Variable('illegalCWP', cxx_writer.boolType))
 writePsr_imm_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writePsr_imm_Instr)
-opCodeXorR = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeXorR = cxx_writer.Code(ReadNPCDecode + """
 result = rs1 ^ rs2;
 raiseException = (PSR[key_S] == 0);
 """)
-opCodeXorI = cxx_writer.writer_code.Code(ReadNPCDecode + """
+opCodeXorI = cxx_writer.Code(ReadNPCDecode + """
 result = rs1 ^ SignExtend(simm13, 13);
 raiseException = (PSR[key_S] == 0);
 """)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 if(raiseException){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -3252,7 +3252,7 @@ writeWim_reg_Instr.setCode(opCodeReadPC, 'fetch')
 writeWim_reg_Instr.addVariable(('pcounter', 'BIT<32>'))
 writeWim_reg_Instr.addVariable(('npcounter', 'BIT<32>'))
 writeWim_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
-writeWim_reg_Instr.addVariable(cxx_writer.writer_code.Variable('raiseException', cxx_writer.writer_code.boolType))
+writeWim_reg_Instr.addVariable(cxx_writer.Variable('raiseException', cxx_writer.boolType))
 writeWim_reg_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writeWim_reg_Instr)
 writeWim_imm_Instr = trap.Instruction('WRITEwim_imm', True, frequency = 1)
@@ -3263,10 +3263,10 @@ writeWim_imm_Instr.setCode(opCodeReadPC, 'fetch')
 writeWim_imm_Instr.addVariable(('pcounter', 'BIT<32>'))
 writeWim_imm_Instr.addVariable(('npcounter', 'BIT<32>'))
 writeWim_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
-writeWim_imm_Instr.addVariable(cxx_writer.writer_code.Variable('raiseException', cxx_writer.writer_code.boolType))
+writeWim_imm_Instr.addVariable(cxx_writer.Variable('raiseException', cxx_writer.boolType))
 writeWim_imm_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writeWim_imm_Instr)
-opCodeWb = cxx_writer.writer_code.Code("""
+opCodeWb = cxx_writer.Code("""
 if(raiseException){
     RaiseException(pcounter, npcounter, PRIVILEDGE_INSTR);
 }
@@ -3282,7 +3282,7 @@ writeTbr_reg_Instr.setCode(opCodeReadPC, 'fetch')
 writeTbr_reg_Instr.addVariable(('pcounter', 'BIT<32>'))
 writeTbr_reg_Instr.addVariable(('npcounter', 'BIT<32>'))
 writeTbr_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
-writeTbr_reg_Instr.addVariable(cxx_writer.writer_code.Variable('raiseException', cxx_writer.writer_code.boolType))
+writeTbr_reg_Instr.addVariable(cxx_writer.Variable('raiseException', cxx_writer.boolType))
 writeTbr_reg_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writeTbr_reg_Instr)
 writeTbr_imm_Instr = trap.Instruction('WRITEtbr_imm', True, frequency = 1)
@@ -3293,12 +3293,12 @@ writeTbr_imm_Instr.addVariable(('pcounter', 'BIT<32>'))
 writeTbr_imm_Instr.addVariable(('npcounter', 'BIT<32>'))
 writeTbr_imm_Instr.setCode(opCodeWb, 'wb')
 writeTbr_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
-writeTbr_imm_Instr.addVariable(cxx_writer.writer_code.Variable('raiseException', cxx_writer.writer_code.boolType))
+writeTbr_imm_Instr.addVariable(cxx_writer.Variable('raiseException', cxx_writer.boolType))
 writeTbr_imm_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writeTbr_imm_Instr)
 
 ## Store Barrier
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 """)
 stbar_Instr = trap.Instruction('STBAR', True, frequency = 1)
 stbar_Instr.setMachineCode(stbar_format, {}, ('stbar'), subInstr = True)
@@ -3307,7 +3307,7 @@ stbar_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 isa.addInstruction(stbar_Instr)
 
 # Unimplemented Instruction
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 RaiseException(pcounter, npcounter, ILLEGAL_INSTR);
 """)
 unimpl_Instr = trap.Instruction('UNIMP', True, frequency = 1)
@@ -3322,7 +3322,7 @@ unimpl_Instr.removeLockRegRegister('rd')
 isa.addInstruction(unimpl_Instr)
 
 # Flush Memory
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 """)
 flush_reg_Instr = trap.Instruction('FLUSH_reg', True, frequency = 1)
 flush_reg_Instr.setMachineCode(dpi_format1, {'op3': [1, 1, 1, 0, 1, 1], 'asi' : [0, 0, 0, 0, 0, 0, 0, 0]}, ('flush r', '%rs1', '+r', '%rs2'))

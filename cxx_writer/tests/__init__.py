@@ -34,3 +34,17 @@
 #
 ####################################################################################
 
+__all__ = ['testWriter', 'testFileDumper', 'testSimpleDecls', 'testClassDecls']
+
+try:
+    from testWriter import *
+    from testFileDumper import *
+    from testSimpleDecls import *
+    from testClassDecls import *
+except ImportError:
+    import sys
+    sys.path.append(__path__[0])
+    from testWriter import *
+    from testFileDumper import *
+    from testSimpleDecls import *
+    from testClassDecls import *

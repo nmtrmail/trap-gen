@@ -84,9 +84,9 @@ else{
     return true;
 }
 """
-opCode = cxx_writer.writer_code.Code(checkIncrementWin_code)
+opCode = cxx_writer.Code(checkIncrementWin_code)
 checkIncrementWin_method = trap.HelperMethod('checkIncrementWin', opCode, 'decode', exception = False, const = True)
-checkIncrementWin_method.setSignature(cxx_writer.writer_code.boolType)
+checkIncrementWin_method.setSignature(cxx_writer.boolType)
 checkDecrementWin_code = """
 unsigned int newCwp = ((unsigned int)(PSR[key_CWP] - 1)) % NUM_REG_WIN;
 if(((0x01 << (newCwp)) & WIM) != 0){
@@ -96,9 +96,9 @@ else{
     return true;
 }
 """
-opCode = cxx_writer.writer_code.Code(checkDecrementWin_code)
+opCode = cxx_writer.Code(checkDecrementWin_code)
 checkDecrementWin_method = trap.HelperMethod('checkDecrementWin', opCode, 'decode', exception = False, const = True)
-checkDecrementWin_method.setSignature(cxx_writer.writer_code.boolType)
+checkDecrementWin_method.setSignature(cxx_writer.boolType)
 
 # Method used to move to the next register window; this simply consists in
 # the check that there is an empty valid window and in the update of
@@ -112,9 +112,9 @@ PSR = (PSR & 0xFFFFFFE0) | newCwp;
 """
 IncrementRegWindow_code += updateAliasCode_decode()
 IncrementRegWindow_code += 'return true;'
-opCode = cxx_writer.writer_code.Code(IncrementRegWindow_code)
+opCode = cxx_writer.Code(IncrementRegWindow_code)
 IncrementRegWindow_method = trap.HelperMethod('IncrementRegWindow', opCode, 'decode', exception = False)
-IncrementRegWindow_method.setSignature(cxx_writer.writer_code.boolType)
+IncrementRegWindow_method.setSignature(cxx_writer.boolType)
 IncrementRegWindow_method.addVariable(('newCwp', 'BIT<32>'))
 # Method used to move to the previous register window; this simply consists in
 # the check that there is an empty valid window and in the update of
@@ -128,19 +128,19 @@ PSR = (PSR & 0xFFFFFFE0) | newCwp;
 """
 DecrementRegWindow_code += updateAliasCode_decode()
 DecrementRegWindow_code += 'return true;'
-opCode = cxx_writer.writer_code.Code(DecrementRegWindow_code)
+opCode = cxx_writer.Code(DecrementRegWindow_code)
 DecrementRegWindow_method = trap.HelperMethod('DecrementRegWindow', opCode, 'decode', exception = False)
-DecrementRegWindow_method.setSignature(cxx_writer.writer_code.boolType)
+DecrementRegWindow_method.setSignature(cxx_writer.boolType)
 DecrementRegWindow_method.addVariable(('newCwp', 'BIT<32>'))
 
 # Sign extends the input bitstring
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if((bitSeq & (1 << (bitSeq_length - 1))) != 0)
     bitSeq |= (((unsigned int)0xFFFFFFFF) << bitSeq_length);
 return bitSeq;
 """)
 SignExtend_method = trap.HelperMethod('SignExtend', opCode, 'execute', exception = False, const = True)
-SignExtend_method.setSignature(cxx_writer.writer_code.intType, [('bitSeq', 'BIT<32>'), cxx_writer.writer_code.Parameter('bitSeq_length', cxx_writer.writer_code.uintType)])
+SignExtend_method.setSignature(cxx_writer.intType, [('bitSeq', 'BIT<32>'), cxx_writer.Parameter('bitSeq_length', cxx_writer.uintType)])
 
 # Normal PC increment, used when not in a branch instruction; in a branch instruction
 # I will directly modify both PC and nPC in case we are in a the cycle accurate model,
@@ -308,17 +308,17 @@ raiseExcCode +=  """
     annull();
 }
 """
-RaiseException_method = trap.HelperMethod('RaiseException', cxx_writer.writer_code.Code(raiseExcCode), 'wb')
+RaiseException_method = trap.HelperMethod('RaiseException', cxx_writer.Code(raiseExcCode), 'wb')
 RaiseException_methodParams = []
-RaiseException_methodParams.append(cxx_writer.writer_code.Parameter('pcounter', cxx_writer.writer_code.uintType))
-RaiseException_methodParams.append(cxx_writer.writer_code.Parameter('npcounter', cxx_writer.writer_code.uintType))
-RaiseException_methodParams.append(cxx_writer.writer_code.Parameter('exceptionId', cxx_writer.writer_code.uintType))
-RaiseException_methodParams.append(cxx_writer.writer_code.Parameter('customTrapOffset', cxx_writer.writer_code.uintType, initValue = '0'))
-RaiseException_method.setSignature(cxx_writer.writer_code.voidType, RaiseException_methodParams)
+RaiseException_methodParams.append(cxx_writer.Parameter('pcounter', cxx_writer.uintType))
+RaiseException_methodParams.append(cxx_writer.Parameter('npcounter', cxx_writer.uintType))
+RaiseException_methodParams.append(cxx_writer.Parameter('exceptionId', cxx_writer.uintType))
+RaiseException_methodParams.append(cxx_writer.Parameter('customTrapOffset', cxx_writer.uintType, initValue = '0'))
+RaiseException_method.setSignature(cxx_writer.voidType, RaiseException_methodParams)
 
 # Code used increment the program counter, moving it to the next instruction in
 # the instruction stream
-opCode = cxx_writer.writer_code.Code("""unsigned int npc = NPC;
+opCode = cxx_writer.Code("""unsigned int npc = NPC;
 PC = npc;
 npc += 4;
 NPC = npc;
@@ -327,7 +327,7 @@ IncrementPC = trap.HelperOperation('IncrementPC', opCode, exception = False)
 
 # Write back of the result of most operations, expecially ALUs;
 # such operations do not modify the PSR
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = result;
 """)
 WB_plain = trap.HelperOperation('WB_plain', opCode, exception = False)
@@ -336,7 +336,7 @@ WB_plain.addUserInstructionElement('rd')
 
 # Write back of the result of most operations, expecially ALUs;
 # such operations also modify the PSR
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if(!temp_V){
     rd = result;
 }
@@ -348,7 +348,7 @@ WB_tv.addUserInstructionElement('rd')
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after an logical operation or after the multiply operation
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
 PSR[key_ICC_z] = (result == 0);
 PSR[key_ICC_v] = 0;
@@ -359,7 +359,7 @@ ICC_writeLogic.addInstructionVar(('result', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after an addition operation
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
 PSR[key_ICC_z] = (result == 0);
 PSR[key_ICC_v] = ((unsigned int)((rs1_op & rs2_op & (~result)) | ((~rs1_op) & (~rs2_op) & result))) >> 31;
@@ -372,7 +372,7 @@ ICC_writeAdd.addInstructionVar(('rs2_op', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a tagged addition operation
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
 PSR[key_ICC_z] = (result == 0);
 PSR[key_ICC_v] = temp_V;
@@ -386,7 +386,7 @@ ICC_writeTAdd.addInstructionVar(('rs2_op', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a division operation
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if(!exception){
     PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
     PSR[key_ICC_z] = (result == 0);
@@ -401,7 +401,7 @@ ICC_writeDiv.addInstructionVar(('temp_V', 'BIT<1>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a tagged addition operation
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if(!temp_V){
     PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
     PSR[key_ICC_z] = (result == 0);
@@ -417,7 +417,7 @@ ICC_writeTVAdd.addInstructionVar(('rs2_op', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a subtraction operation
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
 PSR[key_ICC_z] = (result == 0);
 PSR[key_ICC_v] = ((unsigned int)((rs1_op & (~rs2_op) & (~result)) | ((~rs1_op) & rs2_op & result))) >> 31;
@@ -430,7 +430,7 @@ ICC_writeSub.addInstructionVar(('rs2_op', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a tagged subtraction operation
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
 PSR[key_ICC_z] = (result == 0);
 PSR[key_ICC_v] = temp_V;
@@ -444,7 +444,7 @@ ICC_writeTSub.addInstructionVar(('rs2_op', 'BIT<32>'))
 
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a tagged subtraction operation
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if(!temp_V){
     PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
     PSR[key_ICC_z] = (result == 0);

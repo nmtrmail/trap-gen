@@ -35,8 +35,9 @@
 ####################################################################################
 
 
-import unittest
 import decoder
+
+import unittest
 import os
 
 class dummyInstruction:

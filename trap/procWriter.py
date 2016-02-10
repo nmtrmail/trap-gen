@@ -364,8 +364,8 @@ def createPipeStage(self, processorElements, initElements):
     """Creates the pipeleine stages and the code necessary to initialize them"""
     regsNames = [i.name for i in self.regBanks + self.regs]
     for pipeStage in reversed(self.pipes):
-        pipelineType = cxx_writer.writer_code.Type(pipeStage.name.upper() + '_PipeStage', '#include \"pipeline.hpp\"')
-        curStageAttr = cxx_writer.writer_code.Attribute(pipeStage.name + '_stage', pipelineType, 'pu')
+        pipelineType = cxx_writer.Type(pipeStage.name.upper() + '_PipeStage', '#include \"pipeline.hpp\"')
+        curStageAttr = cxx_writer.Attribute(pipeStage.name + '_stage', pipelineType, 'pu')
         processorElements.append(curStageAttr)
         curPipeInit = ['\"' + pipeStage.name + '\"']
         curPipeInit.append('latency')
@@ -413,8 +413,8 @@ def createPipeStage(self, processorElements, initElements):
         if pipeStage == self.pipes[0]:
             curPipeInit = ['profTimeEnd', 'profTimeStart', 'toolManager'] + curPipeInit
         initElements.append('\n' + pipeStage.name + '_stage(' + ', '.join(curPipeInit)  + ')')
-    NOPIntructionType = cxx_writer.writer_code.Type('NOPInstruction', '#include \"instructions.hpp\"')
-    NOPinstructionsAttribute = cxx_writer.writer_code.Attribute('NOPInstrInstance', NOPIntructionType.makePointer(), 'pu', True)
+    NOPIntructionType = cxx_writer.Type('NOPInstruction', '#include \"instructions.hpp\"')
+    NOPinstructionsAttribute = cxx_writer.Attribute('NOPInstrInstance', NOPIntructionType.makePointer(), 'pu', True)
     processorElements.append(NOPinstructionsAttribute)
 
 def procInitCode(self, model):
@@ -552,7 +552,7 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
     bodyDestructor = ''
     abiIfInit = ''
 
-    pipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister', '#include \"registers.hpp\"')
+    pipeRegisterType = cxx_writer.Type('PipelineRegister', '#include \"registers.hpp\"')
 
     regsNames = [i.name for i in self.regBanks + self.regs]
     checkToolPipeStage = self.pipes[-1]
@@ -563,23 +563,23 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
     from processor import extractRegInterval
     bodyInits += '// Initialization of the standard registers\n'
     for reg in self.regs:
-        attribute = cxx_writer.writer_code.Attribute(reg.name, resourceType[reg.name], 'pu')
+        attribute = cxx_writer.Attribute(reg.name, resourceType[reg.name], 'pu')
         processorElements.append(attribute)
         if model.startswith('acc'):
             bodyInits += 'this->' + reg.name + '_pipe.setRegister(&' + reg.name + ');\n'
             pipeCount = 0
             for pipeStage in self.pipes:
-                attribute = cxx_writer.writer_code.Attribute(reg.name + '_' + pipeStage.name, resourceType[reg.name], 'pu')
+                attribute = cxx_writer.Attribute(reg.name + '_' + pipeStage.name, resourceType[reg.name], 'pu')
                 processorElements.append(attribute)
                 bodyInits += 'this->' + reg.name + '_pipe.setRegister(&' + reg.name + '_' + pipeStage.name + ', ' + str(pipeCount) + ');\n'
                 pipeCount += 1
             if reg.wbStageOrder:
                 # The atribute is of a special type since write back has to be performed in
                 # a special order
-                customPipeRegisterType = cxx_writer.writer_code.Type('PipelineRegister_' + str(reg.wbStageOrder)[1:-1].replace(', ', '_').replace('\'', ''), '#include \"registers.hpp\"')
-                attribute = cxx_writer.writer_code.Attribute(reg.name + '_pipe', customPipeRegisterType, 'pu')
+                customPipeRegisterType = cxx_writer.Type('PipelineRegister_' + str(reg.wbStageOrder)[1:-1].replace(', ', '_').replace('\'', ''), '#include \"registers.hpp\"')
+                attribute = cxx_writer.Attribute(reg.name + '_pipe', customPipeRegisterType, 'pu')
             else:
-                attribute = cxx_writer.writer_code.Attribute(reg.name + '_pipe', pipeRegisterType, 'pu')
+                attribute = cxx_writer.Attribute(reg.name + '_pipe', pipeRegisterType, 'pu')
             processorElements.append(attribute)
         if self.abi:
             abiIfInit += 'this->' + reg.name
@@ -589,13 +589,13 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
     bodyInits += '// Initialization of the register banks\n'
     for regB in self.regBanks:
         if (regB.constValue and len(regB.constValue) < regB.numRegs)  or ((regB.delay and len(regB.delay) < regB.numRegs) and not model.startswith('acc')):
-            attribute = cxx_writer.writer_code.Attribute(regB.name, resourceType[regB.name], 'pu')
+            attribute = cxx_writer.Attribute(regB.name, resourceType[regB.name], 'pu')
             processorElements.append(attribute)
             if model.startswith('acc'):
                 for pipeStage in self.pipes:
-                    attribute = cxx_writer.writer_code.Attribute(regB.name + '_' + pipeStage.name, resourceType[regB.name], 'pu')
+                    attribute = cxx_writer.Attribute(regB.name + '_' + pipeStage.name, resourceType[regB.name], 'pu')
                     processorElements.append(attribute)
-                attribute = cxx_writer.writer_code.Attribute(regB.name + '_pipe[' + str(regB.numRegs) + ']',  pipeRegisterType, 'pu')
+                attribute = cxx_writer.Attribute(regB.name + '_pipe[' + str(regB.numRegs) + ']',  pipeRegisterType, 'pu')
                 processorElements.append(attribute)
             # There are constant registers, so I have to declare the special register bank
             bodyInits += 'this->' + regB.name + '.setSize(' + str(regB.numRegs) + ');\n'
@@ -613,13 +613,13 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
                         else:
                             bodyInits += 'this->' + regB.name + '_' + pipeStage.name + '.setNewRegister(' + str(i) + ', new ' + str(resourceType[regB.name + '_baseType']) + '());\n'
         else:
-            attribute = cxx_writer.writer_code.Attribute(regB.name + '[' + str(regB.numRegs) + ']', resourceType[regB.name].makeNormal(), 'pu')
+            attribute = cxx_writer.Attribute(regB.name + '[' + str(regB.numRegs) + ']', resourceType[regB.name].makeNormal(), 'pu')
             processorElements.append(attribute)
             if model.startswith('acc'):
                 for pipeStage in self.pipes:
-                    attribute = cxx_writer.writer_code.Attribute(regB.name + '_' + pipeStage.name + '[' + str(regB.numRegs) + ']', resourceType[regB.name].makeNormal(), 'pu')
+                    attribute = cxx_writer.Attribute(regB.name + '_' + pipeStage.name + '[' + str(regB.numRegs) + ']', resourceType[regB.name].makeNormal(), 'pu')
                     processorElements.append(attribute)
-                attribute = cxx_writer.writer_code.Attribute(regB.name + '_pipe[' + str(regB.numRegs) + ']',  pipeRegisterType, 'pu')
+                attribute = cxx_writer.Attribute(regB.name + '_pipe[' + str(regB.numRegs) + ']',  pipeRegisterType, 'pu')
                 processorElements.append(attribute)
         if model.startswith('acc'):
             # Now I need to set the pipeline registers
@@ -640,12 +640,12 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
         if model.startswith('acc'):
             curPipeNum = 0
             for pipeStage in self.pipes:
-                attribute = cxx_writer.writer_code.Attribute(alias.name + '_' + pipeStage.name, resourceType[alias.name], 'pu')
+                attribute = cxx_writer.Attribute(alias.name + '_' + pipeStage.name, resourceType[alias.name], 'pu')
                 processorElements.append(attribute)
                 bodyInits += alias.name + '_' + pipeStage.name + '.setPipeId(' + str(curPipeNum) + ');\n'
                 curPipeNum += 1
         else:
-            attribute = cxx_writer.writer_code.Attribute(alias.name, resourceType[alias.name], 'pu')
+            attribute = cxx_writer.Attribute(alias.name, resourceType[alias.name], 'pu')
             processorElements.append(attribute)
         # first of all I have to make sure that the alias does not refer to a delayed or constant
         # register bank, otherwise I have to initialize it in the constructor body and not
@@ -720,13 +720,13 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
             bodyAliasInit[aliasB.name] += 'for (int i = 0; i < ' + str(aliasB.numRegs) + '; i++) {\n'
             curStageId = 0
             for pipeStage in self.pipes:
-                attribute = cxx_writer.writer_code.Attribute(aliasB.name + '_' + pipeStage.name + '[' + str(aliasB.numRegs) + ']', resourceType[aliasB.name], 'pu')
+                attribute = cxx_writer.Attribute(aliasB.name + '_' + pipeStage.name + '[' + str(aliasB.numRegs) + ']', resourceType[aliasB.name], 'pu')
                 processorElements.append(attribute)
                 bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].setPipeId(' + str(curStageId) + ');\n'
                 curStageId += 1
             bodyAliasInit[aliasB.name] += '}\n'
         else:
-            attribute = cxx_writer.writer_code.Attribute(aliasB.name + '[' + str(aliasB.numRegs) + ']', resourceType[aliasB.name], 'pu')
+            attribute = cxx_writer.Attribute(aliasB.name + '[' + str(aliasB.numRegs) + ']', resourceType[aliasB.name], 'pu')
             processorElements.append(attribute)
         # Lets now deal with the initialization of the single elements of the regBank
         if isinstance(aliasB.initAlias, type('')):
@@ -911,12 +911,12 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     fetchWordType = self.bitSizes[1]
     includes = fetchWordType.getIncludes()
     if self.abi:
-        interfaceType = cxx_writer.writer_code.Type(self.name + '_ABIIf', '#include \"interface.hpp\"')
-    ToolsManagerType = cxx_writer.writer_code.TemplateType('ToolsManager', [fetchWordType], 'ToolsIf.hpp')
-    IntructionType = cxx_writer.writer_code.Type('Instruction', '#include \"instructions.hpp\"')
-    CacheElemType = cxx_writer.writer_code.Type('CacheElem')
+        interfaceType = cxx_writer.Type(self.name + '_ABIIf', '#include \"interface.hpp\"')
+    ToolsManagerType = cxx_writer.TemplateType('ToolsManager', [fetchWordType], 'ToolsIf.hpp')
+    IntructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
+    CacheElemType = cxx_writer.Type('CacheElem')
     IntructionTypePtr = IntructionType.makePointer()
-    emptyBody = cxx_writer.writer_code.Code('')
+    emptyBody = cxx_writer.Code('')
     processorElements = []
     codeString = ''
 
@@ -1026,10 +1026,10 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
             for regNum in reg.delay.keys():
                 codeString += reg.name + '[' + str(regNum) + '].clockCycle();\n'
         codeString += '}'
-        mainLoopCode = cxx_writer.writer_code.Code(codeString)
+        mainLoopCode = cxx_writer.Code(codeString)
         mainLoopCode.addInclude(includes)
         mainLoopCode.addInclude('utils/customExceptions.hpp')
-        mainLoopMethod = cxx_writer.writer_code.Method('mainLoop', mainLoopCode, cxx_writer.writer_code.voidType, 'pu')
+        mainLoopMethod = cxx_writer.Method('mainLoop', mainLoopCode, cxx_writer.voidType, 'pu')
         processorElements.append(mainLoopMethod)
     ################################################
     # End declaration of the main processor loop
@@ -1041,30 +1041,30 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # Start declaration of begin, end, and reset operations (to be performed
     # at begin or end of simulation or to reset it)
     ##########################################################################
-    resetCalledAttribute = cxx_writer.writer_code.Attribute('resetCalled', cxx_writer.writer_code.boolType, 'pri')
+    resetCalledAttribute = cxx_writer.Attribute('resetCalled', cxx_writer.boolType, 'pri')
     processorElements.append(resetCalledAttribute)
     if self.beginOp:
-        beginOpMethod = cxx_writer.writer_code.Method('beginOp', cxx_writer.writer_code.Code(self.beginOp), cxx_writer.writer_code.voidType, 'pri')
+        beginOpMethod = cxx_writer.Method('beginOp', cxx_writer.Code(self.beginOp), cxx_writer.voidType, 'pri')
         processorElements.append(beginOpMethod)
     if self.endOp:
-        endOpMethod = cxx_writer.writer_code.Method('endOp', cxx_writer.writer_code.Code(self.endOp), cxx_writer.writer_code.voidType, 'pri')
+        endOpMethod = cxx_writer.Method('endOp', cxx_writer.Code(self.endOp), cxx_writer.voidType, 'pri')
         processorElements.append(endOpMethod)
     if not self.resetOp:
-        resetOpTemp = cxx_writer.writer_code.Code('')
+        resetOpTemp = cxx_writer.Code('')
     else:
         import copy
-        resetOpTemp = cxx_writer.writer_code.Code(copy.deepcopy(self.resetOp))
+        resetOpTemp = cxx_writer.Code(copy.deepcopy(self.resetOp))
     initString = procInitCode(self, model)
     resetOpTemp.prependCode(initString + '\n')
     if self.beginOp:
         resetOpTemp.appendCode('// user-defined initialization\nthis->beginOp();\n')
     resetOpTemp.appendCode('this->resetCalled = true;')
-    resetOpMethod = cxx_writer.writer_code.Method('resetOp', resetOpTemp, cxx_writer.writer_code.voidType, 'pu')
+    resetOpMethod = cxx_writer.Method('resetOp', resetOpTemp, cxx_writer.voidType, 'pu')
     processorElements.append(resetOpMethod)
 
     # Now I declare the end of elaboration method, called by systemc just before starting the simulation
-    endElabCode = cxx_writer.writer_code.Code('if (!this->resetCalled) {\nthis->resetOp();\n}\nthis->resetCalled = false;')
-    endElabMethod = cxx_writer.writer_code.Method('end_of_elaboration', endElabCode, cxx_writer.writer_code.voidType, 'pu')
+    endElabCode = cxx_writer.Code('if (!this->resetCalled) {\nthis->resetOp();\n}\nthis->resetCalled = false;')
+    endElabMethod = cxx_writer.Method('end_of_elaboration', endElabCode, cxx_writer.voidType, 'pu')
     processorElements.append(endElabMethod)
     ##########################################################################
     # END declaration of begin, end, and reset operations (to be performed
@@ -1085,12 +1085,12 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
             }
             return NULL;
     """
-    decodeCode = cxx_writer.writer_code.Code(decodeBody)
-    decodeParams = [cxx_writer.writer_code.Parameter('bitString', fetchWordType)]
-    decodeMethod = cxx_writer.writer_code.Method('decode', decodeCode, IntructionTypePtr, 'pu', decodeParams)
+    decodeCode = cxx_writer.Code(decodeBody)
+    decodeParams = [cxx_writer.Parameter('bitString', fetchWordType)]
+    decodeMethod = cxx_writer.Method('decode', decodeCode, IntructionTypePtr, 'pu', decodeParams)
     processorElements.append(decodeMethod)
     if not model.startswith('acc'):
-        decoderAttribute = cxx_writer.writer_code.Attribute('decoder', cxx_writer.writer_code.Type('Decoder', '#include \"decoder.hpp\"'), 'pri')
+        decoderAttribute = cxx_writer.Attribute('decoder', cxx_writer.Type('Decoder', '#include \"decoder.hpp\"'), 'pri')
         processorElements.append(decoderAttribute)
 
     ####################################################################################
@@ -1098,12 +1098,12 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # from the outside world
     ####################################################################################
     if self.abi:
-        interfaceAttribute = cxx_writer.writer_code.Attribute('abiIf', interfaceType.makePointer(), 'pu')
+        interfaceAttribute = cxx_writer.Attribute('abiIf', interfaceType.makePointer(), 'pu')
         processorElements.append(interfaceAttribute)
-        interfaceMethodCode = cxx_writer.writer_code.Code('return *this->abiIf;')
-        interfaceMethod = cxx_writer.writer_code.Method('getInterface', interfaceMethodCode, interfaceType.makeRef(), 'pu')
+        interfaceMethodCode = cxx_writer.Code('return *this->abiIf;')
+        interfaceMethod = cxx_writer.Method('getInterface', interfaceMethodCode, interfaceType.makeRef(), 'pu')
         processorElements.append(interfaceMethod)
-    toolManagerAttribute = cxx_writer.writer_code.Attribute('toolManager', ToolsManagerType, 'pu')
+    toolManagerAttribute = cxx_writer.Attribute('toolManager', ToolsManagerType, 'pu')
     processorElements.append(toolManagerAttribute)
 
     #############################################################################
@@ -1118,8 +1118,8 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     bodyAliasInit = {}
     abiIfInit = ''
     if model.endswith('LT') and len(self.tlmPorts) > 0 and not model.startswith('acc'):
-        quantumKeeperType = cxx_writer.writer_code.Type('tlm_utils::tlm_quantumkeeper', 'tlm_utils/tlm_quantumkeeper.h')
-        quantumKeeperAttribute = cxx_writer.writer_code.Attribute('quantKeeper', quantumKeeperType, 'pri')
+        quantumKeeperType = cxx_writer.Type('tlm_utils::tlm_quantumkeeper', 'tlm_utils/tlm_quantumkeeper.h')
+        quantumKeeperAttribute = cxx_writer.Attribute('quantKeeper', quantumKeeperType, 'pri')
         processorElements.append(quantumKeeperAttribute)
         bodyInits += 'this->quantKeeper.set_global_quantum(this->latency*100);\nthis->quantKeeper.reset();\n'
 
@@ -1128,7 +1128,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
 
     # Finally memories, TLM ports, etc.
     if self.memory:
-        attribute = cxx_writer.writer_code.Attribute(self.memory[0], cxx_writer.writer_code.Type('LocalMemory', '#include \"memory.hpp\"'), 'pu')
+        attribute = cxx_writer.Attribute(self.memory[0], cxx_writer.Type('LocalMemory', '#include \"memory.hpp\"'), 'pu')
         initMemCode = self.memory[0] + '(' + str(self.memory[1])
         if self.memory[2] and not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
             initMemCode += ', totalCycles'
@@ -1142,7 +1142,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         initElements.append(initMemCode)
         processorElements.append(attribute)
     for tlmPortName in self.tlmPorts.keys():
-        attribute = cxx_writer.writer_code.Attribute(tlmPortName, cxx_writer.writer_code.Type('TLMMemory', '#include \"externalPorts.hpp\"'), 'pu')
+        attribute = cxx_writer.Attribute(tlmPortName, cxx_writer.Type('TLMMemory', '#include \"externalPorts.hpp\"'), 'pu')
         initPortCode = tlmPortName + '(\"' + tlmPortName + '\"'
         if self.systemc and model.endswith('LT') and not model.startswith('acc'):
             initPortCode += ', this->quantKeeper'
@@ -1154,75 +1154,75 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         initElements.append(initPortCode)
         processorElements.append(attribute)
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
-        latencyAttribute = cxx_writer.writer_code.Attribute('latency', cxx_writer.writer_code.sc_timeType, 'pu')
+        latencyAttribute = cxx_writer.Attribute('latency', cxx_writer.sc_timeType, 'pu')
         processorElements.append(latencyAttribute)
     else:
-        totCyclesAttribute = cxx_writer.writer_code.Attribute('totalCycles', cxx_writer.writer_code.uintType, 'pu')
+        totCyclesAttribute = cxx_writer.Attribute('totalCycles', cxx_writer.uintType, 'pu')
         processorElements.append(totCyclesAttribute)
         bodyInits += 'this->totalCycles = 0;\n'
 
     for par in self.parameters:
-        attribute = cxx_writer.writer_code.Attribute(par.name, par.type, 'pri')
+        attribute = cxx_writer.Attribute(par.name, par.type, 'pri')
         processorElements.append(attribute)
 
     # Some variables for profiling: they enable measuring the number of cycles spent among two program portions
     # (they actually count SystemC time and then divide it by the processor frequency)
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
-        profilingTimeStartAttribute = cxx_writer.writer_code.Attribute('profTimeStart', cxx_writer.writer_code.sc_timeType, 'pu')
+        profilingTimeStartAttribute = cxx_writer.Attribute('profTimeStart', cxx_writer.sc_timeType, 'pu')
         processorElements.append(profilingTimeStartAttribute)
         bodyInits += 'this->profTimeStart = SC_ZERO_TIME;\n'
-        profilingTimeEndAttribute = cxx_writer.writer_code.Attribute('profTimeEnd', cxx_writer.writer_code.sc_timeType, 'pu')
+        profilingTimeEndAttribute = cxx_writer.Attribute('profTimeEnd', cxx_writer.sc_timeType, 'pu')
         processorElements.append(profilingTimeEndAttribute)
         bodyInits += 'this->profTimeEnd = SC_ZERO_TIME;\n'
     if self.systemc and model.startswith('func'):
-        profilingAddrStartAttribute = cxx_writer.writer_code.Attribute('profStartAddr', fetchWordType, 'pri')
+        profilingAddrStartAttribute = cxx_writer.Attribute('profStartAddr', fetchWordType, 'pri')
         processorElements.append(profilingAddrStartAttribute)
         bodyInits += 'this->profStartAddr = (' + str(fetchWordType) + ')-1;\n'
-        profilingAddrEndAttribute = cxx_writer.writer_code.Attribute('profEndAddr', fetchWordType, 'pri')
+        profilingAddrEndAttribute = cxx_writer.Attribute('profEndAddr', fetchWordType, 'pri')
         bodyInits += 'this->profEndAddr = (' + str(fetchWordType) + ')-1;\n'
         processorElements.append(profilingAddrEndAttribute)
 
     # Here are the variables used to manage the instruction history queue
     if model.startswith('func'):
-        instrQueueFileAttribute = cxx_writer.writer_code.Attribute('histFile', cxx_writer.writer_code.ofstreamType, 'pri')
+        instrQueueFileAttribute = cxx_writer.Attribute('histFile', cxx_writer.ofstreamType, 'pri')
         processorElements.append(instrQueueFileAttribute)
-        historyEnabledAttribute = cxx_writer.writer_code.Attribute('historyEnabled', cxx_writer.writer_code.boolType, 'pri')
+        historyEnabledAttribute = cxx_writer.Attribute('historyEnabled', cxx_writer.boolType, 'pri')
         processorElements.append(historyEnabledAttribute)
         bodyInits += 'this->historyEnabled = false;\n'
-        instrHistType = cxx_writer.writer_code.Type('HistoryInstrType', 'instructionBase.hpp')
-        histQueueType = cxx_writer.writer_code.TemplateType('boost::circular_buffer', [instrHistType], 'boost/circular_buffer.hpp')
-        instHistoryQueueAttribute = cxx_writer.writer_code.Attribute('instHistoryQueue', histQueueType, 'pu')
+        instrHistType = cxx_writer.Type('HistoryInstrType', 'instructionBase.hpp')
+        histQueueType = cxx_writer.TemplateType('boost::circular_buffer', [instrHistType], 'boost/circular_buffer.hpp')
+        instHistoryQueueAttribute = cxx_writer.Attribute('instHistoryQueue', histQueueType, 'pu')
         processorElements.append(instHistoryQueueAttribute)
         bodyInits += 'this->instHistoryQueue.set_capacity(1000);\n'
-        undumpedHistElemsAttribute = cxx_writer.writer_code.Attribute('undumpedHistElems', cxx_writer.writer_code.uintType, 'pu')
+        undumpedHistElemsAttribute = cxx_writer.Attribute('undumpedHistElems', cxx_writer.uintType, 'pu')
         processorElements.append(undumpedHistElemsAttribute)
         bodyInits += 'this->undumpedHistElems = 0;\n'
 
-    numInstructions = cxx_writer.writer_code.Attribute('numInstructions', cxx_writer.writer_code.uintType, 'pu')
+    numInstructions = cxx_writer.Attribute('numInstructions', cxx_writer.uintType, 'pu')
     processorElements.append(numInstructions)
     bodyInits += 'this->numInstructions = 0;\n'
     # Now I have to declare some special constants used to keep track of the loaded executable file
-    entryPointAttr = cxx_writer.writer_code.Attribute('ENTRY_POINT', fetchWordType, 'pu')
+    entryPointAttr = cxx_writer.Attribute('ENTRY_POINT', fetchWordType, 'pu')
     processorElements.append(entryPointAttr)
     bodyInits += 'this->ENTRY_POINT = 0;\n'
-    mpIDAttr = cxx_writer.writer_code.Attribute('MPROC_ID', fetchWordType, 'pu')
+    mpIDAttr = cxx_writer.Attribute('MPROC_ID', fetchWordType, 'pu')
     processorElements.append(mpIDAttr)
     bodyInits += 'this->MPROC_ID = 0;\n'
-    progLimitAttr = cxx_writer.writer_code.Attribute('PROGRAM_LIMIT', fetchWordType, 'pu')
+    progLimitAttr = cxx_writer.Attribute('PROGRAM_LIMIT', fetchWordType, 'pu')
     processorElements.append(progLimitAttr)
     bodyInits += 'this->PROGRAM_LIMIT = 0;\n'
     if self.abi:
         abiIfInit = 'this->PROGRAM_LIMIT, ' + abiIfInit
-    progStarttAttr = cxx_writer.writer_code.Attribute('PROGRAM_START', fetchWordType, 'pu')
+    progStarttAttr = cxx_writer.Attribute('PROGRAM_START', fetchWordType, 'pu')
     processorElements.append(progStarttAttr)
     bodyInits += 'this->PROGRAM_START = 0;\n'
     # Here are the variables used to keep track of the end of each instruction execution
-    attribute = cxx_writer.writer_code.Attribute('instrExecuting', cxx_writer.writer_code.boolType, 'pri')
+    attribute = cxx_writer.Attribute('instrExecuting', cxx_writer.boolType, 'pri')
     processorElements.append(attribute)
     if self.abi:
         abiIfInit += ', this->instrExecuting'
     if self.systemc:
-        attribute = cxx_writer.writer_code.Attribute('instrEndEvent', cxx_writer.writer_code.sc_eventType, 'pri')
+        attribute = cxx_writer.Attribute('instrEndEvent', cxx_writer.sc_eventType, 'pri')
         processorElements.append(attribute)
         if self.abi:
             abiIfInit += ', this->instrEndEvent'
@@ -1233,28 +1233,28 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     if self.abi:
         bodyInits += 'this->abiIf = new ' + str(interfaceType) + '(' + abiIfInit + ');\n'
 
-    instructionsAttribute = cxx_writer.writer_code.Attribute('INSTRUCTIONS',
+    instructionsAttribute = cxx_writer.Attribute('INSTRUCTIONS',
                             IntructionTypePtr.makePointer(), 'pri')
     processorElements.append(instructionsAttribute)
     if self.instructionCache:
-        cacheAttribute = cxx_writer.writer_code.Attribute('instrCache',
-                        cxx_writer.writer_code.TemplateType('template_map',
+        cacheAttribute = cxx_writer.Attribute('instrCache',
+                        cxx_writer.TemplateType('template_map',
                             [fetchWordType, CacheElemType], hash_map_include), 'pri')
         processorElements.append(cacheAttribute)
-    numProcAttribute = cxx_writer.writer_code.Attribute('numInstances',
-                            cxx_writer.writer_code.intType, 'pri', True, '0')
+    numProcAttribute = cxx_writer.Attribute('numInstances',
+                            cxx_writer.intType, 'pri', True, '0')
     processorElements.append(numProcAttribute)
 
     # Iterrupt ports
     for irqPort in self.irqs:
         if irqPort.tlm:
-            irqPortType = cxx_writer.writer_code.Type('IntrTLMPort_' + str(irqPort.portWidth), '#include \"irqPorts.hpp\"')
+            irqPortType = cxx_writer.Type('IntrTLMPort_' + str(irqPort.portWidth), '#include \"irqPorts.hpp\"')
         else:
-            irqPortType = cxx_writer.writer_code.Type('IntrSysCPort_' + str(irqPort.portWidth), '#include \"irqPorts.hpp\"')
+            irqPortType = cxx_writer.Type('IntrSysCPort_' + str(irqPort.portWidth), '#include \"irqPorts.hpp\"')
         from isa import resolveBitType
         irqWidthType = resolveBitType('BIT<' + str(irqPort.portWidth) + '>')
-        irqSignalAttr = cxx_writer.writer_code.Attribute(irqPort.name, irqWidthType, 'pri')
-        irqPortAttr = cxx_writer.writer_code.Attribute(irqPort.name + '_port', irqPortType, 'pu')
+        irqSignalAttr = cxx_writer.Attribute(irqPort.name, irqWidthType, 'pri')
+        irqPortAttr = cxx_writer.Attribute(irqPort.name + '_port', irqPortType, 'pu')
         processorElements.append(irqSignalAttr)
         processorElements.append(irqPortAttr)
         initElements.append(irqPort.name + '_port(\"' + irqPort.name + '_IRQ\", ' + irqPort.name + ')')
@@ -1269,8 +1269,8 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
             pinPortName += 'in_'
         else:
             pinPortName += 'out_'
-        pinPortType = cxx_writer.writer_code.Type(pinPortName + str(pinPort.portWidth), '#include \"externalPins.hpp\"')
-        pinPortAttr = cxx_writer.writer_code.Attribute(pinPort.name, pinPortType, 'pu')
+        pinPortType = cxx_writer.Type(pinPortName + str(pinPort.portWidth), '#include \"externalPins.hpp\"')
+        pinPortAttr = cxx_writer.Attribute(pinPort.name, pinPortType, 'pu')
         processorElements.append(pinPortAttr)
         initElements.append(pinPort.name + '(\"' + pinPort.name + '_PIN\")')
 
@@ -1278,28 +1278,28 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # Method for initializing the profiling start and end addresses
     ####################################################################
     if self.systemc and model.startswith('func'):
-        setProfilingRangeCode = cxx_writer.writer_code.Code('this->profStartAddr = startAddr;\nthis->profEndAddr = endAddr;')
-        parameters = [cxx_writer.writer_code.Parameter('startAddr', fetchWordType), cxx_writer.writer_code.Parameter('endAddr', fetchWordType)]
-        setProfilingRangeFunction = cxx_writer.writer_code.Method('setProfilingRange', setProfilingRangeCode, cxx_writer.writer_code.voidType, 'pu', parameters)
+        setProfilingRangeCode = cxx_writer.Code('this->profStartAddr = startAddr;\nthis->profEndAddr = endAddr;')
+        parameters = [cxx_writer.Parameter('startAddr', fetchWordType), cxx_writer.Parameter('endAddr', fetchWordType)]
+        setProfilingRangeFunction = cxx_writer.Method('setProfilingRange', setProfilingRangeCode, cxx_writer.voidType, 'pu', parameters)
         processorElements.append(setProfilingRangeFunction)
     elif model.startswith('acc'):
-        setProfilingRangeCode = cxx_writer.writer_code.Code('this->' + self.pipes[0].name + '_stage.profStartAddr = startAddr;\nthis->' + self.pipes[0].name + '_stage.profEndAddr = endAddr;')
-        parameters = [cxx_writer.writer_code.Parameter('startAddr', fetchWordType), cxx_writer.writer_code.Parameter('endAddr', fetchWordType)]
-        setProfilingRangeFunction = cxx_writer.writer_code.Method('setProfilingRange', setProfilingRangeCode, cxx_writer.writer_code.voidType, 'pu', parameters)
+        setProfilingRangeCode = cxx_writer.Code('this->' + self.pipes[0].name + '_stage.profStartAddr = startAddr;\nthis->' + self.pipes[0].name + '_stage.profEndAddr = endAddr;')
+        parameters = [cxx_writer.Parameter('startAddr', fetchWordType), cxx_writer.Parameter('endAddr', fetchWordType)]
+        setProfilingRangeFunction = cxx_writer.Method('setProfilingRange', setProfilingRangeCode, cxx_writer.voidType, 'pu', parameters)
         processorElements.append(setProfilingRangeFunction)
 
     ####################################################################
     # Method for initializing history management
     ####################################################################
     if model.startswith('acc'):
-        enableHistoryCode = cxx_writer.writer_code.Code('this->' + self.pipes[0].name + '_stage.historyEnabled = true;\nthis->' + self.pipes[0].name + '_stage.histFile.open(fileName.c_str(), ios::out | ios::ate);')
-        parameters = [cxx_writer.writer_code.Parameter('fileName', cxx_writer.writer_code.stringType, initValue = '""')]
-        enableHistoryMethod = cxx_writer.writer_code.Method('enableHistory', enableHistoryCode, cxx_writer.writer_code.voidType, 'pu', parameters)
+        enableHistoryCode = cxx_writer.Code('this->' + self.pipes[0].name + '_stage.historyEnabled = true;\nthis->' + self.pipes[0].name + '_stage.histFile.open(fileName.c_str(), ios::out | ios::ate);')
+        parameters = [cxx_writer.Parameter('fileName', cxx_writer.stringType, initValue = '""')]
+        enableHistoryMethod = cxx_writer.Method('enableHistory', enableHistoryCode, cxx_writer.voidType, 'pu', parameters)
         processorElements.append(enableHistoryMethod)
     else:
-        enableHistoryCode = cxx_writer.writer_code.Code('this->historyEnabled = true;\nthis->histFile.open(fileName.c_str(), ios::out | ios::ate);')
-        parameters = [cxx_writer.writer_code.Parameter('fileName', cxx_writer.writer_code.stringType, initValue = '""')]
-        enableHistoryMethod = cxx_writer.writer_code.Method('enableHistory', enableHistoryCode, cxx_writer.writer_code.voidType, 'pu', parameters)
+        enableHistoryCode = cxx_writer.Code('this->historyEnabled = true;\nthis->histFile.open(fileName.c_str(), ios::out | ios::ate);')
+        parameters = [cxx_writer.Parameter('fileName', cxx_writer.stringType, initValue = '""')]
+        enableHistoryMethod = cxx_writer.Method('enableHistory', enableHistoryCode, cxx_writer.voidType, 'pu', parameters)
         processorElements.append(enableHistoryMethod)
 
     ####################################################################
@@ -1312,8 +1312,8 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
 
     # Lets declare the interrupt instructions in case we have any
     for irq in self.irqs:
-        IRQIntructionType = cxx_writer.writer_code.Type('IRQ_' + irq.name + '_Instruction', '#include \"instructions.hpp\"')
-        IRQinstructionAttribute = cxx_writer.writer_code.Attribute(irq.name + '_irqInstr', IRQIntructionType.makePointer(), 'pu')
+        IRQIntructionType = cxx_writer.Type('IRQ_' + irq.name + '_Instruction', '#include \"instructions.hpp\"')
+        IRQinstructionAttribute = cxx_writer.Attribute(irq.name + '_irqInstr', IRQIntructionType.makePointer(), 'pu')
         processorElements.append(IRQinstructionAttribute)
 
     ########################################################################
@@ -1348,11 +1348,11 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     if not self.systemc and not model.startswith('acc'):
         constrCode += 'this->totalCycles = 0;\n'
     constrCode += 'end_module();'
-    constructorBody = cxx_writer.writer_code.Code(constrCode)
-    constructorParams = [cxx_writer.writer_code.Parameter('name', cxx_writer.writer_code.sc_module_nameType)]
+    constructorBody = cxx_writer.Code(constrCode)
+    constructorParams = [cxx_writer.Parameter('name', cxx_writer.sc_module_nameType)]
     constructorInit = ['sc_module(name)']
     if (self.systemc or model.startswith('acc') or len(self.tlmPorts) > 0 or model.endswith('AT')) and not self.externalClock:
-        constructorParams.append(cxx_writer.writer_code.Parameter('latency', cxx_writer.writer_code.sc_timeType))
+        constructorParams.append(cxx_writer.Parameter('latency', cxx_writer.sc_timeType))
         constructorInit.append('latency(latency)')
 
     for par in self.parameters:
@@ -1360,7 +1360,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         par.name = '_' + par.name
         constructorParams.append(par)
 
-    publicConstr = cxx_writer.writer_code.Constructor(constructorBody, 'pu', constructorParams, constructorInit + initElements)
+    publicConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams, constructorInit + initElements)
     destrCode = processor_name + """::numInstances--;
     for (int i = 0; i < """ + str(maxInstrId + 1) + """; i++) {
         delete this->INSTRUCTIONS[i];
@@ -1406,9 +1406,9 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         #endif
         """
     destrCode += bodyDestructor
-    destructorBody = cxx_writer.writer_code.Code(destrCode)
-    publicDestr = cxx_writer.writer_code.Destructor(destructorBody, 'pu')
-    processorDecl = cxx_writer.writer_code.SCModule(processor_name, processorElements, namespaces = [namespace])
+    destructorBody = cxx_writer.Code(destrCode)
+    publicDestr = cxx_writer.Destructor(destructorBody, 'pu')
+    processorDecl = cxx_writer.SCModule(processor_name, processorElements, namespaces = [namespace])
     processorDecl.addConstructor(publicConstr)
     processorDecl.addDestructor(publicDestr)
     return [processorDecl]
@@ -1422,10 +1422,10 @@ def getTestMainCode(self):
     """Returns the code for a formatting class called from within the boost
     test framework that outputs values in hex."""
     code = """output << std::showbase << std::hex << value;"""
-    formatCode = cxx_writer.writer_code.Code(code)
-    parameters = [cxx_writer.writer_code.Parameter('output', cxx_writer.writer_code.Type('std::ostream').makeRef()), cxx_writer.writer_code.Parameter('value', cxx_writer.writer_code.Type('::boost::unit_test::const_string'))]
-    formatMethod = cxx_writer.writer_code.Method('log_entry_value', formatCode, cxx_writer.writer_code.voidType, 'pu', parameters)
-    formatClass = cxx_writer.writer_code.ClassDeclaration('trap_log_formatter', [formatMethod], [cxx_writer.writer_code.Type('::boost::unit_test::output::compiler_log_formatter')])
+    formatCode = cxx_writer.Code(code)
+    parameters = [cxx_writer.Parameter('output', cxx_writer.Type('std::ostream').makeRef()), cxx_writer.Parameter('value', cxx_writer.Type('::boost::unit_test::const_string'))]
+    formatMethod = cxx_writer.Method('log_entry_value', formatCode, cxx_writer.voidType, 'pu', parameters)
+    formatClass = cxx_writer.ClassDeclaration('trap_log_formatter', [formatMethod], [cxx_writer.Type('::boost::unit_test::output::compiler_log_formatter')])
     """Returns the code for the file which contains the main
     routine for the execution of the tests."""
     global testNames
@@ -1433,17 +1433,17 @@ def getTestMainCode(self):
     for test in testNames:
         code += 'boost::unit_test::framework::master_test_suite().add(BOOST_TEST_CASE(&' + test + '));\n'
     code += '\nreturn 0;'
-    initCode = cxx_writer.writer_code.Code(code)
+    initCode = cxx_writer.Code(code)
     initCode.addInclude('boost/test/included/unit_test.hpp')
-    parameters = [cxx_writer.writer_code.Parameter('argc', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('argv[]', cxx_writer.writer_code.charPtrType)]
-    initFunction = cxx_writer.writer_code.Function('init_unit_test_suite', initCode, cxx_writer.writer_code.Type('boost::unit_test::test_suite').makePointer(), parameters)
+    parameters = [cxx_writer.Parameter('argc', cxx_writer.intType), cxx_writer.Parameter('argv[]', cxx_writer.charPtrType)]
+    initFunction = cxx_writer.Function('init_unit_test_suite', initCode, cxx_writer.Type('boost::unit_test::test_suite').makePointer(), parameters)
 
     code = 'return boost::unit_test::unit_test_main(&init_unit_test_suite, argc, argv);'
-    mainCode = cxx_writer.writer_code.Code(code)
+    mainCode = cxx_writer.Code(code)
     mainCode.addInclude('systemc.h')
     mainCode.addInclude('boost/test/included/unit_test.hpp')
-    parameters = [cxx_writer.writer_code.Parameter('argc', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('argv', cxx_writer.writer_code.charPtrType.makePointer())]
-    mainFunction = cxx_writer.writer_code.Function('sc_main', mainCode, cxx_writer.writer_code.intType, parameters)
+    parameters = [cxx_writer.Parameter('argc', cxx_writer.intType), cxx_writer.Parameter('argv', cxx_writer.charPtrType.makePointer())]
+    mainFunction = cxx_writer.Function('sc_main', mainCode, cxx_writer.intType, parameters)
     return [formatClass, initFunction, mainFunction]
 
 def getMainCode(self, model, namespace):
@@ -1776,7 +1776,7 @@ def getMainCode(self, model, namespace):
     code += """
     return 0;
     """
-    mainCode = cxx_writer.writer_code.Code(code)
+    mainCode = cxx_writer.Code(code)
     mainCode.addInclude("""#ifdef _WIN32
 #pragma warning(disable : 4101)
 #endif""")
@@ -1818,10 +1818,10 @@ def getMainCode(self, model, namespace):
             #mainCode.addInclude('osEmulatorCA.hpp')
         #else:
         mainCode.addInclude('osEmulator/osEmulator.hpp')
-    parameters = [cxx_writer.writer_code.Parameter('argc', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('argv', cxx_writer.writer_code.charPtrType.makePointer())]
-    mainFunction = cxx_writer.writer_code.Function('sc_main', mainCode, cxx_writer.writer_code.intType, parameters)
+    parameters = [cxx_writer.Parameter('argc', cxx_writer.intType), cxx_writer.Parameter('argv', cxx_writer.charPtrType.makePointer())]
+    mainFunction = cxx_writer.Function('sc_main', mainCode, cxx_writer.intType, parameters)
 
-    stopSimFunction = cxx_writer.writer_code.Code("""if (gdbStub_ref != NULL && gdbStub_ref->simulationPaused) {
+    stopSimFunction = cxx_writer.Code("""if (gdbStub_ref != NULL && gdbStub_ref->simulationPaused) {
         std::cerr << std::endl << "Simulation is already paused; ";
         std::cerr << "please use the connected GDB debugger to controll it" << std::endl << std::endl;
     } else {
@@ -1829,10 +1829,10 @@ def getMainCode(self, model, namespace):
         sc_stop();
         wait(SC_ZERO_TIME);
     }""")
-    parameters = [cxx_writer.writer_code.Parameter('sig', cxx_writer.writer_code.intType)]
-    signalFunction = cxx_writer.writer_code.Function('stopSimFunction', stopSimFunction, cxx_writer.writer_code.voidType, parameters)
+    parameters = [cxx_writer.Parameter('sig', cxx_writer.intType)]
+    signalFunction = cxx_writer.Function('stopSimFunction', stopSimFunction, cxx_writer.voidType, parameters)
 
-    hexToIntCode = cxx_writer.writer_code.Code("""std::map<char, unsigned int> hexMap;
+    hexToIntCode = cxx_writer.Code("""std::map<char, unsigned int> hexMap;
     hexMap['0'] = 0;
     hexMap['1'] = 1;
     hexMap['2'] = 2;
@@ -1873,10 +1873,10 @@ def getMainCode(self, model, namespace):
         pos += 4;
     }
     return result;""")
-    parameters = [cxx_writer.writer_code.Parameter('toConvert', cxx_writer.writer_code.stringRefType)]
-    hexToIntFunction = cxx_writer.writer_code.Function('toIntNum', hexToIntCode, wordType, parameters)
+    parameters = [cxx_writer.Parameter('toConvert', cxx_writer.stringRefType)]
+    hexToIntFunction = cxx_writer.Function('toIntNum', hexToIntCode, wordType, parameters)
 
-    getCycleRangeCode = cxx_writer.writer_code.Code("""std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decodedRange;
+    getCycleRangeCode = cxx_writer.Code("""std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decodedRange;
         std::size_t foundSep = cycles_range.find('-');
         if (foundSep == std::string::npos) {
             THROW_EXCEPTION("ERROR: specified address range " << cycles_range << " is not valid, it has to be in the form start-end");
@@ -1920,14 +1920,14 @@ def getMainCode(self, model, namespace):
 
         return decodedRange;
     """)
-    parameters = [cxx_writer.writer_code.Parameter('cycles_range', cxx_writer.writer_code.stringRefType.makeConst()),
-            cxx_writer.writer_code.Parameter('application', cxx_writer.writer_code.stringRefType.makeConst())]
-    wordPairType = cxx_writer.writer_code.TemplateType('std::pair', [wordType, wordType])
-    cycleRangeFunction = cxx_writer.writer_code.Function('getCycleRange', getCycleRangeCode, wordPairType, parameters)
+    parameters = [cxx_writer.Parameter('cycles_range', cxx_writer.stringRefType.makeConst()),
+            cxx_writer.Parameter('application', cxx_writer.stringRefType.makeConst())]
+    wordPairType = cxx_writer.TemplateType('std::pair', [wordType, wordType])
+    cycleRangeFunction = cxx_writer.Function('getCycleRange', getCycleRangeCode, wordPairType, parameters)
 
     # Finally here lets declare the variable holding the global reference to the debugger
-    debuggerType = cxx_writer.writer_code.TemplateType('GDBStub', [wordType])
-    debuggerVariable = cxx_writer.writer_code.Variable('gdbStub_ref', debuggerType.makePointer(), initValue = 'NULL')
+    debuggerType = cxx_writer.TemplateType('GDBStub', [wordType])
+    debuggerVariable = cxx_writer.Variable('gdbStub_ref', debuggerType.makePointer(), initValue = 'NULL')
 
     # and here the variable holding the printable banner
     bannerInit = 'std::string("\\n\\\n'
@@ -1940,7 +1940,7 @@ def getMainCode(self, model, namespace):
         bannerInit += '\t-\t email: ' + self.developer_email
     bannerInit += '\\n\\n")'
 
-    bannerVariable = cxx_writer.writer_code.Variable('banner', cxx_writer.writer_code.stringType, initValue = bannerInit)
+    bannerVariable = cxx_writer.Variable('banner', cxx_writer.stringType, initValue = bannerInit)
 
     """Returns the code for a stub initiator socket class to be connected with
     interrupt ports. Sadly, TLM does not implement SC_ZERO_OR_MORE_BOUND properly,
@@ -1948,22 +1948,22 @@ def getMainCode(self, model, namespace):
     # Create socket classes for each unique port width.
     for portWidth in list(set([irq.portWidth for irq in self.irqs])):
         # multi_passthrough_initiator_socket init_socket;
-        tlmInitiatorSocketMember = cxx_writer.writer_code.Attribute('init_socket', cxx_writer.writer_code.Type('tlm_utils::multi_passthrough_initiator_socket<initiator_' + str(portWidth) + ', ' + str(portWidth) + ', tlm::tlm_base_protocol_types>'), visibility = 'pu', initValue = '\"init_socket\"')
+        tlmInitiatorSocketMember = cxx_writer.Attribute('init_socket', cxx_writer.Type('tlm_utils::multi_passthrough_initiator_socket<initiator_' + str(portWidth) + ', ' + str(portWidth) + ', tlm::tlm_base_protocol_types>'), visibility = 'pu', initValue = '\"init_socket\"')
         # nb_transport_bw() {}
         code = """return tlm::TLM_COMPLETED;"""
-        tlmInitiatorCode = cxx_writer.writer_code.Code(code)
-        parameters = [cxx_writer.writer_code.Parameter('tag', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('payload', cxx_writer.writer_code.Type('tlm::tlm_generic_payload').makeRef()), cxx_writer.writer_code.Parameter('phase', cxx_writer.writer_code.Type('tlm::tlm_phase').makeRef()), cxx_writer.writer_code.Parameter('delay', cxx_writer.writer_code.Type('sc_core::sc_time').makeRef())]
-        tlmInitiatorNBMethod = cxx_writer.writer_code.Method('nb_transport_bw', tlmInitiatorCode, cxx_writer.writer_code.Type('tlm::tlm_sync_enum'), 'pu', parameters)
+        tlmInitiatorCode = cxx_writer.Code(code)
+        parameters = [cxx_writer.Parameter('tag', cxx_writer.intType), cxx_writer.Parameter('payload', cxx_writer.Type('tlm::tlm_generic_payload').makeRef()), cxx_writer.Parameter('phase', cxx_writer.Type('tlm::tlm_phase').makeRef()), cxx_writer.Parameter('delay', cxx_writer.Type('sc_core::sc_time').makeRef())]
+        tlmInitiatorNBMethod = cxx_writer.Method('nb_transport_bw', tlmInitiatorCode, cxx_writer.Type('tlm::tlm_sync_enum'), 'pu', parameters)
         # invalidate_direct_mem_ptr() {}
-        tlmInitiatorCode = cxx_writer.writer_code.Code('')
-        parameters = [cxx_writer.writer_code.Parameter('tag', cxx_writer.writer_code.intType), cxx_writer.writer_code.Parameter('start_range', cxx_writer.writer_code.Type('sc_dt::uint64')), cxx_writer.writer_code.Parameter('end_range', cxx_writer.writer_code.Type('sc_dt::uint64'))]
-        tlmInitiatorDMMethod = cxx_writer.writer_code.Method('invalidate_direct_mem_ptr', tlmInitiatorCode, cxx_writer.writer_code.voidType, 'pu', parameters)
+        tlmInitiatorCode = cxx_writer.Code('')
+        parameters = [cxx_writer.Parameter('tag', cxx_writer.intType), cxx_writer.Parameter('start_range', cxx_writer.Type('sc_dt::uint64')), cxx_writer.Parameter('end_range', cxx_writer.Type('sc_dt::uint64'))]
+        tlmInitiatorDMMethod = cxx_writer.Method('invalidate_direct_mem_ptr', tlmInitiatorCode, cxx_writer.voidType, 'pu', parameters)
         # initiator_<portWidth>::initiator_<portWidth>() {}
         code = 'init_socket.register_nb_transport_bw(this, &initiator_' + str(portWidth) + '::nb_transport_bw);\ninit_socket.register_invalidate_direct_mem_ptr(this, &initiator_' + str(portWidth) + '::invalidate_direct_mem_ptr);'
-        tlmInitiatorCode = cxx_writer.writer_code.Code(code)
-        tlmInitiatorCtor = cxx_writer.writer_code.Constructor(tlmInitiatorCode, visibility = 'pu', parameters = [cxx_writer.writer_code.Parameter('_name', cxx_writer.writer_code.Type('sc_core::sc_module_name'))], initList = ['sc_module(_name)', 'init_socket(\"init_socket\")'])
+        tlmInitiatorCode = cxx_writer.Code(code)
+        tlmInitiatorCtor = cxx_writer.Constructor(tlmInitiatorCode, visibility = 'pu', parameters = [cxx_writer.Parameter('_name', cxx_writer.Type('sc_core::sc_module_name'))], initList = ['sc_module(_name)', 'init_socket(\"init_socket\")'])
         # class initiator_<portWidth> {};
-        tlmInitiatorClass = cxx_writer.writer_code.ClassDeclaration('initiator_'+ str(portWidth), [tlmInitiatorSocketMember, tlmInitiatorNBMethod, tlmInitiatorDMMethod], [cxx_writer.writer_code.Type('sc_core::sc_module')])
+        tlmInitiatorClass = cxx_writer.ClassDeclaration('initiator_'+ str(portWidth), [tlmInitiatorSocketMember, tlmInitiatorNBMethod, tlmInitiatorDMMethod], [cxx_writer.Type('sc_core::sc_module')])
         tlmInitiatorClass.addConstructor(tlmInitiatorCtor)
 
     if self.irqs:

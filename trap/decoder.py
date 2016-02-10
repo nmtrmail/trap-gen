@@ -449,24 +449,24 @@ class decoderCreator:
         else:
             codeString += str(self.instrNum)
         codeString += ';\n'
-        code = cxx_writer.writer_code.Code(codeString)
-        parameters = [cxx_writer.writer_code.Parameter('instrCode', fetchSizeType)]
-        decodeMethod = cxx_writer.writer_code.Method('decode', code, cxx_writer.writer_code.intType, 'pu', parameters, const = True, noException = True)
-        decodeClass = cxx_writer.writer_code.ClassDeclaration('Decoder', [decodeMethod], namespaces = [namespace])
+        code = cxx_writer.Code(codeString)
+        parameters = [cxx_writer.Parameter('instrCode', fetchSizeType)]
+        decodeMethod = cxx_writer.Method('decode', code, cxx_writer.intType, 'pu', parameters, const = True, noException = True)
+        decodeClass = cxx_writer.ClassDeclaration('Decoder', [decodeMethod], namespaces = [namespace])
 
         # Here I declare the type which shall be contained in the cache
         if instructionCache:
-            emptyBody = cxx_writer.writer_code.Code('')
-            IntructionTypePtr = cxx_writer.writer_code.Type('Instruction', '#include \"instructions.hpp\"').makePointer()
-            instrAttr = cxx_writer.writer_code.Attribute('instr', IntructionTypePtr, 'pu')
-            countAttr = cxx_writer.writer_code.Attribute('count', cxx_writer.writer_code.uintType, 'pu')
+            emptyBody = cxx_writer.Code('')
+            IntructionTypePtr = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"').makePointer()
+            instrAttr = cxx_writer.Attribute('instr', IntructionTypePtr, 'pu')
+            countAttr = cxx_writer.Attribute('count', cxx_writer.uintType, 'pu')
             cacheTypeElements = [instrAttr, countAttr]
-            cacheType = cxx_writer.writer_code.ClassDeclaration('CacheElem', cacheTypeElements, namespaces = [namespace])
-            instrParam = cxx_writer.writer_code.Parameter('instr', IntructionTypePtr)
-            countParam = cxx_writer.writer_code.Parameter('count', cxx_writer.writer_code.uintType)
-            cacheTypeConstr = cxx_writer.writer_code.Constructor(emptyBody, 'pu', [instrParam, countParam], ['instr(instr)', 'count(count)'])
+            cacheType = cxx_writer.ClassDeclaration('CacheElem', cacheTypeElements, namespaces = [namespace])
+            instrParam = cxx_writer.Parameter('instr', IntructionTypePtr)
+            countParam = cxx_writer.Parameter('count', cxx_writer.uintType)
+            cacheTypeConstr = cxx_writer.Constructor(emptyBody, 'pu', [instrParam, countParam], ['instr(instr)', 'count(count)'])
             cacheType.addConstructor(cacheTypeConstr)
-            emptyCacheTypeConstr = cxx_writer.writer_code.Constructor(emptyBody, 'pu', [], ['instr(NULL)', 'count(1)'])
+            emptyCacheTypeConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['instr(NULL)', 'count(1)'])
             cacheType.addConstructor(emptyCacheTypeConstr)
 
         if instructionCache:
@@ -527,13 +527,13 @@ class decoderCreator:
             else:
                 code += '// Checking Invalid Instruction\n'
             code += 'BOOST_CHECK_EQUAL(dec.decode( ' + hex(int(''.join(pattern), 2)) + ' ), ' + str(expectedId) + ');\n'
-            curTest = cxx_writer.writer_code.Code(code)
+            curTest = cxx_writer.Code(code)
             curTest.addInclude(['boost/test/test_tools.hpp', 'decoder.hpp'])
             if instrId != -1:
                 testName = self.instrName[instrId] + '_' + str(testCount) + '_decode'
             else:
                 testName = 'Invalid_' + str(testCount) + '_decode'
-            curTestFunction = cxx_writer.writer_code.Function(testName, curTest, cxx_writer.writer_code.voidType)
+            curTestFunction = cxx_writer.Function(testName, curTest, cxx_writer.voidType)
             from procWriter import testNames
             testNames.append(testName)
             allTests.append(curTestFunction)

@@ -35,16 +35,29 @@
 ####################################################################################
 
 
-import writer_code
+try:
+    import cxx_writer
+except ImportError:
+    import sys, os
+    sys.path.append(os.path.abspath(os.path.join('..')))
+    try:
+        import cxx_writer
+    except ImportError:
+        sys.path.append(os.path.abspath(os.path.join('..', '..')))
+        try:
+            import cxx_writer
+        except ImportError:
+            print ('Please specify where the core TRAP files are located')
+
 import unittest
 import os
 
 class TestFileDumper(unittest.TestCase):
 
     def testDumpVariablesHeader(self):
-        tempType = writer_code.TemplateType('std::map', [writer_code.intType, writer_code.stringType], 'map')
-        tempVar = writer_code.Variable('pippo', tempType)
-        dumper = writer_code.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
+        tempType = cxx_writer.TemplateType('std::map', [cxx_writer.intType, cxx_writer.stringType], 'map')
+        tempVar = cxx_writer.Variable('pippo', tempType)
+        dumper = cxx_writer.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
         dumper.addMember(tempVar)
         dumper.write()
         testFile = open('prova.cpp', 'rt')
@@ -56,9 +69,9 @@ class TestFileDumper(unittest.TestCase):
         self.assertEqual(lines[14], '#include <string>\n')
 
     def testDumpVariablesImpl(self):
-        tempType = writer_code.TemplateType('std::map', [writer_code.intType, writer_code.stringType], 'map')
-        tempVar = writer_code.Variable('pippo', tempType)
-        dumper = writer_code.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
+        tempType = cxx_writer.TemplateType('std::map', [cxx_writer.intType, cxx_writer.stringType], 'map')
+        tempVar = cxx_writer.Variable('pippo', tempType)
+        dumper = cxx_writer.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
         dumper.addMember(tempVar)
         dumper.write()
         testFile = open('prova.cpp', 'rt')
@@ -71,9 +84,9 @@ class TestFileDumper(unittest.TestCase):
         self.assertEqual(lines[15], 'std::map<int, std::string> pippo;\n')
 
     def testDumpFunctionsHeader(self):
-        tempType = writer_code.TemplateType('std::map', [writer_code.intType, writer_code.stringType], 'map')
-        tempVar = writer_code.Function('pippo', writer_code.Code('std::map<int, std::string> myMap;\nmyMap[5] = \"ccc\";\nreturn myMap;'), tempType)
-        dumper = writer_code.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
+        tempType = cxx_writer.TemplateType('std::map', [cxx_writer.intType, cxx_writer.stringType], 'map')
+        tempVar = cxx_writer.Function('pippo', cxx_writer.Code('std::map<int, std::string> myMap;\nmyMap[5] = \"ccc\";\nreturn myMap;'), tempType)
+        dumper = cxx_writer.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
         dumper.addMember(tempVar)
         dumper.write()
         testFile = open('prova.cpp', 'rt')
@@ -86,9 +99,9 @@ class TestFileDumper(unittest.TestCase):
         self.assertEqual(lines[17], 'std::map<int, std::string> pippo();\n')
 
     def testDumpFunctionsImpl(self):
-        tempType = writer_code.TemplateType('std::map', [writer_code.intType, writer_code.stringType], 'map')
-        tempVar = writer_code.Function('pippo', writer_code.Code('std::map<int, std::string> myMap;\nmyMap[5] = \"ccc\";\nreturn myMap;'), tempType)
-        dumper = writer_code.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
+        tempType = cxx_writer.TemplateType('std::map', [cxx_writer.intType, cxx_writer.stringType], 'map')
+        tempVar = cxx_writer.Function('pippo', cxx_writer.Code('std::map<int, std::string> myMap;\nmyMap[5] = \"ccc\";\nreturn myMap;'), tempType)
+        dumper = cxx_writer.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
         dumper.addMember(tempVar)
         dumper.write()
         testFile = open('prova.cpp', 'rt')
@@ -105,9 +118,9 @@ class TestFileDumper(unittest.TestCase):
         self.assertEqual(lines[19], '} // pippo()\n')
 
     def testTemplateFunctionsHeader(self):
-        tempType = writer_code.TemplateType('std::map', [writer_code.intType, writer_code.stringType], 'map')
-        tempVar = writer_code.Function('pippo', writer_code.Code('std::map<int, std::string> myMap;\nmyMap[5] = \"ccc\";\nreturn myMap;'), tempType, [], False, False, ['T'])
-        dumper = writer_code.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
+        tempType = cxx_writer.TemplateType('std::map', [cxx_writer.intType, cxx_writer.stringType], 'map')
+        tempVar = cxx_writer.Function('pippo', cxx_writer.Code('std::map<int, std::string> myMap;\nmyMap[5] = \"ccc\";\nreturn myMap;'), tempType, [], False, False, ['T'])
+        dumper = cxx_writer.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
         dumper.addMember(tempVar)
         dumper.write()
         testFile = open('prova.cpp', 'rt')
@@ -124,9 +137,9 @@ class TestFileDumper(unittest.TestCase):
         self.assertEqual(lines[21], '} // pippo()\n')
 
     def testTemplateFunctionsImpl(self):
-        tempType = writer_code.TemplateType('std::map', [writer_code.intType, writer_code.stringType], 'map')
-        tempVar = writer_code.Function('pippo', writer_code.Code('std::map<int, std::string> myMap;\nmyMap[5] = \"ccc\";\nreturn myMap;'), tempType, [], False, ['T'])
-        dumper = writer_code.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
+        tempType = cxx_writer.TemplateType('std::map', [cxx_writer.intType, cxx_writer.stringType], 'map')
+        tempVar = cxx_writer.Function('pippo', cxx_writer.Code('std::map<int, std::string> myMap;\nmyMap[5] = \"ccc\";\nreturn myMap;'), tempType, [], False, ['T'])
+        dumper = cxx_writer.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
         dumper.addMember(tempVar)
         dumper.write()
         testFile = open('prova.cpp', 'rt')
@@ -138,13 +151,13 @@ class TestFileDumper(unittest.TestCase):
         self.assertEqual(lines[12], '#include <string>\n')
 
     def testDumpClassHeader(self):
-        intDecl = writer_code.intType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu')
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar])
+        intDecl = cxx_writer.intType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
-        dumper = writer_code.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
+        dumper = cxx_writer.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
         dumper.addMember(classDecl)
         dumper.write()
         testFile = open('prova.cpp', 'rt')
@@ -162,13 +175,13 @@ class TestFileDumper(unittest.TestCase):
         self.assertEqual(lines[21], '}; // class MyClass\n')
 
     def testDumpClassImpl(self):
-        intDecl = writer_code.intType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu')
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar])
+        intDecl = cxx_writer.intType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
-        dumper = writer_code.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
+        dumper = cxx_writer.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
         dumper.addMember(classDecl)
         dumper.write()
         testFile = open('prova.cpp', 'rt')
@@ -181,14 +194,14 @@ class TestFileDumper(unittest.TestCase):
         self.assertEqual(lines[14], '} // MyClass()\n')
 
     def testDumpTemplateClassHeader(self):
-        intDecl = writer_code.intType
-        stringDecl = writer_code.stringType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu', [], ['std::string()'])
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
+        intDecl = cxx_writer.intType
+        stringDecl = cxx_writer.stringType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
         classDecl.addConstructor(publicConstr)
-        dumper = writer_code.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
+        dumper = cxx_writer.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
         dumper.addMember(classDecl)
         dumper.write()
         testFile = open('prova.cpp', 'rt')
@@ -211,14 +224,14 @@ class TestFileDumper(unittest.TestCase):
         self.assertEqual(lines[28], '}; // class MyClass\n')
 
     def testDumpTemplateClassImpl(self):
-        intDecl = writer_code.intType
-        stringDecl = writer_code.stringType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu', [], ['std::string()'])
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
+        intDecl = cxx_writer.intType
+        stringDecl = cxx_writer.stringType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
         classDecl.addConstructor(publicConstr)
-        dumper = writer_code.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
+        dumper = cxx_writer.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
         dumper.addMember(classDecl)
         dumper.write()
         testFile = open('prova.cpp', 'rt')
@@ -228,7 +241,7 @@ class TestFileDumper(unittest.TestCase):
         self.assertEqual(len(lines), 1 + 14)
 
     def testEmptyFolder(self):
-        folder = writer_code.Folder('temp/try')
+        folder = cxx_writer.Folder('temp/try')
         folder.create()
         self.assert_(os.path.exists('temp/try/wscript'))
         os.remove('temp/try/wscript')
@@ -236,16 +249,16 @@ class TestFileDumper(unittest.TestCase):
         shutil.rmtree('temp', True)
 
     def testDumpAll(self):
-        folder = writer_code.Folder('temp')
-        intDecl = writer_code.intType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu')
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar])
+        folder = cxx_writer.Folder('temp')
+        intDecl = cxx_writer.intType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
-        implFile = writer_code.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
+        implFile = cxx_writer.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
         implFile.addMember(classDecl)
-        headFile = writer_code.FileDumper('prova.hpp', True, indentSize = 4, lineWidth = 80)
+        headFile = cxx_writer.FileDumper('prova.hpp', True, indentSize = 4, lineWidth = 80)
         headFile.addMember(classDecl)
         folder.addHeader(headFile)
         folder.addCode(implFile)
@@ -295,8 +308,8 @@ class TestFileDumper(unittest.TestCase):
         shutil.rmtree('temp', True)
 
     def testNestedDirs1(self):
-        folder = writer_code.Folder('temp')
-        nestFolder = writer_code.Folder('nested')
+        folder = cxx_writer.Folder('temp')
+        nestFolder = cxx_writer.Folder('nested')
         folder.addSubFolder(nestFolder)
         folder.create()
         nestFolder.create()
@@ -308,8 +321,8 @@ class TestFileDumper(unittest.TestCase):
         shutil.rmtree('temp', True)
 
     def testNestedDirs2(self):
-        folder = writer_code.Folder('temp')
-        nestFolder = writer_code.Folder('nested')
+        folder = cxx_writer.Folder('temp')
+        nestFolder = cxx_writer.Folder('nested')
         folder.addSubFolder(nestFolder)
         nestFolder.create()
         folder.create()
@@ -321,8 +334,8 @@ class TestFileDumper(unittest.TestCase):
         shutil.rmtree('temp', True)
 
     def testNestedDirsCommonPath(self):
-        folder = writer_code.Folder('temp')
-        nestFolder = writer_code.Folder('temp/nested')
+        folder = cxx_writer.Folder('temp')
+        nestFolder = cxx_writer.Folder('temp/nested')
         folder.addSubFolder(nestFolder)
         nestFolder.create()
         folder.create()

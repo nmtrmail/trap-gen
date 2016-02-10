@@ -38,8 +38,8 @@ import cxx_writer
 
 def getGetIRQInstr(self, model, trace, namespace):
     from pipelineWriter import hasCheckHazard
-    instructionType = cxx_writer.writer_code.Type('Instruction', '#include \"instructions.hpp\"')
-    emptyBody = cxx_writer.writer_code.Code('')
+    instructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
+    emptyBody = cxx_writer.Code('')
 
     IRQInstrClasses = []
 
@@ -72,34 +72,34 @@ def getGetIRQInstr(self, model, trace, namespace):
                         behaviorCode += '#undef ' + reg.name + '\n'
             if model.startswith('acc'):
                 behaviorCode += 'return this->stageCycles;\n\n'
-                registerType = cxx_writer.writer_code.Type('Register')
-                unlockQueueType = cxx_writer.writer_code.TemplateType('std::map', ['unsigned int', cxx_writer.writer_code.TemplateType('std::vector', [registerType.makePointer()], 'vector')], 'map')
-                unlockQueueParam = cxx_writer.writer_code.Parameter('unlockQueue', unlockQueueType.makeRef())
-                behaviorBody = cxx_writer.writer_code.Code(behaviorCode)
-                behaviorDecl = cxx_writer.writer_code.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.writer_code.uintType, 'pu', [unlockQueueParam])
+                registerType = cxx_writer.Type('Register')
+                unlockQueueType = cxx_writer.TemplateType('std::map', ['unsigned int', cxx_writer.TemplateType('std::vector', [registerType.makePointer()], 'vector')], 'map')
+                unlockQueueParam = cxx_writer.Parameter('unlockQueue', unlockQueueType.makeRef())
+                behaviorBody = cxx_writer.Code(behaviorCode)
+                behaviorDecl = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'pu', [unlockQueueParam])
                 IRQInstrElements.append(behaviorDecl)
         if not model.startswith('acc'):
             behaviorCode += 'return this->totalInstrCycles;'
-            behaviorBody = cxx_writer.writer_code.Code(behaviorCode)
-            behaviorDecl = cxx_writer.writer_code.Method('behavior', behaviorBody, cxx_writer.writer_code.uintType, 'pu')
+            behaviorBody = cxx_writer.Code(behaviorCode)
+            behaviorDecl = cxx_writer.Method('behavior', behaviorBody, cxx_writer.uintType, 'pu')
             IRQInstrElements.append(behaviorDecl)
 
         # Standard Instruction methods, there is not much to do since the IRQ instruction does nothing special
         from procWriter import baseInstrInitElement
-        replicateBody = cxx_writer.writer_code.Code('return new IRQ_' + irq.name + '_Instruction(' + baseInstrInitElement + ', this->' + irq.name + ');')
-        replicateDecl = cxx_writer.writer_code.Method('replicate', replicateBody, instructionType.makePointer(), 'pu', noException = True, const = True)
+        replicateBody = cxx_writer.Code('return new IRQ_' + irq.name + '_Instruction(' + baseInstrInitElement + ', this->' + irq.name + ');')
+        replicateDecl = cxx_writer.Method('replicate', replicateBody, instructionType.makePointer(), 'pu', noException = True, const = True)
         IRQInstrElements.append(replicateDecl)
-        setparamsParam = cxx_writer.writer_code.Parameter('bitString', self.bitSizes[1].makeRef().makeConst())
-        setparamsDecl = cxx_writer.writer_code.Method('setParams', emptyBody, cxx_writer.writer_code.voidType, 'pu', [setparamsParam], noException = True)
+        setparamsParam = cxx_writer.Parameter('bitString', self.bitSizes[1].makeRef().makeConst())
+        setparamsDecl = cxx_writer.Method('setParams', emptyBody, cxx_writer.voidType, 'pu', [setparamsParam], noException = True)
         IRQInstrElements.append(setparamsDecl)
-        getIstructionNameBody = cxx_writer.writer_code.Code('return \"IRQ_' + irq.name + '_Instruction\";')
-        getIstructionNameDecl = cxx_writer.writer_code.Method('getInstructionName', getIstructionNameBody, cxx_writer.writer_code.stringType, 'pu', noException = True, const = True)
+        getIstructionNameBody = cxx_writer.Code('return \"IRQ_' + irq.name + '_Instruction\";')
+        getIstructionNameDecl = cxx_writer.Method('getInstructionName', getIstructionNameBody, cxx_writer.stringType, 'pu', noException = True, const = True)
         IRQInstrElements.append(getIstructionNameDecl)
-        getMnemonicBody = cxx_writer.writer_code.Code('return \"irq_' + irq.name + '\";')
-        getMnemonicDecl = cxx_writer.writer_code.Method('getMnemonic', getMnemonicBody, cxx_writer.writer_code.stringType, 'pu', noException = True, const = True)
+        getMnemonicBody = cxx_writer.Code('return \"irq_' + irq.name + '\";')
+        getMnemonicDecl = cxx_writer.Method('getMnemonic', getMnemonicBody, cxx_writer.stringType, 'pu', noException = True, const = True)
         IRQInstrElements.append(getMnemonicDecl)
-        getIdBody = cxx_writer.writer_code.Code('return (unsigned int)-1;')
-        getIdDecl = cxx_writer.writer_code.Method('getId', getIdBody, cxx_writer.writer_code.uintType, 'pu', noException = True, const = True)
+        getIdBody = cxx_writer.Code('return (unsigned int)-1;')
+        getIdDecl = cxx_writer.Method('getId', getIdBody, cxx_writer.uintType, 'pu', noException = True, const = True)
         IRQInstrElements.append(getIdDecl)
 
         # Now we have all the methods related to data hazards detection and management:
@@ -107,45 +107,45 @@ def getGetIRQInstr(self, model, trace, namespace):
         if model.startswith('acc'):
             if hasCheckHazard:
                 for pipeStage in self.pipes:
-                    checkHazardDecl = cxx_writer.writer_code.Method('checkHazard_' + pipeStage.name, emptyBody, cxx_writer.writer_code.boolType, 'pu')
+                    checkHazardDecl = cxx_writer.Method('checkHazard_' + pipeStage.name, emptyBody, cxx_writer.boolType, 'pu')
                     IRQInstrElements.append(checkHazardDecl)
-                    lockDecl = cxx_writer.writer_code.Method('lockRegs_' + pipeStage.name, emptyBody, cxx_writer.writer_code.voidType, 'pu')
+                    lockDecl = cxx_writer.Method('lockRegs_' + pipeStage.name, emptyBody, cxx_writer.voidType, 'pu')
                     IRQInstrElements.append(lockDecl)
                 unlockHazard = False
                 for pipeStage in self.pipes:
                     if pipeStage.checkHazard:
                         unlockHazard = True
                     if unlockHazard:
-                        getUnlockDecl = cxx_writer.writer_code.Method('getUnlock_' + pipeStage.name, emptyBody, cxx_writer.writer_code.voidType, 'pu', [unlockQueueParam])
+                        getUnlockDecl = cxx_writer.Method('getUnlock_' + pipeStage.name, emptyBody, cxx_writer.voidType, 'pu', [unlockQueueParam])
                         IRQInstrElements.append(getUnlockDecl)
 
-            printBusyRegsDecl = cxx_writer.writer_code.Method('printBusyRegs', cxx_writer.writer_code.Code('return "";'), cxx_writer.writer_code.stringType, 'pu')
+            printBusyRegsDecl = cxx_writer.Method('printBusyRegs', cxx_writer.Code('return "";'), cxx_writer.stringType, 'pu')
             IRQInstrElements.append(printBusyRegsDecl)
 
 
         # Here I add a method to specify the value of the received interrupt and the related attribute
         from isa import resolveBitType
         irqWidthType = resolveBitType('BIT<' + str(irq.portWidth) + '>')
-        IRQAttribute = cxx_writer.writer_code.Attribute(irq.name, irqWidthType.makeRef(), 'pu')
+        IRQAttribute = cxx_writer.Attribute(irq.name, irqWidthType.makeRef(), 'pu')
         IRQInstrElements.append(IRQAttribute)
-        irqParams = [cxx_writer.writer_code.Parameter(irq.name, irqWidthType.makeRef())]
+        irqParams = [cxx_writer.Parameter(irq.name, irqWidthType.makeRef())]
         irqInit = [irq.name + '(' + irq.name + ')']
-        InterruptValueParam = cxx_writer.writer_code.Parameter('interruptValue', irqWidthType.makeRef().makeConst())
-        setInterruptValueBody = cxx_writer.writer_code.Code('this->' + irq.name + ' = interruptValue;')
-        setInterruptValueDecl = cxx_writer.writer_code.Method('setInterruptValue', setInterruptValueBody, cxx_writer.writer_code.voidType, 'pu', [InterruptValueParam], noException = True, inline = True)
+        InterruptValueParam = cxx_writer.Parameter('interruptValue', irqWidthType.makeRef().makeConst())
+        setInterruptValueBody = cxx_writer.Code('this->' + irq.name + ' = interruptValue;')
+        setInterruptValueDecl = cxx_writer.Method('setInterruptValue', setInterruptValueBody, cxx_writer.voidType, 'pu', [InterruptValueParam], noException = True, inline = True)
         IRQInstrElements.append(setInterruptValueDecl)
 
         # Now I declare the instruction variables for this IRQ instruction
         for var in irq.variables:
-            IRQInstrElements.append(cxx_writer.writer_code.Attribute(var.name, var.varType, 'pro',  var.static))
+            IRQInstrElements.append(cxx_writer.Attribute(var.name, var.varType, 'pro',  var.static))
 
         # Finally I can declare the IRQ class for this specific IRQ
         from procWriter import baseInstrInitElement
         from isaWriter import baseInstrConstrParams
-        publicConstr = cxx_writer.writer_code.Constructor(emptyBody, 'pu', baseInstrConstrParams + irqParams, ['Instruction(' + baseInstrInitElement + ')'] + irqInit)
-        IRQInstrClass = cxx_writer.writer_code.ClassDeclaration('IRQ_' + irq.name + '_Instruction', IRQInstrElements, [instructionType], namespaces = [namespace])
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', baseInstrConstrParams + irqParams, ['Instruction(' + baseInstrInitElement + ')'] + irqInit)
+        IRQInstrClass = cxx_writer.ClassDeclaration('IRQ_' + irq.name + '_Instruction', IRQInstrElements, [instructionType], namespaces = [namespace])
         IRQInstrClass.addConstructor(publicConstr)
-        publicDestr = cxx_writer.writer_code.Destructor(emptyBody, 'pu', True)
+        publicDestr = cxx_writer.Destructor(emptyBody, 'pu', True)
         IRQInstrClass.addDestructor(publicDestr)
         IRQInstrClasses.append(IRQInstrClass)
 

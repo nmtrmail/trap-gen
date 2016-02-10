@@ -34,8 +34,20 @@
 #
 ####################################################################################
 
+try:
+    import cxx_writer
+except ImportError:
+    import sys, os
+    sys.path.append(os.path.abspath(os.path.join('..')))
+    try:
+        import cxx_writer
+    except ImportError:
+        sys.path.append(os.path.abspath(os.path.join('..', '..')))
+        try:
+            import cxx_writer
+        except ImportError:
+            print ('Please specify where the core TRAP files are located')
 
-import writer_code
 import unittest
 import os
 
@@ -45,7 +57,7 @@ class TestWriter(unittest.TestCase):
             os.remove('prova.cpp')
         except:
             pass
-        self.writer = writer_code.CodeWriter('prova.cpp', indentSize = 4, lineWidth = 80)
+        self.writer = cxx_writer.CodeWriter('prova.cpp', indentSize = 4, lineWidth = 80)
 
     def tearDown(self):
         del self.writer

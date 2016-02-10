@@ -35,10 +35,11 @@
 ####################################################################################
 
 
-import unittest
 import processor
 import isa
 import cxx_writer
+
+import unittest
 import os
 
 class TestCoding(unittest.TestCase):

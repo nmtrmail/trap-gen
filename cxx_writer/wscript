@@ -25,7 +25,5 @@ def build(bld):
       install_path = os.path.join(bld.env.PYTHONDIR, 'cxx_writer')
     )
 
-    bld.recurse('writer_code')
-
     if bld.cmd in ['install', 'uninstall']:
         installWafFun(bld)

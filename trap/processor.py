@@ -442,13 +442,13 @@ class Processor:
         self.byteSize = byteSize
 
     def addDefine(self, define, includes = []):
-        self.defines.append(cxx_writer.writer_code.Define(define + '\n', includes = includes))
+        self.defines.append(cxx_writer.Define(define + '\n', includes = includes))
 
     def addParameter(self, name, varType, default):
         for i in self.parameters:
             if i.name == name:
                 raise Exception('A parameter with name ' + name + ' already exists in processor ' + self.name)
-        parameter = cxx_writer.writer_code.Parameter(name, type = varType, initValue = default)
+        parameter = cxx_writer.Parameter(name, type = varType, initValue = default)
         self.parameters.append(parameter)
 
     def addRegister(self, reg):
@@ -1042,11 +1042,11 @@ class Processor:
                         resolveBitType('BIT<' + str(self.wordSize*self.byteSize/2) + '>'),
                         resolveBitType('BIT<' + str(self.byteSize) + '>')]
 
-        cxx_writer.writer_code.FileDumper.license = self.license
-        cxx_writer.writer_code.FileDumper.license_text = self.license_text
-        cxx_writer.writer_code.FileDumper.developer_name = self.developer_name
-        cxx_writer.writer_code.FileDumper.developer_email = self.developer_email
-        cxx_writer.writer_code.FileDumper.banner = self.banner
+        cxx_writer.FileDumper.license = self.license
+        cxx_writer.FileDumper.license_text = self.license_text
+        cxx_writer.FileDumper.developer_name = self.developer_name
+        cxx_writer.FileDumper.developer_email = self.developer_email
+        cxx_writer.FileDumper.banner = self.banner
 
         # Here we check if the decoder signature changed; in case it hasn't we create the decoder,
         # otherwise we load it from file
@@ -1092,14 +1092,14 @@ class Processor:
                 forceDecoderCreation = True
         if dumpDecoderName:
             dec.printDecoder(dumpDecoderName)
-        mainFolder = cxx_writer.writer_code.Folder(os.path.expanduser(os.path.expandvars(folder)))
+        mainFolder = cxx_writer.Folder(os.path.expanduser(os.path.expandvars(folder)))
         for model in models:
             # Here I add the define code, defining the type of the current model;
             # such define code has to be added to each created header file
             defString = '#define ' + model[:-2].upper() + '_MODEL\n'
             defString += '#define ' + model[-2:].upper() + '_IF\n'
-            defCode = cxx_writer.writer_code.Define(defString)
-            cxx_writer.writer_code.FileDumper.def_prefix = self.name.upper() + '_CORE_' +  model[:-2].upper() + '_' + model[-2:].upper() + '_'
+            defCode = cxx_writer.Define(defString)
+            cxx_writer.FileDumper.def_prefix = self.name.upper() + '_CORE_' +  model[:-2].upper() + '_' + model[-2:].upper() + '_'
 
             # Now I also set the processor class name: note that even if each model has a
             # separate namespace, some buggy dynamic linkers complain, so we must also
@@ -1111,11 +1111,11 @@ class Processor:
                 raise Exception(model + ' is not a valid model type')
             if not namespace:
                 namespace = 'core_' + self.name.lower() + '_' + model[-2:].lower()
-            namespaceUse = cxx_writer.writer_code.UseNamespace(namespace)
-            namespaceTrapUse = cxx_writer.writer_code.UseNamespace('trap')
+            namespaceUse = cxx_writer.UseNamespace(namespace)
+            namespaceTrapUse = cxx_writer.UseNamespace('trap')
             decClasses = dec.getCPPClass(self.bitSizes[1], self.instructionCache, namespace)
-            implFileDec = cxx_writer.writer_code.FileDumper('decoder.cpp', False)
-            headFileDec = cxx_writer.writer_code.FileDumper('decoder.hpp', True)
+            implFileDec = cxx_writer.FileDumper('decoder.cpp', False)
+            headFileDec = cxx_writer.FileDumper('decoder.hpp', True)
             headFileDec.addMember(defCode)
             implFileDec.addMember(namespaceUse)
             for i in decClasses:
@@ -1141,11 +1141,11 @@ class Processor:
                 ISAClasses += self.getGetIRQInstr(model, trace, combinedTrace, namespace)
             # Ok, now that we have all the classes it is time to write
             # them to file
-            curFolder = cxx_writer.writer_code.Folder(os.path.join(folder, model))
+            curFolder = cxx_writer.Folder(os.path.join(folder, model))
             mainFolder.addSubFolder(curFolder)
-            implFileRegs = cxx_writer.writer_code.FileDumper('registers.cpp', False)
+            implFileRegs = cxx_writer.FileDumper('registers.cpp', False)
             implFileRegs.addInclude('#include \"registers.hpp\"')
-            headFileRegs = cxx_writer.writer_code.FileDumper('registers.hpp', True)
+            headFileRegs = cxx_writer.FileDumper('registers.hpp', True)
             headFileRegs.addMember(defCode)
             headFileRegs.addMember(self.defines)
             headFileRegs.addMember(self.getRegistersBitfields())
@@ -1153,16 +1153,16 @@ class Processor:
             for i in RegClasses:
                 implFileRegs.addMember(i)
                 headFileRegs.addMember(i)
-            implFileAlias = cxx_writer.writer_code.FileDumper('alias.cpp', False)
+            implFileAlias = cxx_writer.FileDumper('alias.cpp', False)
             implFileAlias.addInclude('#include \"alias.hpp\"')
-            headFileAlias = cxx_writer.writer_code.FileDumper('alias.hpp', True)
+            headFileAlias = cxx_writer.FileDumper('alias.hpp', True)
             headFileAlias.addMember(defCode)
             implFileAlias.addMember(namespaceUse)
             for i in AliasClass:
                 implFileAlias.addMember(i)
                 headFileAlias.addMember(i)
-            implFileProc = cxx_writer.writer_code.FileDumper('processor.cpp', False)
-            headFileProc = cxx_writer.writer_code.FileDumper('processor.hpp', True)
+            implFileProc = cxx_writer.FileDumper('processor.cpp', False)
+            headFileProc = cxx_writer.FileDumper('processor.hpp', True)
             implFileProc.addMember(namespaceUse)
             implFileProc.addMember(namespaceTrapUse)
             implFileProc.addMember(ProcClass)
@@ -1171,8 +1171,8 @@ class Processor:
             headFileProc.addMember(ProcClass)
             implFileProc.addInclude('#include \"processor.hpp\"')
             if model.startswith('acc'):
-                implFilePipe = cxx_writer.writer_code.FileDumper('pipeline.cpp', False)
-                headFilePipe = cxx_writer.writer_code.FileDumper('pipeline.hpp', True)
+                implFilePipe = cxx_writer.FileDumper('pipeline.cpp', False)
+                headFilePipe = cxx_writer.FileDumper('pipeline.hpp', True)
                 headFilePipe.addMember(defCode)
                 implFilePipe.addMember(namespaceUse)
                 implFilePipe.addMember(namespaceTrapUse)
@@ -1181,26 +1181,26 @@ class Processor:
                     implFilePipe.addMember(i)
                     headFilePipe.addMember(i)
                 implFilePipe.addInclude('#include \"pipeline.hpp\"')
-            implFileInstr = cxx_writer.writer_code.FileDumper('instructions.cpp', False)
-            headFileInstr = cxx_writer.writer_code.FileDumper('instructions.hpp', True)
+            implFileInstr = cxx_writer.FileDumper('instructions.cpp', False)
+            headFileInstr = cxx_writer.FileDumper('instructions.hpp', True)
             headFileInstr.addMember(defCode)
             implFileInstr.addMember(namespaceUse)
             for i in ISAClasses:
                 implFileInstr.addMember(i)
                 headFileInstr.addMember(i)
             if self.abi:
-                implFileIf = cxx_writer.writer_code.FileDumper('interface.cpp', False)
+                implFileIf = cxx_writer.FileDumper('interface.cpp', False)
                 implFileIf.addInclude('#include \"interface.hpp\"')
-                headFileIf = cxx_writer.writer_code.FileDumper('interface.hpp', True)
+                headFileIf = cxx_writer.FileDumper('interface.hpp', True)
                 headFileIf.addMember(defCode)
                 implFileIf.addMember(namespaceUse)
                 implFileIf.addMember(namespaceTrapUse)
                 headFileIf.addMember(namespaceTrapUse)
                 implFileIf.addMember(IfClass)
                 headFileIf.addMember(IfClass)
-            implFileMem = cxx_writer.writer_code.FileDumper('memory.cpp', False)
+            implFileMem = cxx_writer.FileDumper('memory.cpp', False)
             implFileMem.addInclude('#include \"memory.hpp\"')
-            headFileMem = cxx_writer.writer_code.FileDumper('memory.hpp', True)
+            headFileMem = cxx_writer.FileDumper('memory.hpp', True)
             headFileMem.addMember(defCode)
             implFileMem.addMember(namespaceUse)
             implFileMem.addMember(namespaceTrapUse)
@@ -1209,60 +1209,60 @@ class Processor:
                 implFileMem.addMember(i)
                 headFileMem.addMember(i)
             if ExternalIf:
-                implFileExt = cxx_writer.writer_code.FileDumper('externalPorts.cpp', False)
+                implFileExt = cxx_writer.FileDumper('externalPorts.cpp', False)
                 implFileExt.addInclude('#include \"externalPorts.hpp\"')
-                headFileExt = cxx_writer.writer_code.FileDumper('externalPorts.hpp', True)
+                headFileExt = cxx_writer.FileDumper('externalPorts.hpp', True)
                 headFileExt.addMember(defCode)
                 implFileExt.addMember(namespaceUse)
                 implFileExt.addMember(ExternalIf)
                 headFileExt.addMember(ExternalIf)
             if self.irqs:
-                implFileIRQ = cxx_writer.writer_code.FileDumper('irqPorts.cpp', False)
+                implFileIRQ = cxx_writer.FileDumper('irqPorts.cpp', False)
                 implFileIRQ.addInclude('#include \"irqPorts.hpp\"')
-                headFileIRQ = cxx_writer.writer_code.FileDumper('irqPorts.hpp', True)
+                headFileIRQ = cxx_writer.FileDumper('irqPorts.hpp', True)
                 headFileIRQ.addMember(defCode)
                 implFileIRQ.addMember(namespaceUse)
                 for i in IRQClasses:
                     implFileIRQ.addMember(i)
                     headFileIRQ.addMember(i)
             if self.pins:
-                implFilePIN = cxx_writer.writer_code.FileDumper('externalPins.cpp', False)
+                implFilePIN = cxx_writer.FileDumper('externalPins.cpp', False)
                 implFilePIN.addInclude('#include \"externalPins.hpp\"')
-                headFilePIN = cxx_writer.writer_code.FileDumper('externalPins.hpp', True)
+                headFilePIN = cxx_writer.FileDumper('externalPins.hpp', True)
                 headFilePIN.addMember(defCode)
                 implFilePIN.addMember(namespaceUse)
                 for i in PINClasses:
                     implFilePIN.addMember(i)
                     headFilePIN.addMember(i)
-            mainFile = cxx_writer.writer_code.FileDumper('main.cpp', False)
+            mainFile = cxx_writer.FileDumper('main.cpp', False)
             mainCode = self.getMainCode(model, namespace)
             mainFile.addMember(mainCode)
-            hmainFile = cxx_writer.writer_code.FileDumper('main.hpp', True)
+            hmainFile = cxx_writer.FileDumper('main.hpp', True)
             mainFile.addInclude('#include \"main.hpp\"')
             hmainFile.addMember(mainCode)
 
             if (model == 'funcLT') and (not self.systemc) and tests:
-                testFolder = cxx_writer.writer_code.Folder('tests')
+                testFolder = cxx_writer.Folder('tests')
                 curFolder.addSubFolder(testFolder)
-                mainTestFile = cxx_writer.writer_code.FileDumper('main.cpp', False)
+                mainTestFile = cxx_writer.FileDumper('main.cpp', False)
                 mainTestFile.addInclude('#include \"main.hpp\"')
-                hmainTestFile = cxx_writer.writer_code.FileDumper('main.hpp', True)
-                decTestsFile = cxx_writer.writer_code.FileDumper('decoderTests.cpp', False)
+                hmainTestFile = cxx_writer.FileDumper('main.hpp', True)
+                decTestsFile = cxx_writer.FileDumper('decoderTests.cpp', False)
                 decTestsFile.addInclude('#include \"decoderTests.hpp\"')
                 mainTestFile.addInclude('#include \"decoderTests.hpp\"')
-                hdecTestsFile = cxx_writer.writer_code.FileDumper('decoderTests.hpp', True)
+                hdecTestsFile = cxx_writer.FileDumper('decoderTests.hpp', True)
                 decTests = dec.getCPPTests(namespace)
                 decTestsFile.addMember(decTests)
                 hdecTestsFile.addMember(decTests)
                 irqTests = self.getIRQTests(trace, combinedTrace, namespace)
                 if irqTests:
-                    irqTestsFile = cxx_writer.writer_code.FileDumper('irqTests.cpp', False)
+                    irqTestsFile = cxx_writer.FileDumper('irqTests.cpp', False)
                     irqTestsFile.addInclude('#include \"irqTests.hpp\"')
                     if PINClasses:
                         irqTestsFile.addInclude('misc/PINTarget.hpp')
                         irqTestsFile.addInclude('externalPins.hpp')
                     mainTestFile.addInclude('#include \"irqTests.hpp\"')
-                    hirqTestsFile = cxx_writer.writer_code.FileDumper('irqTests.hpp', True)
+                    hirqTestsFile = cxx_writer.FileDumper('irqTests.hpp', True)
                     irqTestsFile.addMember(namespaceUse)
                     irqTestsFile.addMember(namespaceTrapUse)
                     irqTestsFile.addMember(irqTests)
@@ -1275,13 +1275,13 @@ class Processor:
                 testPerFile = 100
                 numTestFiles = len(ISATests)/testPerFile
                 for i in range(0, numTestFiles):
-                    ISATestsFile = cxx_writer.writer_code.FileDumper('isaTests' + str(i) + '.cpp', False)
+                    ISATestsFile = cxx_writer.FileDumper('isaTests' + str(i) + '.cpp', False)
                     ISATestsFile.addInclude('#include \"isaTests' + str(i) + '.hpp\"')
                     if PINClasses:
                         ISATestsFile.addInclude('misc/PINTarget.hpp')
                         ISATestsFile.addInclude('externalPins.hpp')
                     mainTestFile.addInclude('#include \"isaTests' + str(i) + '.hpp\"')
-                    hISATestsFile = cxx_writer.writer_code.FileDumper('isaTests' + str(i) + '.hpp', True)
+                    hISATestsFile = cxx_writer.FileDumper('isaTests' + str(i) + '.hpp', True)
                     ISATestsFile.addMember(namespaceUse)
                     ISATestsFile.addMember(namespaceTrapUse)
                     ISATestsFile.addMember(ISATests[testPerFile*i:testPerFile*(i+1)])
@@ -1289,13 +1289,13 @@ class Processor:
                     testFolder.addCode(ISATestsFile)
                     testFolder.addHeader(hISATestsFile)
                 if testPerFile*numTestFiles < len(ISATests):
-                    ISATestsFile = cxx_writer.writer_code.FileDumper('isaTests' + str(numTestFiles) + '.cpp', False)
+                    ISATestsFile = cxx_writer.FileDumper('isaTests' + str(numTestFiles) + '.cpp', False)
                     ISATestsFile.addInclude('#include \"isaTests' + str(numTestFiles) + '.hpp\"')
                     if PINClasses:
                         ISATestsFile.addInclude('misc/PINTarget.hpp')
                         ISATestsFile.addInclude('externalPins.hpp')
                     mainTestFile.addInclude('#include \"isaTests' + str(numTestFiles) + '.hpp\"')
-                    hISATestsFile = cxx_writer.writer_code.FileDumper('isaTests' + str(numTestFiles) + '.hpp', True)
+                    hISATestsFile = cxx_writer.FileDumper('isaTests' + str(numTestFiles) + '.hpp', True)
                     ISATestsFile.addMember(namespaceUse)
                     ISATestsFile.addMember(namespaceTrapUse)
                     ISATestsFile.addMember(ISATests[testPerFile*numTestFiles:])
@@ -1456,7 +1456,7 @@ class Interrupt:
         variable has to be an instance of cxx_writer.Variable"""
         if isinstance(variable, type(())):
             from isa import resolveBitType
-            variable = cxx_writer.writer_code.Variable(variable[0], resolveBitType(variable[1]))
+            variable = cxx_writer.Variable(variable[0], resolveBitType(variable[1]))
         for instrVar in self.variables:
             if variable.name == instrVar.name:
                 if variable.varType.name != instrVar.varType.name:

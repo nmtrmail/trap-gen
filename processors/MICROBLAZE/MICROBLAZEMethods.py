@@ -47,16 +47,16 @@ import cxx_writer
 # instructions, but which can be called by the instruction body
 # *******
 
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if((bitSeq & (1 << (bitSeq_length - 1))) != 0)
     bitSeq |= (((unsigned int)0xFFFFFFFF) << bitSeq_length);
 return bitSeq;
 """)
 SignExtend_method = trap.HelperMethod('SignExtend', opCode, 'execute')
-SignExtend_method.setSignature(('BIT<32>'), [('bitSeq', 'BIT<32>'), cxx_writer.writer_code.Parameter('bitSeq_length', cxx_writer.writer_code.uintType)])
+SignExtend_method.setSignature(('BIT<32>'), [('bitSeq', 'BIT<32>'), cxx_writer.Parameter('bitSeq_length', cxx_writer.uintType)])
 
 # PC increment
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if (TARGET == 0xffffffff) {
 	PC = PC + 4;
 	DSFLAG = 0x0;
@@ -68,7 +68,7 @@ if (TARGET == 0xffffffff) {
 """)
 IncrementPC = trap.HelperOperation('IncrementPC', opCode, inline = False)
 
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 	if ( IMMREG & 0x80000000 ) {  /* IMM instruction */
 		imm_value = ((int)imm & 0x0000ffff) + (int)(IMMREG << 16);
 		IMMREG &= 0x7fffffff;
@@ -82,12 +82,12 @@ IMM_handler = trap.HelperOperation('IMM_handler', opCode)
 IMM_handler.addInstructionVar(('imm_value', 'BIT<32>'))
 IMM_handler.addUserInstructionElement('imm')
 
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 	IMMREG &= 0x7fffffff;
 """)
 IMM_reset = trap.HelperOperation('IMM_reset', opCode)
 
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 	ESR[key_DS] = DSFLAG ? 0x1 : 0x0;
 	if ( ESR[key_DS] ) {
 		BTR = PC; /* In this moment, TARGET value is in PC */
@@ -107,9 +107,9 @@ opCode = cxx_writer.writer_code.Code("""
 	EAR = addr;
 """)
 handleMemoryException_method = trap.HelperMethod('handleMemoryException', opCode, 'execute')
-handleMemoryException_method.setSignature(parameters = [cxx_writer.writer_code.Parameter('W_value', cxx_writer.writer_code.uintType), cxx_writer.writer_code.Parameter('S_value', cxx_writer.writer_code.uintType), cxx_writer.writer_code.Parameter('rd_bit_value', cxx_writer.writer_code.uintType), cxx_writer.writer_code.Parameter('addr', cxx_writer.writer_code.uintType)])
+handleMemoryException_method.setSignature(parameters = [cxx_writer.Parameter('W_value', cxx_writer.uintType), cxx_writer.Parameter('S_value', cxx_writer.uintType), cxx_writer.Parameter('rd_bit_value', cxx_writer.uintType), cxx_writer.Parameter('addr', cxx_writer.uintType)])
 
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 	ESR[key_DS] = DSFLAG ? 0x1 : 0x0;
 	if ( ESR[key_DS] ) {
 		BTR = PC; /* In this moment, TARGET value is in PC */

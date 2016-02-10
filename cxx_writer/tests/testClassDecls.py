@@ -35,7 +35,20 @@
 ####################################################################################
 
 
-import writer_code
+try:
+    import cxx_writer
+except ImportError:
+    import sys, os
+    sys.path.append(os.path.abspath(os.path.join('..')))
+    try:
+        import cxx_writer
+    except ImportError:
+        sys.path.append(os.path.abspath(os.path.join('..', '..')))
+        try:
+            import cxx_writer
+        except ImportError:
+            print ('Please specify where the core TRAP files are located')
+
 import unittest
 import os
 
@@ -45,14 +58,14 @@ class TestClassDecls(unittest.TestCase):
             os.remove('prova.cpp')
         except:
             pass
-        self.writer = writer_code.CodeWriter('prova.cpp', indentSize = 4, lineWidth = 80)
+        self.writer = cxx_writer.CodeWriter('prova.cpp', indentSize = 4, lineWidth = 80)
 
     def tearDown(self):
         del self.writer
         os.remove('prova.cpp')
 
     def testEmptyClassImpl(self):
-        classDecl = writer_code.ClassDeclaration('emptyClass')
+        classDecl = cxx_writer.ClassDeclaration('emptyClass')
         classDecl.writeDeclaration(self.writer)
         self.writer.flush()
         testFile = open('prova.cpp', 'r')
@@ -63,7 +76,7 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(lines[1], '}; // class emptyClass\n')
 
     def testEmptyClassDecl(self):
-        classDecl = writer_code.ClassDeclaration('emptyClass')
+        classDecl = cxx_writer.ClassDeclaration('emptyClass')
         classDecl.writeImplementation(self.writer)
         self.writer.flush()
         testFile = open('prova.cpp', 'r')
@@ -72,11 +85,11 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(len(lines), 0)
 
     def testNormalDecl(self):
-        intDecl = writer_code.intType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu')
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar])
+        intDecl = cxx_writer.intType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
         classDecl.writeDeclaration(self.writer)
         self.writer.flush()
@@ -94,11 +107,11 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(lines[7], '}; // class MyClass\n')
 
     def testNormalImpl(self):
-        intDecl = writer_code.intType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu')
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar])
+        intDecl = cxx_writer.intType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
         classDecl.writeImplementation(self.writer)
         self.writer.flush()
@@ -111,12 +124,12 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(lines[2], '} // MyClass()\n')
 
     def testTemplateDecl(self):
-        intDecl = writer_code.intType
-        stringDecl = writer_code.stringType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu', [], ['std::string()'])
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
+        intDecl = cxx_writer.intType
+        stringDecl = cxx_writer.stringType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
         classDecl.addConstructor(publicConstr)
         classDecl.writeDeclaration(self.writer)
         self.writer.flush()
@@ -139,12 +152,12 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(lines[12], '}; // class MyClass\n')
 
     def testTemplateImpl(self):
-        intDecl = writer_code.intType
-        stringDecl = writer_code.stringType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu', [], ['std::string()'])
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
+        intDecl = cxx_writer.intType
+        stringDecl = cxx_writer.stringType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
         classDecl.addConstructor(publicConstr)
         classDecl.writeImplementation(self.writer)
         self.writer.flush()
@@ -154,12 +167,12 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(len(lines), 0)
 
     def testStaticAttrsDecl(self):
-        intDecl = writer_code.intType
-        stringDecl = writer_code.stringType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri', True, '0')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu', [], ['std::string()'])
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar], [stringDecl])
+        intDecl = cxx_writer.intType
+        stringDecl = cxx_writer.stringType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri', True, '0')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar], [stringDecl])
         classDecl.addConstructor(publicConstr)
         classDecl.writeDeclaration(self.writer)
         self.writer.flush()
@@ -177,11 +190,11 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(lines[7], '}; // class MyClass\n')
 
     def testStaticAttrsImpl(self):
-        intDecl = writer_code.intType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri', True, '0')
-        emptyBody = writer_code.Code('')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu', [], ['std::string()'])
-        classDecl = writer_code.ClassDeclaration('MyClass', [privateVar])
+        intDecl = cxx_writer.intType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri', True, '0')
+        emptyBody = cxx_writer.Code('')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
         classDecl.writeImplementation(self.writer)
         self.writer.flush()
@@ -196,13 +209,13 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(lines[4], '} // MyClass()\n')
 
     def testSCModuleDecl(self):
-        intDecl = writer_code.intType
-        stringDecl = writer_code.stringType
-        module_nameDecl = writer_code.sc_module_nameType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('end_module();')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu', [writer_code.Parameter('name', module_nameDecl)], ['std::string()'])
-        classDecl = writer_code.SCModule('MyClass', [privateVar], [stringDecl])
+        intDecl = cxx_writer.intType
+        stringDecl = cxx_writer.stringType
+        module_nameDecl = cxx_writer.sc_module_nameType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('end_module();')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [cxx_writer.Parameter('name', module_nameDecl)], ['std::string()'])
+        classDecl = cxx_writer.SCModule('MyClass', [privateVar], [stringDecl])
         classDecl.addConstructor(publicConstr)
         classDecl.writeDeclaration(self.writer)
         self.writer.flush()
@@ -221,13 +234,13 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(lines[8], '}; // class MyClass\n')
 
     def testSCModuleImpl(self):
-        intDecl = writer_code.intType
-        stringDecl = writer_code.stringType
-        module_nameDecl = writer_code.sc_module_nameType
-        privateVar = writer_code.Attribute('pippo', intDecl, 'pri')
-        emptyBody = writer_code.Code('end_module();')
-        publicConstr = writer_code.Constructor(emptyBody, 'pu', [writer_code.Parameter('name', module_nameDecl)], ['std::string()', 'sc_module(name)'])
-        classDecl = writer_code.SCModule('MyClass', [privateVar], [stringDecl])
+        intDecl = cxx_writer.intType
+        stringDecl = cxx_writer.stringType
+        module_nameDecl = cxx_writer.sc_module_nameType
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        emptyBody = cxx_writer.Code('end_module();')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [cxx_writer.Parameter('name', module_nameDecl)], ['std::string()', 'sc_module(name)'])
+        classDecl = cxx_writer.SCModule('MyClass', [privateVar], [stringDecl])
         classDecl.addConstructor(publicConstr)
         classDecl.writeImplementation(self.writer)
         self.writer.flush()
@@ -242,11 +255,11 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(lines[4], '} // MyClass()\n')
 
     def testInlineMethodDecl(self):
-        intDecl = writer_code.intType
-        emptyBody = writer_code.Code('')
-        inlineMethod = writer_code.Method('pippo', emptyBody, intDecl, 'pri', [], False, True)
-        publicConstr = writer_code.Constructor(emptyBody, 'pu')
-        classDecl = writer_code.ClassDeclaration('MyClass', [inlineMethod])
+        intDecl = cxx_writer.intType
+        emptyBody = cxx_writer.Code('')
+        inlineMethod = cxx_writer.Method('pippo', emptyBody, intDecl, 'pri', [], False, True)
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [inlineMethod])
         classDecl.addConstructor(publicConstr)
         classDecl.writeDeclaration(self.writer)
         self.writer.flush()
@@ -266,11 +279,11 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(lines[9], '}; // class MyClass\n')
 
     def testInlineMethodImpl(self):
-        intDecl = writer_code.intType
-        emptyBody = writer_code.Code('')
-        inlineMethod = writer_code.Method('pippo', emptyBody, intDecl, 'pri', [], False, True)
-        publicConstr = writer_code.Constructor(emptyBody, 'pu')
-        classDecl = writer_code.ClassDeclaration('MyClass', [inlineMethod])
+        intDecl = cxx_writer.intType
+        emptyBody = cxx_writer.Code('')
+        inlineMethod = cxx_writer.Method('pippo', emptyBody, intDecl, 'pri', [], False, True)
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        classDecl = cxx_writer.ClassDeclaration('MyClass', [inlineMethod])
         classDecl.addConstructor(publicConstr)
         classDecl.writeImplementation(self.writer)
         self.writer.flush()

@@ -82,7 +82,7 @@ isa.addMethod(handleUserPermissionException_method)
 
 #ADD instruction family
 # ADD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 long long result = (long long)((int)rb) + (long long)((int)ra);
 MSR[key_C] = ((ra^rb^(unsigned int)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result; 
@@ -108,7 +108,7 @@ add_Instr.addTest({'rd': 1, 'ra': 1, 'rb': 1}, {'GPR[1]': 0xfffffffe, 'PC':0x0, 
 isa.addInstruction(add_Instr)
 
 # ADDC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 long long result = (long long)((int)ra) + (long long)((int)rb) + (long long)MSR[key_C];
 MSR[key_C] = ((ra^rb^(unsigned int)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result;
@@ -136,7 +136,7 @@ addc_Instr.addTest({'rd': 1, 'ra': 1, 'rb': 1}, {'GPR[1]': 0xfffffffe, 'PC':0x0,
 isa.addInstruction(addc_Instr)
 
 # ADDK
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)rb + (int)ra;
 """)
 addk_Instr = trap.Instruction('ADDK', True)
@@ -155,7 +155,7 @@ addk_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xff000000, 'GPR[2]':
 isa.addInstruction(addk_Instr)
 
 # ADDKC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)rb + (int)ra +(int)MSR[key_C];
 """)
 addkc_Instr = trap.Instruction('ADDKC', True)
@@ -175,7 +175,7 @@ isa.addInstruction(addkc_Instr)
 
 #ADDI instruction family
 #ADDI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 long long result = (long long)((long long)((int)ra) + ((long long)(int)imm_value));
 MSR[key_C] = ((ra^imm_value^(unsigned int)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result;
@@ -194,7 +194,7 @@ addi_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0x0006}, {'GPR[1]': 0, 'GPR[3]': 0x
 isa.addInstruction(addi_Instr)
 
 #ADDIC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 long long result = (long long)((long long)((int)ra) + ((long long)(int)imm_value) + (long long)MSR[key_C]);
 MSR[key_C] = ((ra^imm_value^(unsigned int)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result;
@@ -212,7 +212,7 @@ addic_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0x8000}, {'GPR[1]': 0x00ff0000, 'G
 isa.addInstruction(addic_Instr)
 
 #ADDIK
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra + (int)imm_value;
 """)
 addik_Instr = trap.Instruction('ADDIK', True)
@@ -228,7 +228,7 @@ addik_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0x8000}, {'GPR[1]': 0x00ff0000, 'G
 isa.addInstruction(addik_Instr)
 
 #ADDIKC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra + (int)imm_value + (int)MSR[key_C];
 """)
 addikc_Instr = trap.Instruction('ADDIKC', True)
@@ -245,7 +245,7 @@ isa.addInstruction(addikc_Instr)
 
 #AND instruction family
 #AND
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra & (int)rb;
 """)
 and_Instr = trap.Instruction('AND', True)
@@ -259,7 +259,7 @@ and_Instr.addTest({'rd': 1, 'ra': 1, 'rb': 1}, {'GPR[1]': 0xab88cd77, 'PC':0x0, 
 isa.addInstruction(and_Instr)
 
 #ANDI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra & (int)imm_value;
 """)
 andi_Instr = trap.Instruction('ANDI', True)
@@ -272,7 +272,7 @@ andi_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0x6666}, {'GPR[1]': 0xffcc8844, 'GP
 isa.addInstruction(andi_Instr)
 
 #ANDN
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra & ~((int)rb);
 """)
 andn_Instr = trap.Instruction('ANDN', True)
@@ -284,7 +284,7 @@ andn_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xffcc8844, 'GPR[2]':
 isa.addInstruction(andn_Instr)
 
 #ANDNI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra & ~((int)imm_value);
 """)
 andni_Instr = trap.Instruction('ANDNI', True)
@@ -297,7 +297,7 @@ isa.addInstruction(andni_Instr)
 
 #BRANCH instruction family
 #BEQ
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra==0) {
 	PC = PC + (int)rb;
 } else {
@@ -314,7 +314,7 @@ beq_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': 1, 'GPR[2]': 0x10, 'PC':0x50000
 isa.addInstruction(beq_Instr)
 
 #BEQD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra == 0 ) {
 	TARGET = PC + (int)rb;
 } else {
@@ -331,7 +331,7 @@ beqd_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': 1, 'GPR[2]': 0x10, 'PC':0x5000
 isa.addInstruction(beqd_Instr)
 
 #BEQI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra==0) {
 	PC = PC + (int)imm_value;
 } else {
@@ -348,7 +348,7 @@ beqi_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': 1, 'PC':0x500000}, {'PC':0
 isa.addInstruction(beqi_Instr)
 
 #BEQID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra == 0 ) {
 	TARGET = PC + (int)imm_value;
 } else {
@@ -365,7 +365,7 @@ beqid_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': 1, 'PC':0x500000, 'TARGET
 isa.addInstruction(beqid_Instr)
 
 #BGE
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra>=0) {
 	PC = PC + (int)rb;
 } else {
@@ -382,7 +382,7 @@ bge_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': -5, 'GPR[2]': 0x10, 'PC':0x5000
 isa.addInstruction(bge_Instr)
 
 #BGED
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra >= 0 ) {
 	TARGET = PC + (int)rb;
 } else {
@@ -399,7 +399,7 @@ bged_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': -1, 'GPR[2]': 0x10, 'PC':0x500
 isa.addInstruction(bged_Instr)
 
 #BGEI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra>=0) {
 	PC = PC + (int)imm_value;
 } else {
@@ -416,7 +416,7 @@ bgei_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': -5, 'PC':0x500000}, {'PC':
 isa.addInstruction(bgei_Instr)
 
 #BGEID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra >= 0 ) {
 	TARGET = PC + (int)imm_value;
 } else {
@@ -433,7 +433,7 @@ bgeid_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': -1, 'PC':0x500000, 'TARGE
 isa.addInstruction(bgeid_Instr)
 
 #BGT
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra>0) {
 	PC = PC + (int)rb;
 } else {
@@ -450,7 +450,7 @@ bgt_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': -5, 'GPR[2]': 0x10, 'PC':0x5000
 isa.addInstruction(bgt_Instr)
 
 #BGTD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra > 0 ) {
 	TARGET = PC + (int)rb;
 } else {
@@ -467,7 +467,7 @@ bgtd_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': 0, 'GPR[2]': 0x10, 'PC':0x5000
 isa.addInstruction(bgtd_Instr)
 
 #BGTI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra>0) {
 	PC = PC + (int)imm_value;
 } else {
@@ -484,7 +484,7 @@ bgti_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': -5, 'PC':0x500000}, {'PC':
 isa.addInstruction(bgti_Instr)
 
 #BGTID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra > 0 ) {
 	TARGET = PC + (int)imm_value;
 } else {
@@ -501,7 +501,7 @@ bgtid_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': 0, 'PC':0x500000, 'TARGET
 isa.addInstruction(bgtid_Instr)
 
 #BLE
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra<=0) {
 	PC = PC + (int)rb;
 } else {
@@ -518,7 +518,7 @@ ble_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': -5, 'GPR[2]': 0x10, 'PC':0x5000
 isa.addInstruction(ble_Instr)
 
 #BLED
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra <= 0 ) {
 	TARGET = PC + (int)rb;
 } else {
@@ -535,7 +535,7 @@ bled_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': 1, 'GPR[2]': 0x10, 'PC':0x5000
 isa.addInstruction(bled_Instr)
 
 #BLEI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra<=0) {
 	PC = PC + (int)imm_value;
 } else {
@@ -552,7 +552,7 @@ blei_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': -5, 'PC':0x500000}, {'PC':
 isa.addInstruction(blei_Instr)
 
 #BLEID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra <= 0 ) {
 	TARGET = PC + (int)imm_value;
 } else {
@@ -569,7 +569,7 @@ bleid_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': 1, 'PC':0x500000, 'TARGET
 isa.addInstruction(bleid_Instr)
 
 #BLT
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra<0) {
 	PC = PC + (int)rb;
 } else {
@@ -586,7 +586,7 @@ blt_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': -5, 'GPR[2]': 0x10, 'PC':0x5000
 isa.addInstruction(blt_Instr)
 
 #BLTD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra < 0 ) {
 	TARGET = PC + (int)rb;
 } else {
@@ -603,7 +603,7 @@ bltd_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': 0, 'GPR[2]': 0x10, 'PC':0x5000
 isa.addInstruction(bltd_Instr)
 
 #BLTI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra<0) {
 	PC = PC + (int)imm_value;
 } else {
@@ -620,7 +620,7 @@ blti_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': -5, 'PC':0x500000}, {'PC':
 isa.addInstruction(blti_Instr)
 
 #BLTID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra < 0 ) {
 	TARGET = PC + (int)imm_value;
 } else {
@@ -637,7 +637,7 @@ bltid_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': 0, 'PC':0x500000, 'TARGET
 isa.addInstruction(bltid_Instr)
 
 #BNE
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra!=0) {
 	PC = PC + (int)rb;
 } else {
@@ -654,7 +654,7 @@ bne_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': -5, 'GPR[2]': 0x10, 'PC':0x5000
 isa.addInstruction(bne_Instr)
 
 #BNED
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra != 0 ) {
 	TARGET = PC + (int)rb;
 } else {
@@ -671,7 +671,7 @@ bned_Instr.addTest({'ra': 1, 'rb': 2}, {'GPR[1]': 0, 'GPR[2]': 0x10, 'PC':0x5000
 isa.addInstruction(bned_Instr)
 
 #BNEI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra!=0) {
 	PC = PC + (int)imm_value;
 } else {
@@ -688,7 +688,7 @@ bnei_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': -5, 'PC':0x500000}, {'PC':
 isa.addInstruction(bnei_Instr)
 
 #BNEID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((int)ra != 0 ) {
 	TARGET = PC + (int)imm_value;
 } else {
@@ -705,7 +705,7 @@ bneid_Instr.addTest({'ra': 1, 'imm': 0x10}, {'GPR[1]': 0, 'PC':0x500000, 'TARGET
 isa.addInstruction(bneid_Instr)
 
 #BR
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 PC = PC + (int)rb;
 """)
 br_Instr = trap.Instruction('BR','True')
@@ -716,7 +716,7 @@ br_Instr.addTest({'rb': 1}, {'GPR[1]': 0x50, 'PC':0x500000}, {'PC':0x500050})
 isa.addInstruction(br_Instr)
 
 #BRA
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 PC = (int)rb;
 """)
 bra_Instr = trap.Instruction('BRA','True')
@@ -727,7 +727,7 @@ bra_Instr.addTest({'rb': 1}, {'GPR[1]': 0x50, 'PC':0x500000}, {'PC':0x50})
 isa.addInstruction(bra_Instr)
 
 #BRD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 TARGET = PC + (int)rb;
 PC = PC + 4;
 """)
@@ -739,7 +739,7 @@ brd_Instr.addTest({'rb': 1}, {'GPR[1]': 0x50, 'PC':0x500000}, {'PC':0x500004, 'T
 isa.addInstruction(brd_Instr)
 
 #BRAD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 TARGET = (int)rb;
 PC = PC + 4;
 """)
@@ -751,7 +751,7 @@ brad_Instr.addTest({'rb': 1}, {'GPR[1]': 0x50, 'PC':0x500000}, {'PC':0x500004, '
 isa.addInstruction(brad_Instr)
 
 #BRLD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = PC;
 TARGET = PC + (int)rb;
 PC = PC + 4;
@@ -764,7 +764,7 @@ brld_Instr.addTest({'rb': 1, 'rd': 2}, {'GPR[1]': 0x50, 'GPR[2]':0xffff, 'PC':0x
 isa.addInstruction(brld_Instr)
 
 #BRALD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = PC;
 TARGET = (int)rb;
 PC = PC + 4;
@@ -777,7 +777,7 @@ brald_Instr.addTest({'rb': 1, 'rd': 2}, {'GPR[1]': 0x50, 'GPR[2]':0xffff, 'PC':0
 isa.addInstruction(brald_Instr)
 
 #BRI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 PC = PC + (int)imm_value;
 """)
 bri_Instr = trap.Instruction('BRI','True')
@@ -788,7 +788,7 @@ bri_Instr.addTest({'imm': 0x50}, {'PC':0x500000}, {'PC':0x500050})
 isa.addInstruction(bri_Instr)
 
 #BRAI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 PC = (int)imm_value;
 """)
 brai_Instr = trap.Instruction('BRAI','True')
@@ -799,7 +799,7 @@ brai_Instr.addTest({'imm': 0x50}, {'PC':0x500000}, {'PC':0x50})
 isa.addInstruction(brai_Instr)
 
 #BRID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 TARGET = PC + (int)imm_value;
 PC = PC + 4;
 """)
@@ -811,7 +811,7 @@ brid_Instr.addTest({'imm': 0x50}, {'PC':0x500000}, {'PC':0x500004, 'TARGET':0x50
 isa.addInstruction(brid_Instr)
 
 #BRAID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 TARGET = (int)imm_value;
 PC = PC + 4;
 """)
@@ -823,7 +823,7 @@ brai_Instr.addTest({'imm': 0x50}, {'PC':0x500000}, {'PC':0x500004, 'TARGET':0x50
 isa.addInstruction(brai_Instr)
 
 #BRLID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = PC;
 TARGET = PC + (int)imm_value;
 PC = PC + 4;
@@ -836,7 +836,7 @@ brlid_Instr.addTest({'rd': 1, 'imm': 0x50}, {'GPR[1]': 0xffff, 'PC':0x500000}, {
 isa.addInstruction(brlid_Instr)
 
 #BRALID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = PC;
 TARGET = (int)imm_value;
 PC = PC + 4;
@@ -849,7 +849,7 @@ bralid_Instr.addTest({'rd': 1, 'imm': 0x50}, {'GPR[1]': 0xffff, 'PC':0x500000}, 
 isa.addInstruction(bralid_Instr)
 
 #BRK
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ( MSR[key_UM] == 0x1 ) {
 	ESR[key_EC] = 0x1c;
 } else {
@@ -867,7 +867,7 @@ brk_Instr.addTest({'rd': 1, 'rb': 2}, {'GPR[1]': 0xffff, 'GPR[2]': 0x50, 'PC':0x
 isa.addInstruction(brk_Instr)
 
 #BRKI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ((MSR[key_UM] == 1) && ((int)imm_value != 0x8) && ((int)imm_value != 0x18)) {
 	ESR[key_EC] = 0x1c;
 } else {
@@ -895,7 +895,7 @@ isa.addInstruction(brki_Instr)
 
 #BARREL SHIFT family
 #BSRL (S=0, T=0)
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (unsigned int)ra >> ((int)rb & 0x1f); /* I consider only the five less significant bits */
 """)
 bsrl_Instr = trap.Instruction('BSRL', True)
@@ -909,7 +909,7 @@ bsrl_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xff1fbb18, 'GPR[2]':
 isa.addInstruction(bsrl_Instr)
 
 #BSRA (S=0, T=1)
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra >> ((int)rb & 0x1f); /* the C shift is Arithmetical! */
 """)
 bsra_Instr = trap.Instruction('BSRA', True)
@@ -923,7 +923,7 @@ bsra_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xff1fbb18, 'GPR[2]':
 isa.addInstruction(bsra_Instr)
 
 #BSLL (S=1, T=0)
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (unsigned int)ra << ((int)rb & 0x1f);
 """)
 bsll_Instr = trap.Instruction('BSLL', True)
@@ -937,7 +937,7 @@ bsll_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xff1fbb18, 'GPR[2]':
 isa.addInstruction(bsll_Instr)
 
 #BSRLI (S=0, T=0)
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (unsigned int)ra >> (int)imm_value;
 """)
 bsrli_Instr = trap.Instruction('BSRLI', True)
@@ -950,7 +950,7 @@ bsrli_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 7}, {'GPR[1]': 0xff1fbb18, 'GPR[3]
 isa.addInstruction(bsrli_Instr)
 
 #BSRAI (S=0, T=1)
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra >> (int)imm_value;
 """)
 bsrai_Instr = trap.Instruction('BSRAI', True)
@@ -963,7 +963,7 @@ bsrai_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 7}, {'GPR[1]': 0xff1fbb18, 'GPR[3]
 isa.addInstruction(bsrai_Instr)
 
 #BSLLI (S=0, T=1)
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (unsigned int)ra << (int)imm_value;
 """)
 bslli_Instr = trap.Instruction('BSLLI', True)
@@ -977,7 +977,7 @@ isa.addInstruction(bslli_Instr)
 
 #COMPARE family
 #CMP
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int result = (int)rb + ~((int)ra) + 1;
 if ((int)ra > (int) rb) {
 	result |= 0x80000000;
@@ -1002,7 +1002,7 @@ cmp_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': -4, 'GPR[2]': -5, 'GPR
 isa.addInstruction(cmp_Instr)
 
 #CMPU
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int result = (unsigned int)rb + ~((unsigned int)ra) + 1;
 if ((unsigned int)ra > (unsigned int) rb) {
 	result |= 0x80000000;
@@ -1029,7 +1029,7 @@ isa.addInstruction(cmpu_Instr)
 
 #FLOAT family
 #FADD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 unsigned int ira=(unsigned int)ra;
 float fra=  *( (float*)( (void*)(&ira) ) );
 unsigned int irb=(unsigned int)rb;
@@ -1094,7 +1094,7 @@ fadd_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xc073c6a8, 'GPR[2]':
 isa.addInstruction(fadd_Instr)
 
 #FRSUB
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 unsigned int ira=(unsigned int)ra;
 float fra=  *( (float*)( (void*)(&ira) ) );
 unsigned int irb=(unsigned int)rb;
@@ -1159,7 +1159,7 @@ frsub_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xc073c6a8, 'GPR[2]'
 isa.addInstruction(frsub_Instr)
 
 #FMUL
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 unsigned int ira=(unsigned int)ra;
 float fra=  *( (float*)( (void*)(&ira) ) );
 unsigned int irb=(unsigned int)rb;
@@ -1224,7 +1224,7 @@ fmul_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xc073c6a8, 'GPR[2]':
 isa.addInstruction(fmul_Instr)
 
 #FDIV
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 unsigned int ira=(unsigned int)ra;
 float fra=  *( (float*)( (void*)(&ira) ) );
 unsigned int irb=(unsigned int)rb;
@@ -1299,7 +1299,7 @@ fdiv_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xc07a1cac, 'GPR[2]':
 isa.addInstruction(fdiv_Instr)
 
 #FCMP
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 
 """)
 fcmp_Instr = trap.Instruction('FCMP', True)
@@ -1308,7 +1308,7 @@ fcmp_Instr.setCode(opCode,'execute')
 isa.addInstruction(fcmp_Instr)
 
 #FLT
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int ira=(int)ra;
 float frd=(float)ira;
 rd=*((int*) ((void*)(&frd)));
@@ -1322,7 +1322,7 @@ flt_Instr.addTest({'rd': 3, 'ra': 1}, {'GPR[1]': 0xfffffffd, 'GPR[3]': 0xfffff, 
 isa.addInstruction(flt_Instr)
 
 #FINT
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 
 """)
 fint_Instr = trap.Instruction('FINT', True)
@@ -1331,7 +1331,7 @@ fint_Instr.setCode(opCode,'execute')
 isa.addInstruction(fint_Instr)
 
 #FSQRT
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 
 """)
 fsqrt_Instr = trap.Instruction('FSQRT', True)
@@ -1343,7 +1343,7 @@ isa.addInstruction(fsqrt_Instr)
 #very strange instructions :)
 
 #IDIV
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if (ra==0){
 	rd=(int)0;
 	MSR[key_DZ]=1;
@@ -1365,7 +1365,7 @@ idiv_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]' : 0, 'GPR[2]' : 0x20, 
 isa.addInstruction(idiv_Instr)
 
 #IDIVU
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if (ra==0){
 	rd=(unsigned int)0;
 	MSR[key_DZ]=1;
@@ -1387,7 +1387,7 @@ idivu_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]' : 0, 'GPR[2]' : 0x20,
 isa.addInstruction(idivu_Instr)
 
 #IMM
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 IMMREG = (int)imm & 0x0000ffff;
 IMMREG |= 0x80000000;
 /* We set the MSB bit: this indicate that the register's content is valid */
@@ -1403,7 +1403,7 @@ isa.addInstruction(imm_Instr)
 
 #LOAD family
 #LBU
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)rb;
 rd = dataMem.read_byte(addr);
 rd &= 0x000000ff;
@@ -1419,7 +1419,7 @@ lbu_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]' : 0x10, 'GPR[2]' : 0x21
 isa.addInstruction(lbu_Instr)
 
 #LBUI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)imm_value;
 rd = dataMem.read_byte(addr);
 rd &= 0x000000ff;
@@ -1435,7 +1435,7 @@ lbui_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0x21}, {'GPR[1]' : 0x10, 'GPR[3]' :
 isa.addInstruction(lbui_Instr)
 
 #LHU
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)rb;
 if ( (addr & 0x00000001) != 0 ) {
 	handleMemoryException(0x0,0x0,rd_bit,addr);
@@ -1457,7 +1457,7 @@ lhu_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]' : 0x10, 'GPR[2]' : 0x21
 isa.addInstruction(lhu_Instr)
 
 #LHUI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)imm_value;
 if ( (addr & 0x00000001) != 0 ) {
 	handleMemoryException(0x0,0x0,rd_bit,addr);
@@ -1479,7 +1479,7 @@ lhui_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0x21}, {'GPR[1]' : 0x10, 'GPR[3]' :
 isa.addInstruction(lhui_Instr)
 
 #LW
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)rb;
 if ( (addr & 0x00000003) != 0 ) {
 	handleMemoryException(0x1,0x0,rd_bit,addr);
@@ -1500,7 +1500,7 @@ lw_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]' : 0x10, 'GPR[2]' : 0x21,
 isa.addInstruction(lw_Instr)
 
 #LWI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)imm_value;
 if ( (addr & 0x00000003) != 0 ) {
 	handleMemoryException(0x1,0x0,rd_bit,addr);
@@ -1521,7 +1521,7 @@ lwi_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0x21}, {'GPR[1]' : 0x10, 'GPR[3]' : 
 isa.addInstruction(lwi_Instr)
 
 #MFS
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 switch (rs){
 	case 0x0000:
 		rd=PC;
@@ -1574,7 +1574,7 @@ mfs_Instr.addTest({'rd': 1, 'rs': 0x2001}, {'GPR[1]' : 0x13, 'PC' : 0x0,'PVR[1]'
 isa.addInstruction(mfs_Instr)
 
 #MSRCLR. The bit reversing problem is handled
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if (MSR[key_UM] == 1 && ((unsigned int)imm15) != 0x4 ){
 	ESR[key_EC]=0x1c; // 00111 -----> 11100
 	//EXCEPTION
@@ -1603,7 +1603,7 @@ msrclr_Instr.addTest({'rd': 1, 'imm15': 0x0001}, {'GPR[1]' : 0x13, 'PC' : 0x0,'M
 isa.addInstruction(msrclr_Instr)
 
 #MSRSET
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if (MSR[key_UM] == 1 && ((unsigned int)imm15) != 0x4 ){
 	ESR[key_EC]=0x1c; // 00111 -----> 11100
 	//EXCEPTION
@@ -1632,7 +1632,7 @@ msrset_Instr.addTest({'rd': 1, 'imm15': 0x4001}, {'GPR[1]' : 0x13, 'PC' : 0x0,'M
 isa.addInstruction(msrset_Instr)
 
 #MTS
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if (MSR[key_UM] == 1){
 	ESR[key_EC]=0x1c;
 	//EXCEPTION;
@@ -1676,7 +1676,7 @@ mts_Instr.addTest({'ra': 1, 'rs': 0x1001}, {'GPR[1]' : 0x13, 'PC' : 0x0,'MSR': 0
 isa.addInstruction(mts_Instr)
 
 #MUL
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 long long res = ( (long long)(int)rb * (long long)(int)ra );
 rd = (int) res;
 """)
@@ -1695,7 +1695,7 @@ mul_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0x5faadada, 'GPR[2]': 
 isa.addInstruction(mul_Instr)
 
 #MULH
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 long long res = (long long) ( ( (long long)(int)ra) * ( (long long)(int)rb )   );
 res>>=32;
 rd = (int) res;
@@ -1714,7 +1714,7 @@ mulh_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0x5faadada, 'GPR[2]':
 isa.addInstruction(mulh_Instr)
 
 #MULHU
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 unsigned long long res = (  (unsigned long long)(unsigned int)ra *  (unsigned long long)(unsigned int)rb );
 res>>=32;
 rd = (unsigned int) res;
@@ -1731,7 +1731,7 @@ mulhu_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xefffffff, 'GPR[2]'
 isa.addInstruction(mulhu_Instr)
 
 #MULHSU
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 long long res = (long long)(int)ra * (unsigned long long)(unsigned int) rb;
 res>>=32;
 rd = (unsigned int) res;
@@ -1750,7 +1750,7 @@ mulhsu_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0x10000001, 'GPR[2]
 isa.addInstruction(mulhsu_Instr)
 
 #MULI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 long long res = (int)ra * (int)imm_value;
 rd = (int) res;
 """)
@@ -1767,7 +1767,7 @@ muli_Instr.addTest({'rd': 3, 'ra': 1,'imm': 5}, {'GPR[1]': 30000, 'GPR[3]': 0xff
 isa.addInstruction(muli_Instr)
 
 #OR
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd =  (int)ra | (int)rb;
 """)
 or_Instr = trap.Instruction('OR', True)
@@ -1780,7 +1780,7 @@ or_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 2, 'GPR[2]': 0, 'GPR[3]
 isa.addInstruction(or_Instr)
 
 #ORI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra | (int)imm_value;
 """)
 ori_Instr = trap.Instruction('ORI', True)
@@ -1795,7 +1795,7 @@ ori_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0xffff}, {'GPR[1]': 0,  'GPR[3]': 0x
 isa.addInstruction(ori_Instr)
 
 #PCMPBF
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ( ((int)rb & 0xff000000) == ((int)ra & 0xff000000) )
 	rd = 0x1;
 else if ( ((int)rb & 0x00ff0000) == ((int)ra & 0x00ff0000) )
@@ -1821,7 +1821,7 @@ pcmpbf_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0x1234fedc, 'GPR[2]
 isa.addInstruction(pcmpbf_Instr)
 
 #PCMPEQ
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = ((int)rb == (int)ra);
 """)
 pcmpeq_Instr = trap.Instruction('PCMPEQ', True)
@@ -1834,7 +1834,7 @@ pcmpeq_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0x1234fedc, 'GPR[2]
 isa.addInstruction(pcmpeq_Instr)
 
 #PCMPNE
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = ((int)rb != (int)ra);
 """)
 pcmpne_Instr = trap.Instruction('PCMPNE', True)
@@ -1851,7 +1851,7 @@ isa.addInstruction(pcmpne_Instr)
 
 #RSUB instruction family
 #RSUB
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int a = (int)ra;
 int b = (int)rb;
 long long result = (long long)( (long long)b + ~((long long)a) + 1);
@@ -1871,7 +1871,7 @@ rsub_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'MSR':0x20000000, 'GPR[1]': 0xf
 isa.addInstruction(rsub_Instr)
 
 # RSUBC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int a = (int)ra;
 int b = (int)rb;
 long long result = (long long)( (long long)b + ~((long long)a) + (int)MSR[key_C]);
@@ -1891,7 +1891,7 @@ rsubc_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'MSR':0, 'GPR[1]': 0xfffffffe,
 isa.addInstruction(rsubc_Instr)
 
 # RSUBK
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int a = (int)ra;
 int b = (int)rb;
 rd = (int)(b + ~a + 1);
@@ -1909,7 +1909,7 @@ rsubk_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'MSR':0x20000000, 'GPR[1]': 0x
 isa.addInstruction(rsubk_Instr)
 
 # RSUBKC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int a = (int)ra;
 int b = (int)rb;
 rd = (int)(b + ~a + MSR[key_C]);
@@ -1928,7 +1928,7 @@ isa.addInstruction(rsubkc_Instr)
 
 #RSUBI instruction family
 #RSUBI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int a = (int)ra;
 int imm = (int)imm_value;
 long long result = (long long) ( ((long long)imm) + ~((long long)a) + 1);
@@ -1949,7 +1949,7 @@ rsubi_Instr.addTest({'rd': 3, 'ra': 1, 'imm':0xffff}, {'IMMREG': 0x8000ffff, 'MS
 isa.addInstruction(rsubi_Instr)
 
 #RSUBIC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int a = (int)ra;
 int imm = (int)imm_value;
 long long result = (long long) ( ((long long)imm) + ~((long long)a) + (int)MSR[key_C]);
@@ -1970,7 +1970,7 @@ rsubic_Instr.addTest({'rd': 3, 'ra': 1, 'imm':0xffff}, {'IMMREG': 0x8000ffff, 'M
 isa.addInstruction(rsubic_Instr)
 
 #RSUBIK
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int a = (int)ra;
 int imm = (int)imm_value;
 rd=(int)(imm + ~a + 1);
@@ -1989,7 +1989,7 @@ rsubik_Instr.addTest({'rd': 3, 'ra': 1, 'imm':0xffff}, {'IMMREG': 0x8000ffff, 'M
 isa.addInstruction(rsubik_Instr)
 
 #RSUBIKC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int a = (int)ra;
 int imm = (int)imm_value;
 rd=(int)(imm + ~a + (int)MSR[key_C]);
@@ -2009,7 +2009,7 @@ isa.addInstruction(rsubikc_Instr)
 
 #RETURN instruction family
 #RTBD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ( MSR[key_UM] == 1 ) {
 	handleUserPermissionException();
 } else {
@@ -2030,7 +2030,7 @@ rtbd_Instr.addTest({'ra': 1, 'imm':0x20}, {'GPR[1]': 0x50, 'PC':0x500000, 'MSR' 
 isa.addInstruction(rtbd_Instr)
 
 #RTID
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ( MSR[key_UM] == 1 ) {
 	handleUserPermissionException();
 } else {
@@ -2051,7 +2051,7 @@ rtid_Instr.addTest({'ra': 1, 'imm':0x20}, {'GPR[1]': 0x50, 'PC':0x500000, 'MSR' 
 isa.addInstruction(rtid_Instr)
 
 #RTED
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 if ( MSR[key_UM] == 1 ) {
 	handleUserPermissionException();
 } else {
@@ -2079,7 +2079,7 @@ rted_Instr.addTest({'ra': 1, 'imm':0x20}, {'GPR[1]': 0x50, 'PC':0x500000, 'MSR' 
 isa.addInstruction(rted_Instr)
 
 #RTSD
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 TARGET = (int)ra + (int)imm_value;
 PC = PC + 4;
 """)
@@ -2093,7 +2093,7 @@ isa.addInstruction(rtsd_Instr)
 
 #STORE instruction family
 #SB
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)rb;
 dataMem.write_byte(addr, (unsigned char)(rd & 0x000000ff));
 """)
@@ -2108,7 +2108,7 @@ sb_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]' : 0x10, 'GPR[2]' : 0x21,
 isa.addInstruction(sb_Instr)
 
 #SBI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)imm_value;
 dataMem.write_byte(addr, (unsigned char)(rd & 0x000000ff));
 """)
@@ -2123,7 +2123,7 @@ sbi_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0x21}, {'GPR[1]' : 0x10, 'GPR[3]' : 
 isa.addInstruction(sbi_Instr)
 
 #SH
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)rb;
 if ( ( addr & 0x00000001 ) != 0 ) {
 	handleMemoryException(0x0,0x1,rd_bit,addr);
@@ -2144,7 +2144,7 @@ sh_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]' : 0x10, 'GPR[2]' : 0x21,
 isa.addInstruction(sh_Instr)
 
 #SHI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)imm_value;
 if ( ( addr & 0x00000001 ) != 0 ) {
 	handleMemoryException(0x0,0x1,rd_bit,addr);
@@ -2165,7 +2165,7 @@ shi_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0x21}, {'GPR[1]' : 0x10, 'GPR[3]' : 
 isa.addInstruction(shi_Instr)
 
 #SW
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)rb;
 if ( ( addr & 0x00000003 ) != 0 ) {
 	handleMemoryException(0x1,0x1,rd_bit,addr);
@@ -2186,7 +2186,7 @@ sw_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]' : 0x10, 'GPR[2]' : 0x22,
 isa.addInstruction(sw_Instr)
 
 #SWI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int addr = (int)ra + (int)imm_value;
 if ( ( addr & 0x00000003 ) != 0 ) {
 	handleMemoryException(0x1,0x1,rd_bit,addr);
@@ -2207,7 +2207,7 @@ swi_Instr.addTest({'rd': 3, 'ra': 1, 'imm': 0x22}, {'GPR[1]' : 0x10, 'GPR[3]' : 
 isa.addInstruction(swi_Instr)
 
 #SEXT16
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int result;
 if ( ( (int)ra & 0x00008000 ) != 0) {
 	result = (int)ra | 0xffff0000;
@@ -2227,7 +2227,7 @@ sext16_Instr.addTest({'rd': 3, 'ra': 1}, {'GPR[1]' : 0xabcd8777, 'GPR[3]' : 0xff
 isa.addInstruction(sext16_Instr)
 
 #SEXT8
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int result;
 if ( ( (int)ra & 0x00000080 ) != 0) {
 	result = (int)ra | 0xffffff00;
@@ -2247,7 +2247,7 @@ sext8_Instr.addTest({'rd': 3, 'ra': 1}, {'GPR[1]' : 0xabcd7787, 'GPR[3]' : 0xfff
 isa.addInstruction(sext8_Instr)
 
 #SRA
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int result = ((int)ra)>>1;
 if ((int)ra & 0x80000000) {
 	result |= 0x80000000;
@@ -2271,7 +2271,7 @@ sra_Instr.addTest({'rd': 1, 'ra': 1}, {'GPR[1]' : 0x70000000,'MSR': 0, 'PC' : 0x
 isa.addInstruction(sra_Instr)
 
 #SRC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int result = ((int)ra)>>1;
 if (MSR[key_C]) {
 	result |= 0x80000000;
@@ -2299,7 +2299,7 @@ src_Instr.addTest({'rd': 1, 'ra': 1}, {'GPR[1]' : 0xc0000001,'MSR': 0x00000000, 
 isa.addInstruction(src_Instr)
 
 #SRL
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 int result = ((int)ra)>>1;
 result &= 0x7fffffff;
 MSR[key_C]= ((int)ra & 0x00000001) ? 0x1 : 0x0;
@@ -2319,7 +2319,7 @@ srl_Instr.addTest({'rd': 1, 'ra': 1}, {'GPR[1]' : 0xc0000001,'MSR': 0x20000000, 
 isa.addInstruction(srl_Instr)
 
 #WDC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 /* This instruction is related to the Cache. Since we don't have
    Cache in our model, we simply ignore the implementation of 
    this instruction. */
@@ -2332,7 +2332,7 @@ wdc_Instr.addBehavior(IncrementPC, 'execute')
 isa.addInstruction(wdc_Instr)
 
 #WIC
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 /* This instruction is related to the Cache. Since we don't have
    Cache in our model, we simply ignore the implementation of 
    this instruction. */
@@ -2345,7 +2345,7 @@ wic_Instr.addBehavior(IncrementPC, 'execute')
 isa.addInstruction(wic_Instr)
 
 #XOR
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra ^ (int)rb;
 """)
 xor_Instr = trap.Instruction('XOR', True)
@@ -2359,7 +2359,7 @@ xor_Instr.addTest({'rd': 3, 'ra': 1, 'rb': 2}, {'GPR[1]': 0xffff, 'GPR[2]': 0xff
 isa.addInstruction(xor_Instr)
 
 #XORI
-opCode = cxx_writer.writer_code.Code("""
+opCode = cxx_writer.Code("""
 rd = (int)ra ^ (int)imm_value;
 """)
 xori_Instr = trap.Instruction('XORI', True)

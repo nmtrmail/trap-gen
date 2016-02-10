@@ -34,13 +34,19 @@
 #
 ####################################################################################
 
-__all__ = ['writer_code']
+__all__ = ['Writer', 'FileDumper', 'CustomCode', 'SimpleDecls', 'ClassDecls']
 
 try:
-    import writer_code
-    from writer_code import *
+    from Writer import *
+    from FileDumper import *
+    from CustomCode import *
+    from SimpleDecls import *
+    from ClassDecls import *
 except ImportError:
     import sys
     sys.path.append(__path__[0])
-    import writer_code
-    from writer_code import *
+    from Writer import *
+    from FileDumper import *
+    from CustomCode import *
+    from SimpleDecls import *
+    from ClassDecls import *

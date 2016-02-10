@@ -35,10 +35,11 @@
 ####################################################################################
 
 
-import unittest
 import processor
 import isa
 import cxx_writer
+
+import unittest
 import os
 
 class TestRegs(unittest.TestCase):
@@ -71,7 +72,7 @@ class TestRegs(unittest.TestCase):
         dataProc_imm_shift.setVarField('rm', ('REGS', 0))
         isaVar = isa.ISA()
         proc.setISA(isaVar)
-        opCode = cxx_writer.writer_code.Code('')
+        opCode = cxx_writer.Code('')
         adc_shift_imm_Instr = isa.Instruction('ADC_si', True)
         adc_shift_imm_Instr.setMachineCode(dataProc_imm_shift, {'opcode': [0, 1, 0, 1]}, 'TODO')
         isaVar.addInstruction(adc_shift_imm_Instr)
@@ -107,7 +108,7 @@ class TestRegs(unittest.TestCase):
         dataProc_imm_shift.setVarField('rm', ('REGS', 0))
         isaVar = isa.ISA()
         proc.setISA(isaVar)
-        opCode = cxx_writer.writer_code.Code('')
+        opCode = cxx_writer.Code('')
         adc_shift_imm_Instr = isa.Instruction('ADC_si', True)
         adc_shift_imm_Instr.setMachineCode(dataProc_imm_shift, {'opcode': [0, 1, 0, 1]}, 'TODO')
         isaVar.addInstruction(adc_shift_imm_Instr)
@@ -146,7 +147,7 @@ class TestRegs(unittest.TestCase):
         dataProc_imm_shift.setVarField('rm', ('REGS', 0))
         isaVar = isa.ISA()
         proc.setISA(isaVar)
-        opCode = cxx_writer.writer_code.Code('')
+        opCode = cxx_writer.Code('')
         adc_shift_imm_Instr = isa.Instruction('ADC_si', True)
         adc_shift_imm_Instr.setMachineCode(dataProc_imm_shift, {'opcode': [0, 1, 0, 1]}, 'TODO')
         isaVar.addInstruction(adc_shift_imm_Instr)
@@ -185,7 +186,7 @@ class TestRegs(unittest.TestCase):
         dataProc_imm_shift.setVarField('rm', ('REGS', 0))
         isaVar = isa.ISA()
         proc.setISA(isaVar)
-        opCode = cxx_writer.writer_code.Code('')
+        opCode = cxx_writer.Code('')
         adc_shift_imm_Instr = isa.Instruction('ADC_si', True)
         adc_shift_imm_Instr.setMachineCode(dataProc_imm_shift, {'opcode': [0, 1, 0, 1]}, 'TODO')
         isaVar.addInstruction(adc_shift_imm_Instr)
@@ -224,7 +225,7 @@ class TestRegs(unittest.TestCase):
         dataProc_imm_shift.setVarField('rm', ('REGS', 0))
         isaVar = isa.ISA()
         proc.setISA(isaVar)
-        opCode = cxx_writer.writer_code.Code('')
+        opCode = cxx_writer.Code('')
         adc_shift_imm_Instr = isa.Instruction('ADC_si', True)
         adc_shift_imm_Instr.setMachineCode(dataProc_imm_shift, {'opcode': [0, 1, 0, 1]}, 'TODO')
         isaVar.addInstruction(adc_shift_imm_Instr)
@@ -263,7 +264,7 @@ class TestRegs(unittest.TestCase):
         dataProc_imm_shift.setVarField('rm', ('REGS', 0))
         isaVar = isa.ISA()
         proc.setISA(isaVar)
-        opCode = cxx_writer.writer_code.Code('')
+        opCode = cxx_writer.Code('')
         adc_shift_imm_Instr = isa.Instruction('ADC_si', True)
         adc_shift_imm_Instr.setMachineCode(dataProc_imm_shift, {'opcode': [0, 1, 0, 1]}, 'TODO')
         isaVar.addInstruction(adc_shift_imm_Instr)
@@ -302,7 +303,7 @@ class TestRegs(unittest.TestCase):
         dataProc_imm_shift.setVarField('rm', ('REGS', 0))
         isaVar = isa.ISA()
         proc.setISA(isaVar)
-        opCode = cxx_writer.writer_code.Code('')
+        opCode = cxx_writer.Code('')
         adc_shift_imm_Instr = isa.Instruction('ADC_si', True)
         adc_shift_imm_Instr.setMachineCode(dataProc_imm_shift, {'opcode': [0, 1, 0, 1]}, 'TODO')
         isaVar.addInstruction(adc_shift_imm_Instr)
@@ -341,7 +342,7 @@ class TestRegs(unittest.TestCase):
         dataProc_imm_shift.setVarField('rm', ('REGS', 0))
         isaVar = isa.ISA()
         proc.setISA(isaVar)
-        opCode = cxx_writer.writer_code.Code('')
+        opCode = cxx_writer.Code('')
         adc_shift_imm_Instr = isa.Instruction('ADC_si', True)
         adc_shift_imm_Instr.setMachineCode(dataProc_imm_shift, {'opcode': [0, 1, 0, 1]}, 'TODO')
         isaVar.addInstruction(adc_shift_imm_Instr)
@@ -380,7 +381,7 @@ class TestRegs(unittest.TestCase):
         dataProc_imm_shift.setVarField('rm', ('REGS', 0))
         isaVar = isa.ISA()
         proc.setISA(isaVar)
-        opCode = cxx_writer.writer_code.Code('')
+        opCode = cxx_writer.Code('')
         adc_shift_imm_Instr = isa.Instruction('ADC_si', True)
         adc_shift_imm_Instr.setMachineCode(dataProc_imm_shift, {'opcode': [0, 1, 0, 1]}, 'TODO')
         isaVar.addInstruction(adc_shift_imm_Instr)
@@ -419,7 +420,7 @@ class TestRegs(unittest.TestCase):
         dataProc_imm_shift.setVarField('rm', ('REGS', 0))
         isaVar = isa.ISA()
         proc.setISA(isaVar)
-        opCode = cxx_writer.writer_code.Code('')
+        opCode = cxx_writer.Code('')
         adc_shift_imm_Instr = isa.Instruction('ADC_si', True)
         adc_shift_imm_Instr.setMachineCode(dataProc_imm_shift, {'opcode': [0, 1, 0, 1]}, 'TODO')
         adc_shift_imm_Instr.addVariable(('REGS', 'BIT<64>'))

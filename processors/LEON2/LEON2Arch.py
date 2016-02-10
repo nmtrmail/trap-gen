@@ -71,12 +71,12 @@ WIM.immediateWrite(2);
 # Here I add a constant to the instruction set so that it can be used from the code implementing
 # the various instructions
 # Number of defined register windows
-LEON2Isa.isa.addConstant(cxx_writer.writer_code.uintType, 'NUM_REG_WIN', numRegWindows)
+LEON2Isa.isa.addConstant(cxx_writer.uintType, 'NUM_REG_WIN', numRegWindows)
 # Specifies whether the multiplier unit is pipelined or not
 if pipelinedMult:
-    LEON2Isa.isa.addConstant(cxx_writer.writer_code.boolType, 'PIPELINED_MULT', 'true')
+    LEON2Isa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'true')
 else:
-    LEON2Isa.isa.addConstant(cxx_writer.writer_code.boolType, 'PIPELINED_MULT', 'false')
+    LEON2Isa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'false')
 if multiplier_size == 'i':
     LEON2Isa.isa.addDefines('#define MULT_SIZE_ITERATIVE\n')
 elif multiplier_size == '16p':
