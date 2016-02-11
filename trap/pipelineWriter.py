@@ -776,6 +776,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
 
         constructorInit = ['sc_module(pipeName)', 'BasePipeStage(' + baseConstructorInit[:-2] + ')'] + constructorInit
         curPipeDecl = cxx_writer.SCModule(pipeStage.name.upper() + '_PipeStage', curPipeElements, [pipeType], namespaces = [namespace])
+        curPipeDecl.addDocString(brief = 'Pipeline Class', detail = 'Implements a pipeline stage. Addresses hazards.')
         constructorBody = cxx_writer.Code(constructorCode + 'end_module();')
         publicCurPipeConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams, constructorInit)
         if pipeStage == self.pipes[0]:

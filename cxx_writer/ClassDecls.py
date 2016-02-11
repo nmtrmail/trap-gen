@@ -66,7 +66,7 @@ class Method(ClassMember, Function):
     def writeImplementation(self, writer, className = '', namespaces = []):
         if self.inline or self.pure:
             return
-        if self.docstring:
+        if self.docbrief:
             self.printDocString(writer)
         self.retType.writeDeclaration(writer)
         writer.write(' ')
@@ -96,7 +96,7 @@ class Method(ClassMember, Function):
             writer.write(' throw()')
         writer.write(' {\n', split = ',', indent = indent)
         self.body.writeImplementation(writer)
-        writer.write('}\n\n')
+        writer.write('} // ' + self.name + '()\n\n')
 
 class MemberOperator(ClassMember, Operator):
     """Operator of a class; note how it is nothing but a normal operator
@@ -115,7 +115,7 @@ class MemberOperator(ClassMember, Operator):
     def writeImplementation(self, writer, className = '', namespaces = []):
         if self.inline or self.pure:
             return
-        if self.docstring:
+        if self.docbrief:
             self.printDocString(writer)
         self.retType.writeDeclaration(writer)
         writer.write(' ')
@@ -145,7 +145,7 @@ class MemberOperator(ClassMember, Operator):
             writer.write(' throw()')
         writer.write(' {\n', split = ',', indent = indent)
         self.body.writeImplementation(writer)
-        writer.write('}\n\n')
+        writer.write('} // ' + self.name + '()\n\n')
 
 class Constructor(ClassMember, Function):
     def __init__(self, body, visibility, parameters = [], initList = []):
@@ -154,7 +154,7 @@ class Constructor(ClassMember, Function):
         self.initList = initList
 
     def writeImplementation(self, writer, className = '', namespaces = []):
-        if self.docstring:
+        if self.docbrief:
             self.printDocString(writer)
         for namespace in namespaces:
             writer.write(namespace + '::')
@@ -204,7 +204,7 @@ class Destructor(ClassMember, Function):
         self.virtual = virtual
 
     def writeImplementation(self, writer, className = '', namespaces = []):
-        if self.docstring:
+        if self.docbrief:
             self.printDocString(writer)
         for namespace in namespaces:
             writer.write(namespace + '::')
@@ -212,7 +212,7 @@ class Destructor(ClassMember, Function):
             writer.write(className + '::')
         writer.write(self.name + '() {\n')
         self.body.writeImplementation(writer)
-        writer.write('}\n')
+        writer.write('} // ' + self.name + '()\n\n')
 
 class Attribute(ClassMember, Variable):
     """Attribute of a class; note how, a part from the visibility,
@@ -223,7 +223,7 @@ class Attribute(ClassMember, Variable):
         Variable.__init__(self, name, varType, static, initValue)
 
     def writeDeclaration(self, writer):
-        if self.docstring:
+        if self.docbrief:
             self.printDocString(writer)
         if self.static:
             writer.write('static ')
@@ -234,7 +234,7 @@ class Attribute(ClassMember, Variable):
         if not className:
             self.writeDeclaration(writer)
         elif self.static:
-            if self.docstring:
+            if self.docbrief:
                 self.printDocString(writer)
             self.varType.writeDeclaration(writer)
             writer.write(' ')
@@ -314,7 +314,7 @@ class ClassDeclaration(DumpElement):
         for namespace in self.namespaces:
             writer.write('namespace ' + namespace + ' {\n\n')
         # Now I can simply print the declarations
-        if self.docstring:
+        if self.docbrief:
             self.printDocString(writer)
         if self.template:
             writer.write('template <')

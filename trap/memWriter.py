@@ -351,6 +351,7 @@ def getCPPMemoryIf(self, model, namespace):
             pcRegParam = [cxx_writer.Parameter(self.memory[3], resourceType[self.memory[3]].makeRef())]
             pcRegInit = [self.memory[3] + '(' + self.memory[3] + ')']
         localMemDecl = cxx_writer.ClassDeclaration('LocalMemory', memoryElements, [memoryIfDecl.getType()], namespaces = [namespace])
+        localMemDecl.addDocString(brief = 'Memory Interface Class', detail = 'Interface used by the core to communicate with memory. Defines the required TLM ports.')
         constructorBody = cxx_writer.Code("""this->memory = new char[size];
             this->debugger = NULL;
             this->dumpFile.open("memoryDump.dmp", ios::out | ios::binary | ios::ate);

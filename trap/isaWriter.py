@@ -1321,6 +1321,7 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
     publicConstr = cxx_writer.Constructor(cxx_writer.Code(constrBody), 'pu', baseInstrConstrParams, initElements)
     instructionBaseType = cxx_writer.Type('InstructionBase', 'instructionBase.hpp')
     instructionDecl = cxx_writer.ClassDeclaration('Instruction', instructionElements, [instructionBaseType], namespaces = [namespace])
+    instructionDecl.addDocString(brief = 'Instruction Class', detail = 'All individual instructions derive from this class.')
     instructionDecl.addConstructor(publicConstr)
     publicDestr = cxx_writer.Destructor(emptyBody, 'pu', True)
     instructionDecl.addDestructor(publicDestr)

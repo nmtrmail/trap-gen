@@ -460,6 +460,7 @@ def getCPPIf(self, model, namespace):
 
     ABIIfType = cxx_writer.TemplateType('ABIIf', [wordType], 'ABIIf.hpp')
     ifClassDecl = cxx_writer.ClassDeclaration(self.name + '_ABIIf', ifClassElements, [ABIIfType], namespaces = [namespace])
+    ifClassDecl.addDocString(brief = 'Interface Class', detail = 'Creates the interface used by TRAP-Gen tools to access the processor core.')
     publicIfConstr = cxx_writer.Constructor(cxx_writer.Code(routineStatesInit), 'pu', baseInstrConstrParams, initElements)
     emptyBody = cxx_writer.Code('')
     opDestr = cxx_writer.Destructor(emptyBody, 'pu', True)

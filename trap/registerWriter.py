@@ -41,7 +41,7 @@ binaryOps = ['+', '-', '*', '/', '|', '&', '^', '<<', '>>']
 unaryOps = ['~']
 comparisonOps = ['<', '>', '<=', '>=', '==', '!=']
 
-# Helper variables use during register type conmputation
+# Helper variables use during register type computation
 regMaxType = None
 
 import cxx_writer
@@ -864,6 +864,7 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
     ################ End of part where we determine the different register types which have to be declared ##################
 
     registerDecl = cxx_writer.ClassDeclaration('Register', registerElements, namespaces = [namespace])
+    registerDecl.addDocString(brief = 'Register Class', detail = 'An register holds fields that can be accessed in array notation. Most operators are defined, as well as callback functions per field. Some concepts were inspired by the by the Cadence scireg implementation.')
     registerDecl.addConstructor(publicConstr)
     registerDecl.addConstructor(copyConstr)
 
@@ -1218,6 +1219,7 @@ def getCPPAlias(self, namespace):
     aliasesAttribute = cxx_writer.Attribute('referringAliases', aliasType.makePointer(), 'pri')
     aliasElements.append(aliasesAttribute)
     aliasDecl = cxx_writer.ClassDeclaration(aliasType.name, aliasElements, namespaces = [namespace])
+    aliasDecl.addDocString(brief = 'Register Alias Class', detail = 'An alias simply holds a pointer to a register. The operators are redefined in order to call the corresponding operators of the register. There is also an updateAlias() method which updates the register this alias points to (and possibly the offset).')
     aliasDecl.addConstructor(publicMainClassConstr)
     aliasDecl.addConstructor(publicMainEmptyClassConstr)
     aliasDecl.addConstructor(publicAliasConstr)
@@ -1472,6 +1474,7 @@ def getCPPPipelineAlias(self, namespace):
     aliasesAttribute = cxx_writer.Attribute('referringAliases', aliasType.makePointer(), 'pri')
     aliasElements.append(aliasesAttribute)
     aliasDecl = cxx_writer.ClassDeclaration(aliasType.name, aliasElements, namespaces = [namespace])
+    aliasDecl.addDocString(brief = 'Register Alias Class', detail = 'An alias simply holds a pointer to a register. The operators are redefined in order to call the corresponding operators of the register. There is also an updateAlias() method which updates the register this alias points to (and possibly the offset).')
     aliasDecl.addConstructor(publicMainClassConstr)
     aliasDecl.addConstructor(publicMainEmptyClassConstr)
     aliasDecl.addConstructor(publicMainEmpty2ClassConstr)

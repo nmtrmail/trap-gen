@@ -453,6 +453,7 @@ class decoderCreator:
         parameters = [cxx_writer.Parameter('instrCode', fetchSizeType)]
         decodeMethod = cxx_writer.Method('decode', code, cxx_writer.intType, 'pu', parameters, const = True, noException = True)
         decodeClass = cxx_writer.ClassDeclaration('Decoder', [decodeMethod], namespaces = [namespace])
+        decodeClass.addDocString(brief = 'Decoder Class', detail = 'Implements the state-machine that decodes an instruction string and returns an ID specifying the instruction.')
 
         # Here I declare the type which shall be contained in the cache
         if instructionCache:

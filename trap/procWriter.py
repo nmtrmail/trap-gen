@@ -1409,6 +1409,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     destructorBody = cxx_writer.Code(destrCode)
     publicDestr = cxx_writer.Destructor(destructorBody, 'pu')
     processorDecl = cxx_writer.SCModule(processor_name, processorElements, namespaces = [namespace])
+    processorDecl.addDocString(brief = 'Processor Class', detail = 'The top-level processor class holding the pipeline, registers and ports.')
     processorDecl.addConstructor(publicConstr)
     processorDecl.addDestructor(publicDestr)
     return [processorDecl]
@@ -1444,6 +1445,7 @@ def getTestMainCode(self):
     mainCode.addInclude('boost/test/included/unit_test.hpp')
     parameters = [cxx_writer.Parameter('argc', cxx_writer.intType), cxx_writer.Parameter('argv', cxx_writer.charPtrType.makePointer())]
     mainFunction = cxx_writer.Function('sc_main', mainCode, cxx_writer.intType, parameters)
+    mainFunction.addDocString(brief = 'Main Processor Component Testbench', detail = 'Uses the boost::test framework to call the tests defined in decoderTests and isaTests*. Each test instantiates the required DUT submodules individually.')
     return [formatClass, initFunction, mainFunction]
 
 def getMainCode(self, model, namespace):
@@ -1820,6 +1822,7 @@ def getMainCode(self, model, namespace):
         mainCode.addInclude('osEmulator/osEmulator.hpp')
     parameters = [cxx_writer.Parameter('argc', cxx_writer.intType), cxx_writer.Parameter('argv', cxx_writer.charPtrType.makePointer())]
     mainFunction = cxx_writer.Function('sc_main', mainCode, cxx_writer.intType, parameters)
+    mainFunction.addDocString(brief = 'Main Processor Testbench', detail = 'Instantiates a processor and performs basic connections where required. TRAP-Gen debugging and profiling tools as instantiated as chosen by the command-line options.')
 
     stopSimFunction = cxx_writer.Code("""if (gdbStub_ref != NULL && gdbStub_ref->simulationPaused) {
         std::cerr << std::endl << "Simulation is already paused; ";

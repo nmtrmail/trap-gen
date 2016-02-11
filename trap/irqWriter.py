@@ -144,6 +144,7 @@ def getGetIRQInstr(self, model, trace, namespace):
         from isaWriter import baseInstrConstrParams
         publicConstr = cxx_writer.Constructor(emptyBody, 'pu', baseInstrConstrParams + irqParams, ['Instruction(' + baseInstrInitElement + ')'] + irqInit)
         IRQInstrClass = cxx_writer.ClassDeclaration('IRQ_' + irq.name + '_Instruction', IRQInstrElements, [instructionType], namespaces = [namespace])
+        IRQInstrClass.addDocString(brief = 'IRQ Instruction Class', detail = 'Wraps IRQ exception handling behavior as a dummy instruction.')
         IRQInstrClass.addConstructor(publicConstr)
         publicDestr = cxx_writer.Destructor(emptyBody, 'pu', True)
         IRQInstrClass.addDestructor(publicDestr)

@@ -528,6 +528,7 @@ def getCPPExternalPorts(self, model, namespace):
     tlmPortElements += aliasAttrs
 
     extPortDecl = cxx_writer.ClassDeclaration('TLMMemory', tlmPortElements, [memIfType, cxx_writer.sc_moduleType], namespaces = [namespace])
+    extPortDecl.addDocString(brief = 'Port Class', detail = 'Defines the TLM ports used by the core for communicating with other modules.')
     constructorBody = cxx_writer.Code(constructorCode + 'end_module();')
     publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams + aliasParams, tlmPortInit + aliasInit)
     extPortDecl.addConstructor(publicExtPortConstr)
@@ -633,6 +634,7 @@ def getGetIRQPorts(self, namespace):
         tlmPortInit.append('irqSignal(irqSignal)')
         constructorCode += 'SC_METHOD();\nsensitive << this->recvIntr;\n'
         irqPortDecl = cxx_writer.ClassDeclaration('IntrSysCPort_' + str(width), systemcPortElements, [cxx_writer.sc_moduleType], namespaces = [namespace])
+        irqPortDecl.addDocString(brief = 'Interrupt Port Class', detail = 'Defines both SystemC and TLM ports for convenience.')
         constructorBody = cxx_writer.Code(constructorCode + 'end_module();')
         publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams, tlmPortInit)
         irqPortDecl.addConstructor(publicExtPortConstr)
@@ -719,6 +721,7 @@ def getGetPINPorts(self, namespace):
         pinPortElements.append(initSockAttr)
 
         pinPortDecl = cxx_writer.ClassDeclaration('PinTLM_out_' + str(port.portWidth), pinPortElements, [cxx_writer.sc_moduleType], namespaces = [namespace])
+        pinPortDecl.addDocString(brief = 'Pin Class', detail = 'Defines the pins used by the core for communicating with other modules. Outgoing ports call a given interface of another module, while incoming ports need to define the interface to used by other modules.')
         constructorBody = cxx_writer.Code('end_module();')
         publicPINPortConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams, pinPortInit)
         pinPortDecl.addConstructor(publicPINPortConstr)
@@ -910,7 +913,7 @@ def getIRQTests(self, trace, combinedTrace, namespace):
             includeUnprotectedCode = '#define private public\n#define protected public\n#include \"registers.hpp\"\n#include \"memory.hpp\"\n#undef private\n#undef protected\n'
             curTest.addInclude(['boost/test/test_tools.hpp', 'utils/customExceptions.hpp', wariningDisableCode, includeUnprotectedCode, '#include \"alias.hpp\"'])
             curTestFunction = cxx_writer.Function(testName, curTest, cxx_writer.voidType)
-
+            curTestFunction.addDocString(brief = 'IRQ Test Function', detail = 'Called by test/main.cpp::main() via the boost::test framework. Instantiates the required modules and tests correct IRQ handling.')
             testFuns.append(curTestFunction)
             testNames.append(testName)
             testNum += 1

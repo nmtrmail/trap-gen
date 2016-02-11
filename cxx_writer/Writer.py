@@ -73,7 +73,7 @@ class CodeWriter:
         if self.opened:
             self.file.close()
 
-    def write(self, code, split = ' ', indent = -1):
+    def write(self, code, split = ' ', indent = -1, comment = ''):
         """(After/Before) each delimiter start ({) I have to increment
         the size of the current indent. Before each delimiter
         end (}) I have to decrement it
@@ -104,7 +104,7 @@ class CodeWriter:
                     for i in range(0, indent * self.indentSize):
                         self.file.write(' ')
                         totalIndent += ' '
-                printOnFile(self.go_new_line(line, singleIndent, totalIndent, split, force), self.file)
+                printOnFile(self.go_new_line(line, singleIndent, totalIndent, split, force, comment = comment), self.file)
             else:
                 printOnFile('', self.file)
             # Finally I compute the nesting level for the next lines
@@ -115,28 +115,26 @@ class CodeWriter:
         if not lastLine.endswith('\n'):
             self.codeBuffer = lastLine
 
-    def go_new_line(self, toModify, singleIndent, totalIndent, split = ' ', force = False, cpp = False):
+    def go_new_line(self, toModify, singleIndent, totalIndent, split = ' ', force = False, cpp = False, comment = ''):
         """Given a string the function introduces newline characters to respect
         the line width constraint (+/-8 chars)"""
-        # Check if there is nothing to do
+
+        # Terminal case: Line does not need splitting (up to 8 extra chars)
         toModify = toModify.strip()
-        if (len(totalIndent) + len(toModify)) < (self.lineWidth+8):
+        if (len(totalIndent) + len(comment) + len(toModify)) < (self.lineWidth+8):
             return toModify
-        # The calling function should have taken care of single-line comments,
-        # but just in case.
-        if (toModify.startswith('#') or toModify.startswith('//')):
-            return toModify
+
         # The calling functions should have already split on newlines, so
         # endOfLine should always equal len(toModify).
         endOfLine = toModify.find('\n')
         if endOfLine < 0:
             endOfLine = len(toModify)
         # Check for crazy indentations > linewidth.
-        if ((len(totalIndent) + len(singleIndent)) > self.lineWidth):
-            self.lineWidth += len(totalIndent) + len(singleIndent)
+        if ((len(totalIndent) + len(comment)) > self.lineWidth):
+            self.lineWidth += len(totalIndent) + len(comment)
         # Find the split char nearest to the target line width.
         found = -1
-        for i in range(len(totalIndent), len(totalIndent)+8):
+        for i in range(len(totalIndent)+len(comment), len(totalIndent)+len(comment)+8):
             if (toModify[self.lineWidth-i] == split and toModify[self.lineWidth-i-1] != "'"):
                 found = self.lineWidth-i
                 break
@@ -162,17 +160,36 @@ class CodeWriter:
                     break
         # Recursion
         if (found != -1):
-          # Add line continuation chars if splitting preprocessing code or strings.
-          insert = '\n'
-          if (cpp == True) : insert = ' \\\n'
-          elif ((toModify.count('"', 0, found) % 2) == 1): insert = '\\\n'
-#          elif (toModify[found-1] == "'"): found = found + 2
+          insert_pre = ''
+          insert_post = comment
+          # Special case: Add line continuation chars if splitting preprocessing code.
+          if (toModify.startswith('#')):
+              cpp = True
+              insert_pre = ' \\'
+          # Special case: Add line continuation chars if splitting strings.
+          elif ((toModify.count('"', 0, found) % 2) == 1):
+              insert_pre = '\\'
+          # Special case: Align and add prefixes (here: *) for doxygen-style comments.
+          elif comment == '':
+              if (toModify.startswith('/**')):
+                  force = True
+                  insert_post = '*             '
+              elif (toModify.startswith('///')):
+                  force = True
+                  insert_post = '/// '
+              elif (toModify.startswith('//')):
+                  force = True
+                  insert_post = '// '
+
           # Add one level of indentation to all lines after the first, unless the
-          # indentation is forced (aligned list of parameters).
-          if (force == False): insert += singleIndent
+          # indentation is forced (aligned list of parameters or comments).
+          if comment != '': force = True
+          if (force == False):
+              totalIndent += singleIndent
+              force = True
           # If the split char is not whitespace, make sure we don't delete it!
-          if (toModify[found] != ' '): insert = toModify[found] + insert
-          return toModify[:found] + insert + totalIndent + self.go_new_line(toModify[(found+1):endOfLine], singleIndent, totalIndent, split, force, cpp)
+          if (toModify[found] != ' '): insert_pre = toModify[found] + insert_pre
+          return toModify[:found] + insert_pre + '\n' + totalIndent + insert_post + self.go_new_line(toModify[(found+1):endOfLine], singleIndent, totalIndent, split, force, cpp, insert_post)
         else:
             return toModify
 
