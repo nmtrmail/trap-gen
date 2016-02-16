@@ -352,7 +352,7 @@ def configure(ctx):
             }
 
             int main(int argc, char** argv) {
-                bfd_section *p = NULL;
+                bfd_section* p = NULL;
                 #ifndef bfd_is_target_special_symbol
                 #error "too old BFD library"
                 #endif
@@ -369,7 +369,7 @@ def configure(ctx):
             }
 
             int main(int argc, char** argv) {
-                char * tempRet = bfd_demangle(NULL, NULL, 0);
+                char* tempRet = bfd_demangle(NULL, NULL, 0);
                 return 0;
             };
         """
@@ -412,8 +412,8 @@ def configure(ctx):
         ctx.check_cxx(fragment="""
             #include <libelf.h>
 
-            int main(int argc, char *argv[]){
-                void * funPtr = (void *)elf_getphdrnum;
+            int main(int argc, char* argv[]){
+                void* funPtr = (void*)elf_getphdrnum;
                 return 0;
             }
         """, msg='Checking for function elf_getphdrnum', use='ELF_LIB', mandatory=1, errmsg='elf_getphdrnum not found in libelf, update to a newer version >= 0.144')

@@ -52,7 +52,7 @@
       <UML:Class visibility="public" isSpecification="false" namespace="Logical View" isAbstract="false" isLeaf="false" isRoot="false" xmi.id="0OOyzv38N1h6" name="Alias" >
        <UML:Classifier.feature>
         <UML:Attribute visibility="private" isSpecification="false" xmi.id="LzaQ4n45juiF" type="BTS3iIK8qX7e" name="reg" />
-        <UML:Operation visibility="public" isSpecification="false" isQuery="false" isAbstract="false" isLeaf="false" isRoot="false" xmi.id="05zpDvFLNYJy" name="updateAlias" >
+        <UML:Operation visibility="public" isSpecification="false" isQuery="false" isAbstract="false" isLeaf="false" isRoot="false" xmi.id="05zpDvFLNYJy" name="update_alias" >
          <UML:BehavioralFeature.parameter>
           <UML:Parameter visibility="private" isSpecification="false" xmi.id="RsxACBeZUrqU" type="BTS3iIK8qX7e" value="" name="newReg" />
          </UML:BehavioralFeature.parameter>
@@ -358,7 +358,7 @@
    <codegenerator language="C++" >
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="AU0Ziazzsrjt" id="AU0Ziazzsrjt" fileName="Processor" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;processor.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;processor.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -470,7 +470,7 @@
          <cppcodedocumentation tag="" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="0" tag="hblock_tag_7" accessType="3" parent_id="tU74G451gFag" writeOutText="false" classfield_id="tU74G451gFag" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;BaseTool item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;BaseTool>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="0" tag="hblock_tag_7" accessType="3" parent_id="tU74G451gFag" writeOutText="false" classfield_id="tU74G451gFag" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;BaseTool item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;BaseTool>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" />
         </header>
@@ -485,7 +485,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="BTS3iIK8qX7e" id="BTS3iIK8qX7e" fileName="Register" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;register.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;register.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -516,7 +516,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="0OOyzv38N1h6" id="0OOyzv38N1h6" fileName="Alias" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;alias.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;alias.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -583,7 +583,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="bg5SVoLgGlky" id="bg5SVoLgGlky" fileName="Decoder" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;decoder.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;decoder.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -614,7 +614,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="akC97iUQ3TJT" id="akC97iUQ3TJT" fileName="Instruction" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;instruction.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;instruction.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -645,7 +645,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="syEv5TCmdyVW" id="syEv5TCmdyVW" fileName="ADC_Instruction" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;adc_instruction.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;adc_instruction.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -670,7 +670,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="XtSJAdFEP9mg" id="XtSJAdFEP9mg" fileName="MemoryInterface" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;memoryinterface.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;memoryinterface.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -736,7 +736,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="kB0Uk32E2GjY" id="kB0Uk32E2GjY" fileName="ToolsInterface" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;toolsinterface.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;toolsinterface.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -777,7 +777,7 @@
           <cppcodedocumentation tag="" />
          </header>
         </codeaccessormethod>
-        <codeaccessormethod role_id="1" tag="hblock_tag_10" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;GDBStub item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;GDBStub>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+        <codeaccessormethod role_id="1" tag="hblock_tag_10" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;GDBStub item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;GDBStub>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
          <header>
           <cppcodedocumentation tag="" />
          </header>
@@ -802,7 +802,7 @@
           <cppcodedocumentation tag="" />
          </header>
         </codeaccessormethod>
-        <codeaccessormethod role_id="1" tag="hblock_tag_15" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;RoutineEmulator item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;RoutineEmulator>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+        <codeaccessormethod role_id="1" tag="hblock_tag_15" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;RoutineEmulator item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;RoutineEmulator>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
          <header>
           <cppcodedocumentation tag="" />
          </header>
@@ -827,7 +827,7 @@
           <cppcodedocumentation tag="" />
          </header>
         </codeaccessormethod>
-        <codeaccessormethod role_id="0" tag="hblock_tag_20" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;Profiler item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Profiler>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+        <codeaccessormethod role_id="0" tag="hblock_tag_20" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;Profiler item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Profiler>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
          <header>
           <cppcodedocumentation tag="" />
          </header>
@@ -888,7 +888,7 @@
          <cppcodedocumentation tag="" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="1" tag="hblock_tag_5" accessType="3" parent_id="GX0NOkEsQtRa" writeOutText="false" classfield_id="GX0NOkEsQtRa" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;Profiler item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Profiler>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="1" tag="hblock_tag_5" accessType="3" parent_id="GX0NOkEsQtRa" writeOutText="false" classfield_id="GX0NOkEsQtRa" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;Profiler item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Profiler>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" />
         </header>
@@ -923,7 +923,7 @@
          <cppcodedocumentation tag="" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="1" tag="hblock_tag_10" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;GDBStub item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;GDBStub>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="1" tag="hblock_tag_10" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;GDBStub item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;GDBStub>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" />
         </header>
@@ -958,7 +958,7 @@
          <cppcodedocumentation tag="" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="1" tag="hblock_tag_15" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;RoutineEmulator item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;RoutineEmulator>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="1" tag="hblock_tag_15" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;RoutineEmulator item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;RoutineEmulator>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" />
         </header>
@@ -993,7 +993,7 @@
          <cppcodedocumentation tag="" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="0" tag="hblock_tag_20" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;Profiler item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Profiler>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="0" tag="hblock_tag_20" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;Profiler item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Profiler>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" />
         </header>
@@ -1008,7 +1008,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="55fcqfjUX1Cb" id="55fcqfjUX1Cb" fileName="GDBStub" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;gdbstub.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;gdbstub.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1039,7 +1039,7 @@
           <cppcodedocumentation tag="" />
          </header>
         </codeaccessormethod>
-        <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+        <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
          <header>
           <cppcodedocumentation tag="" />
          </header>
@@ -1080,7 +1080,7 @@
          <cppcodedocumentation tag="" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" />
         </header>
@@ -1095,7 +1095,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="ExC5lyFuyz0F" id="ExC5lyFuyz0F" fileName="RoutineEmulator" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;routineemulator.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;routineemulator.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1126,7 +1126,7 @@
           <cppcodedocumentation tag="" />
          </header>
         </codeaccessormethod>
-        <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+        <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
          <header>
           <cppcodedocumentation tag="" />
          </header>
@@ -1167,7 +1167,7 @@
          <cppcodedocumentation tag="" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" />
         </header>
@@ -1182,7 +1182,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="vd56w4kGhmpg" id="vd56w4kGhmpg" fileName="Profiler" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;profiler.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;profiler.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1213,7 +1213,7 @@
           <cppcodedocumentation tag="" />
          </header>
         </codeaccessormethod>
-        <codeaccessormethod role_id="1" tag="hblock_tag_8" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+        <codeaccessormethod role_id="1" tag="hblock_tag_8" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
          <header>
           <cppcodedocumentation tag="" />
          </header>
@@ -1254,7 +1254,7 @@
          <cppcodedocumentation tag="" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="GX0NOkEsQtRa" writeOutText="false" classfield_id="GX0NOkEsQtRa" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="GX0NOkEsQtRa" writeOutText="false" classfield_id="GX0NOkEsQtRa" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" />
         </header>
@@ -1289,7 +1289,7 @@
          <cppcodedocumentation tag="" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="1" tag="hblock_tag_8" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="1" tag="hblock_tag_8" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" />
         </header>
@@ -1304,7 +1304,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="dHv8CjYhFEa2" id="dHv8CjYhFEa2" fileName="BaseTool" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;basetool.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;basetool.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1335,7 +1335,7 @@
           <cppcodedocumentation tag="" />
          </header>
         </codeaccessormethod>
-        <codeaccessormethod role_id="1" tag="hblock_tag_3" accessType="3" parent_id="tU74G451gFag" writeOutText="false" classfield_id="tU74G451gFag" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;Processor item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Processor>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+        <codeaccessormethod role_id="1" tag="hblock_tag_3" accessType="3" parent_id="tU74G451gFag" writeOutText="false" classfield_id="tU74G451gFag" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;Processor item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Processor>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
          <header>
           <cppcodedocumentation tag="" />
          </header>
@@ -1386,7 +1386,7 @@
          <cppcodedocumentation tag="" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="1" tag="hblock_tag_3" accessType="3" parent_id="tU74G451gFag" writeOutText="false" classfield_id="tU74G451gFag" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;Processor item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Processor>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="1" tag="hblock_tag_3" accessType="3" parent_id="tU74G451gFag" writeOutText="false" classfield_id="tU74G451gFag" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;Processor item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Processor>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" />
         </header>
@@ -1401,7 +1401,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="cwG0jFNaM3pw" id="cwG0jFNaM3pw" fileName="Register32" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;register32.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;register32.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1426,7 +1426,7 @@
     </classifiercodedocument>
     <classifiercodedocument package="Logical View" fileExt=".cpp" parent_class="CdO2aCLsr1wc" id="CdO2aCLsr1wc" fileName="Register8" writeOutCode="true" >
      <textblocks>
-      <codeblockwithcomments tag="includes" text="#include &quot;register8.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &q  quot;register8.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1456,7 +1456,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;#include &quot;basetool.h&quot;&amp;#010;#include &quot;.h&quot;&amp;#010;#include &quot;.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;#includee &q  quot;basetool.h&quot;&amp;#010;#includee &q  quot;.h&quot;&amp;#010;#includee &q  quot;.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1552,7 +1552,7 @@
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="0" tag="hblock_tag_8" accessType="3" parent_id="tU74G451gFag" writeOutText="false" indentLevel="1" classfield_id="tU74G451gFag" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;BaseTool item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;BaseTool>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="0" tag="hblock_tag_8" accessType="3" parent_id="tU74G451gFag" writeOutText="false" indentLevel="1" classfield_id="tU74G451gFag" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;BaseTool item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;BaseTool>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
@@ -1572,7 +1572,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1612,7 +1612,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;#include &quot;register.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;#includee &q  quot;register.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1673,7 +1673,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1713,7 +1713,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1753,7 +1753,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;#include &quot;instruction.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;#includee &q  quot;instruction.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1793,7 +1793,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1833,7 +1833,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;#include &quot;profiler.h&quot;&amp;#010;#include &quot;processor.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;#includee &q  quot;profiler.h&quot;&amp;#010;#includee &q  quot;processor.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -1909,7 +1909,7 @@
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="1" tag="hblock_tag_8" accessType="3" parent_id="GX0NOkEsQtRa" writeOutText="false" indentLevel="1" classfield_id="GX0NOkEsQtRa" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;Profiler item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Profiler>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="1" tag="hblock_tag_8" accessType="3" parent_id="GX0NOkEsQtRa" writeOutText="false" indentLevel="1" classfield_id="GX0NOkEsQtRa" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;Profiler item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Profiler>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
@@ -1944,7 +1944,7 @@
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="1" tag="hblock_tag_13" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" indentLevel="1" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;GDBStub item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;GDBStub>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="1" tag="hblock_tag_13" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" indentLevel="1" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;GDBStub item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;GDBStub>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
@@ -1979,7 +1979,7 @@
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="1" tag="hblock_tag_18" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" indentLevel="1" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;RoutineEmulator item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;RoutineEmulator>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="1" tag="hblock_tag_18" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" indentLevel="1" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;RoutineEmulator item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;RoutineEmulator>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
@@ -2014,7 +2014,7 @@
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="0" tag="hblock_tag_23" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" indentLevel="1" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;Profiler item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Profiler>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="0" tag="hblock_tag_23" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" indentLevel="1" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;Profiler item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Profiler>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
@@ -2034,7 +2034,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;#include &quot;toolsinterface.h&quot;&amp;#010;#include &quot;basetool.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;#includee &q  quot;toolsinterface.h&quot;&amp;#010;#includee &q  quot;basetool.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -2090,7 +2090,7 @@
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" indentLevel="1" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="RMKlakCa1fPo" writeOutText="false" indentLevel="1" classfield_id="RMKlakCa1fPo" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
@@ -2110,7 +2110,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;#include &quot;toolsinterface.h&quot;&amp;#010;#include &quot;basetool.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;#includee &q  quot;toolsinterface.h&quot;&amp;#010;#includee &q  quot;basetool.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -2166,7 +2166,7 @@
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" indentLevel="1" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="SlEwxpfALiiX" writeOutText="false" indentLevel="1" classfield_id="SlEwxpfALiiX" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
@@ -2186,7 +2186,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;#include &quot;toolsinterface.h&quot;&amp;#010;#include &quot;basetool.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;#includee &q  quot;toolsinterface.h&quot;&amp;#010;#includee &q  quot;basetool.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -2242,7 +2242,7 @@
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="GX0NOkEsQtRa" writeOutText="false" indentLevel="1" classfield_id="GX0NOkEsQtRa" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="0" tag="hblock_tag_3" accessType="3" parent_id="GX0NOkEsQtRa" writeOutText="false" indentLevel="1" classfield_id="GX0NOkEsQtRa" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
@@ -2277,7 +2277,7 @@
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="1" tag="hblock_tag_8" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" indentLevel="1" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="1" tag="hblock_tag_8" accessType="3" parent_id="snxzEosmNTeq" writeOutText="false" indentLevel="1" classfield_id="snxzEosmNTeq" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;ToolsInterface item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;ToolsInterface>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
@@ -2297,7 +2297,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -2353,7 +2353,7 @@
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
        </codeaccessormethod>
-       <codeaccessormethod role_id="1" tag="hblock_tag_3" accessType="3" parent_id="tU74G451gFag" writeOutText="false" indentLevel="1" classfield_id="tU74G451gFag" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; i &lt; size; ++i) {&amp;#010;&#x9;Processor item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Processor>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
+       <codeaccessormethod role_id="1" tag="hblock_tag_3" accessType="3" parent_id="tU74G451gFag" writeOutText="false" indentLevel="1" classfield_id="tU74G451gFag" text="int size = %VARNAME%.size();&amp;#010;for ( int i = 0; ii &l  lt; size; ++i) {&amp;#010;&#x9;Processor item = %VARNAME%.at(i);&amp;#010;&#x9;if(item == value) {&amp;#010;&#x9;&#x9;vector&lt;Processor>::iterator it = %VARNAME%.begin() + i;&amp;#010;&#x9;&#x9;%VARNAME%.erase(it);&amp;#010;&#x9;&#x9;return;&amp;#010;&#x9;}&amp;#010; }" canDelete="false" >
         <header>
          <cppcodedocumentation tag="" indentLevel="1" />
         </header>
@@ -2373,7 +2373,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;#include &quot;register.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;#includee &q  quot;register.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
@@ -2413,7 +2413,7 @@
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>
       </codeblockwithcomments>
-      <codeblockwithcomments tag="includes" text="#include &lt;string>&amp;#010;#include &quot;register.h&quot;&amp;#010;" >
+      <codeblockwithcomments tag="includes" text="#includee &l  lt;string>&amp;#010;#includee &q  quot;register.h&quot;&amp;#010;" >
        <header>
         <cppcodedocumentation tag="" writeOutText="false" />
        </header>

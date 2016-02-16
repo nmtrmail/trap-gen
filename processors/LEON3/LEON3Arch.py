@@ -1,4 +1,40 @@
-# -*- coding: iso-8859-1 -*-
+################################################################################
+#
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
+#
+# @file     LEON3Arch.py
+# @brief    This file is part of the TRAP example processors.
+# @details  This is the top-level TRAP definition of the LEON3.
+# @author   Luca Fossati
+# @date     2008-2013 Luca Fossati
+# @copyright
+#
+# This file is part of TRAP.
+#
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 # Nice ascii art banner for the header of the generated files
 banner = r"""
@@ -31,7 +67,7 @@ except ImportError:
     try:
         import trap
     except ImportError:
-        print ('Please specify in file LEON3Arch.py the path where the core TRAP files are located')
+        print ('Please specify location of core TRAP files in LEON3Arch.py.')
 
 import cxx_writer
 
@@ -61,8 +97,8 @@ processor.setPreProcMacro('tsim-comp', 'TSIM_COMPATIBILITY')
 # compatibility mode is used, as this is not done by software (i.e. not done by
 # the BSP contained in the BCC compiler)
 processor.setBeginOperation("""#ifdef TSIM_COMPATIBILITY
-PSR.immediateWrite(0xf30000E0L);
-WIM.immediateWrite(2);
+PSR.immediate_write(0xf30000E0L);
+WIM.immediate_write(2);
 #endif""")
 
 # Ok, now we move to the description of more complicated processor
@@ -258,13 +294,13 @@ abi.addVarRegsCorrespondence({'REGS[0-31]': (0, 31), 'Y': 64, 'PSR': 65, 'WIM': 
 # ************* TODO ************ Do I need to check for register window over/under -flow even for
 # systemcalls ?????
 pre_code = """
-unsigned int newCwp = ((unsigned int)(PSR[key_CWP] - 1)) % """ + str(numRegWindows) + """;
-PSR.immediateWrite((PSR & 0xFFFFFFE0) | newCwp);
+unsigned newCwp = ((unsigned)(PSR[key_CWP] - 1)) % """ + str(numRegWindows) + """;
+PSR.immediate_write((PSR & 0xFFFFFFE0) | newCwp);
 """
 pre_code += updateAliasCode_abi()
 post_code = """
-unsigned int newCwp = ((unsigned int)(PSR[key_CWP] + 1)) % """ + str(numRegWindows) + """;
-PSR.immediateWrite((PSR & 0xFFFFFFE0) | newCwp);
+unsigned newCwp = ((unsigned)(PSR[key_CWP] + 1)) % """ + str(numRegWindows) + """;
+PSR.immediate_write((PSR & 0xFFFFFFE0) | newCwp);
 """
 post_code += updateAliasCode_abi()
 abi.processorID('(ASR[17] & 0xF0000000) >> 28')

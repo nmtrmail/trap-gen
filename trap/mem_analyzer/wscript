@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+# -*- coding: iso-8859-1 -*-
+
+def build(bld):
+    if bld.env['LICENSE'] == 'gpl':
+        elfInclude = '../runtime/libbfd'
+    else:
+        elfInclude = '../runtime/libelf'
+
+    bld.program(
+        target = 'mem_analyzer',
+        source = 'analyzer.cpp main.cpp',
+        includes = '. ../runtime ' + elfInclude,
+        use = 'common BOOST BOOST_PROGRAM_OPTIONS BOOST_FILESYSTEM BOOST_SYSTEM'
+    )

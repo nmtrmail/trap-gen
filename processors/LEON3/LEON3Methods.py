@@ -1,4 +1,40 @@
-# -*- coding: iso-8859-1 -*-
+################################################################################
+#
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
+#
+# @file     LEON3Methods.py
+# @brief    This file is part of the TRAP example processors.
+# @details  Instruction helper methods for the LEON3.
+# @author   Luca Fossati
+# @date     2008-2013 Luca Fossati
+# @copyright
+#
+# This file is part of TRAP.
+#
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 import trap
 import cxx_writer
@@ -18,7 +54,7 @@ def updateAliasCode_abi():
     return """
     //ABI model: we simply immediately update the alias
     for(int i = 8; i < 32; i++){
-        REGS[i].updateAlias(WINREGS[(newCwp*16 + i - 8) % (""" + str(16*numRegWindows) + """)]);
+        REGS[i].update_alias(WINREGS[(newCwp*16 + i - 8) % (""" + str(16*numRegWindows) + """)]);
     }
     """
 
@@ -32,15 +68,15 @@ def updateAliasCode_decode():
     code = """#ifndef ACC_MODEL
     //Functional model: we simply immediately update the alias
     for(int i = 8; i < 32; i++){
-        REGS[i].updateAlias(WINREGS[(newCwp*16 + i - 8) """ + modCode + """]);
+        REGS[i].update_alias(WINREGS[(newCwp*16 + i - 8) """ + modCode + """]);
     }
     #else
     //Cycle accurate model: we have to update the alias using the pipeline register
     //We update the aliases for this stage and for all the preceding ones (we are in the
     //decode stage and we need to update fetch, and decode)
     for(int i = 8; i < 32; i++){
-        REGS_fetch[i].updateAlias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_decode[i].updateAlias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
+        REGS_fetch[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
+        REGS_decode[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
     }
     #endif
     """
@@ -56,19 +92,19 @@ def updateAliasCode_exception():
     code = """#ifndef ACC_MODEL
     //Functional model: we simply immediately update the alias
     for(int i = 8; i < 32; i++){
-        REGS[i].updateAlias(WINREGS[(newCwp*16 + i - 8) """ + modCode + """]);
+        REGS[i].update_alias(WINREGS[(newCwp*16 + i - 8) """ + modCode + """]);
     }
     #else
     //Cycle accurate model: we have to update the alias using the pipeline register
     //We update the aliases for this stage and for all the preceding ones (we are in the
     //execute stage and we need to update fetch, decode, and register read and execute)
     for(int i = 8; i < 32; i++){
-        REGS_fetch[i].updateAlias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_decode[i].updateAlias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_regs[i].updateAlias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_execute[i].updateAlias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_memory[i].updateAlias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_exception[i].updateAlias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
+        REGS_fetch[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
+        REGS_decode[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
+        REGS_regs[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
+        REGS_execute[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
+        REGS_memory[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
+        REGS_exception[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
     }
     #endif
     """
@@ -77,7 +113,7 @@ def updateAliasCode_exception():
 # Methods used (just by the cycle accurate processor) to check that a register window is valid
 # when a decrement or an increment are performed
 checkIncrementWin_code = """
-unsigned int newCwp = ((unsigned int)(PSR[key_CWP] + 1)) % NUM_REG_WIN;
+unsigned newCwp = ((unsigned)(PSR[key_CWP] + 1)) % NUM_REG_WIN;
 if(((0x01 << (newCwp)) & WIM) != 0){
     return false;
 }
@@ -89,7 +125,7 @@ opCode = cxx_writer.Code(checkIncrementWin_code)
 checkIncrementWin_method = trap.HelperMethod('checkIncrementWin', opCode, 'decode', exception = False, const = True)
 checkIncrementWin_method.setSignature(cxx_writer.boolType)
 checkDecrementWin_code = """
-unsigned int newCwp = ((unsigned int)(PSR[key_CWP] - 1)) % NUM_REG_WIN;
+unsigned newCwp = ((unsigned)(PSR[key_CWP] - 1)) % NUM_REG_WIN;
 if(((0x01 << (newCwp)) & WIM) != 0){
     return false;
 }
@@ -105,7 +141,7 @@ checkDecrementWin_method.setSignature(cxx_writer.boolType)
 # the check that there is an empty valid window and in the update of
 # the window aliases
 IncrementRegWindow_code = """
-newCwp = ((unsigned int)(PSR[key_CWP] + 1)) % NUM_REG_WIN;
+newCwp = ((unsigned)(PSR[key_CWP] + 1)) % NUM_REG_WIN;
 if(((0x01 << (newCwp)) & WIM) != 0){
     return false;
 }
@@ -121,7 +157,7 @@ IncrementRegWindow_method.addVariable(('newCwp', 'BIT<32>'))
 # the check that there is an empty valid window and in the update of
 # the window aliases
 DecrementRegWindow_code = """
-newCwp = ((unsigned int)(PSR[key_CWP] - 1)) % NUM_REG_WIN;
+newCwp = ((unsigned)(PSR[key_CWP] - 1)) % NUM_REG_WIN;
 if(((0x01 << (newCwp)) & WIM) != 0){
     return false;
 }
@@ -137,7 +173,7 @@ DecrementRegWindow_method.addVariable(('newCwp', 'BIT<32>'))
 # Sign extends the input bitstring
 opCode = cxx_writer.Code("""
 if((bitSeq & (1 << (bitSeq_length - 1))) != 0)
-    bitSeq |= (((unsigned int)0xFFFFFFFF) << bitSeq_length);
+    bitSeq |= (((unsigned)0xFFFFFFFF) << bitSeq_length);
 return bitSeq;
 """)
 SignExtend_method = trap.HelperMethod('SignExtend', opCode, 'execute', exception = False, const = True)
@@ -145,22 +181,22 @@ SignExtend_method.setSignature(cxx_writer.intType, [('bitSeq', 'BIT<32>'), cxx_w
 
 # Normal PC increment, used when not in a branch instruction; in a branch instruction
 # I will directly modify both PC and nPC in case we are in a the cycle accurate model,
-# while just nPC in case we are in the functional one; if the branch has the annulling bit
+# while just nPC in case we are in the functional one; if the branch has the annuling bit
 # set, then also in the functional model both the PC and nPC will be modified
 raiseExcCode = """
 if(PSR[key_ET] == 0){
     if(exceptionId < IRQ_LEV_15){
         // I print a core dump and then I signal an error: an exception happened while
         // exceptions were disabled in the processor core
-        THROW_EXCEPTION("Exception " << exceptionId << " happened while the PSR[ET] = 0; PC = " << std::hex << std::showbase << PC << std::endl << "Instruction " << getMnemonic());
+        THROW_EXCEPTION("Exception " << exceptionId << " happened while the PSR[ET] = 0; PC = " << std::hex << std::showbase << PC << std::endl << "Instruction " << get_mnemonic());
     }
 }
 else{
-    unsigned int curPSR = PSR;
+    unsigned curPSR = PSR;
     curPSR = (curPSR & 0xffffffbf) | (PSR[key_S] << 6);
     curPSR = (curPSR & 0xffffff7f) | 0x00000080;
     curPSR &= 0xffffffdf;
-    unsigned int newCwp = ((unsigned int)(PSR[key_CWP] - 1)) % NUM_REG_WIN;
+    unsigned newCwp = ((unsigned)(PSR[key_CWP] - 1)) % NUM_REG_WIN;
 """
 raiseExcCode += updateAliasCode_exception()
 raiseExcCode +=  """
@@ -306,7 +342,7 @@ raiseExcCode +=  """
         irqAck.send_pin_req(IMPL_DEP_EXC - exceptionId, 0);
     }
     flush();
-    annull();
+    annul();
 }
 """
 RaiseException_method = trap.HelperMethod('RaiseException', cxx_writer.Code(raiseExcCode), 'exception')
@@ -319,7 +355,7 @@ RaiseException_method.setSignature(cxx_writer.voidType, RaiseException_methodPar
 
 # Code used increment the program counter, moving it to the next instruction in
 # the instruction stream
-opCode = cxx_writer.Code("""unsigned int npc = NPC;
+opCode = cxx_writer.Code("""unsigned npc = NPC;
 PC = npc;
 npc += 4;
 NPC = npc;
@@ -363,8 +399,8 @@ ICC_writeLogic.addInstructionVar(('result', 'BIT<32>'))
 opCode = cxx_writer.Code("""
 PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
 PSR[key_ICC_z] = (result == 0);
-PSR[key_ICC_v] = ((unsigned int)((rs1_op & rs2_op & (~result)) | ((~rs1_op) & (~rs2_op) & result))) >> 31;
-PSR[key_ICC_c] = ((unsigned int)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
+PSR[key_ICC_v] = ((unsigned)((rs1_op & rs2_op & (~result)) | ((~rs1_op) & (~rs2_op) & result))) >> 31;
+PSR[key_ICC_c] = ((unsigned)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
 """)
 ICC_writeAdd = trap.HelperOperation('ICC_writeAdd', opCode, exception = False)
 ICC_writeAdd.addInstructionVar(('result', 'BIT<32>'))
@@ -377,7 +413,7 @@ opCode = cxx_writer.Code("""
 PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
 PSR[key_ICC_z] = (result == 0);
 PSR[key_ICC_v] = temp_V;
-PSR[key_ICC_c] = ((unsigned int)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
+PSR[key_ICC_c] = ((unsigned)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
 """)
 ICC_writeTAdd = trap.HelperOperation('ICC_writeTAdd', opCode, exception = False)
 ICC_writeTAdd.addInstructionVar(('result', 'BIT<32>'))
@@ -407,7 +443,7 @@ if(!temp_V){
     PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
     PSR[key_ICC_z] = (result == 0);
     PSR[key_ICC_v] = 0;
-    PSR[key_ICC_c] = ((unsigned int)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
+    PSR[key_ICC_c] = ((unsigned)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
 }
 """)
 ICC_writeTVAdd = trap.HelperOperation('ICC_writeTVAdd', opCode, exception = False)
@@ -421,8 +457,8 @@ ICC_writeTVAdd.addInstructionVar(('rs2_op', 'BIT<32>'))
 opCode = cxx_writer.Code("""
 PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
 PSR[key_ICC_z] = (result == 0);
-PSR[key_ICC_v] = ((unsigned int)((rs1_op & (~rs2_op) & (~result)) | ((~rs1_op) & rs2_op & result))) >> 31;
-PSR[key_ICC_c] = ((unsigned int)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
+PSR[key_ICC_v] = ((unsigned)((rs1_op & (~rs2_op) & (~result)) | ((~rs1_op) & rs2_op & result))) >> 31;
+PSR[key_ICC_c] = ((unsigned)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
 """)
 ICC_writeSub = trap.HelperOperation('ICC_writeSub', opCode, exception = False)
 ICC_writeSub.addInstructionVar(('result', 'BIT<32>'))
@@ -435,7 +471,7 @@ opCode = cxx_writer.Code("""
 PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
 PSR[key_ICC_z] = (result == 0);
 PSR[key_ICC_v] = temp_V;
-PSR[key_ICC_c] = ((unsigned int)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
+PSR[key_ICC_c] = ((unsigned)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
 """)
 ICC_writeTSub = trap.HelperOperation('ICC_writeTSub', opCode, exception = False)
 ICC_writeTSub.addInstructionVar(('result', 'BIT<32>'))
@@ -450,7 +486,7 @@ if(!temp_V){
     PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
     PSR[key_ICC_z] = (result == 0);
     PSR[key_ICC_v] = temp_V;
-    PSR[key_ICC_c] = ((unsigned int)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
+    PSR[key_ICC_c] = ((unsigned)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
 }
 """)
 ICC_writeTVSub = trap.HelperOperation('ICC_writeTVSub', opCode, exception = False)

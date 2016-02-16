@@ -4,7 +4,7 @@
 import sys, os
 
 def build(bld):
-    bld.recurse('runtime memAnalyzer')
+    bld.recurse('runtime mem_analyzer')
 
     uselib_custom = ''
     if sys.platform == 'cygwin':
@@ -13,7 +13,7 @@ def build(bld):
     bld(
       features = 'cxx cxxstlib',
       target = 'trap',
-      use = 'tools objloader syscall debugger profiler utils BOOST_THREAD BOOST_REGEX BOOST_FILESYSTEM BOOST_SYSTEM ELF_LIB SYSTEMC' + uselib_custom,
+      use = 'common debugger elfloader modules osemu profiler ELF_LIB SYSTEMC BOOST_THREAD BOOST_REGEX BOOST_FILESYSTEM BOOST_SYSTEM' + uselib_custom,
       install_path = os.path.join(bld.env.PREFIX, 'lib')
     )
 
@@ -21,7 +21,7 @@ def build(bld):
         bld(
           features = 'cxx cxxshlib',
           target = 'trap',
-          use = 'tools objloader syscall debugger profiler utils BOOST_THREAD BOOST_REGEX BOOST_FILESYSTEM BOOST_SYSTEM ELF_LIB SYSTEMC' + uselib_custom,
+          use = 'common debugger elfloader modules osemu profiler ELF_LIB SYSTEMC BOOST_THREAD BOOST_REGEX BOOST_FILESYSTEM BOOST_SYSTEM' + uselib_custom,
           install_path = os.path.join(bld.env.PREFIX, 'lib')
         )
 

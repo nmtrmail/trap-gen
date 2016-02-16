@@ -1,4 +1,40 @@
-# -*- coding: iso-8859-1 -*-
+################################################################################
+#
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
+#
+# @file     LEON3Isa.py
+# @brief    This file is part of the TRAP example processors.
+# @details  nstruction set definition file for the LEON3.
+# @author   Luca Fossati
+# @date     2008-2013 Luca Fossati
+# @copyright
+#
+# This file is part of TRAP.
+#
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 # Lets first of all import the necessary files for the
 # creation of the processor
@@ -66,7 +102,7 @@ isa.addDefines("""
 
 # Here lests set the NOP behavior: it is used only for the cycle accurate processor; the functional
 # one does not even define such instruction
-isa.setNOPBehavior("""unsigned int npc = NPC;
+isa.setNOPBehavior("""unsigned npc = NPC;
 PC = npc;
 npc += 4;
 NPC = npc;
@@ -78,7 +114,7 @@ NPC = npc;
 #
 # Note the special operations:
 #
-# -- annull(): transforms the current instruction in a NOP; if we are
+# -- annul(): transforms the current instruction in a NOP; if we are
 # in the middle of the execution of some code, it also terminates the
 # execution of that part of code (it is like an exception)
 # -- flush(): flushes the pipeline stages preceding the one in which
@@ -338,15 +374,15 @@ if(!notAligned){
 """ + flushCode)
 opCodeWb = cxx_writer.Code("""
 if(rd_bit % 2 == 0){
-    rd = (unsigned int)(readValue & 0x00000000FFFFFFFFLL);
-    REGS[rd_bit + 1] = (unsigned int)((readValue >> 32) & 0x00000000FFFFFFFFLL);
+    rd = (unsigned)(readValue & 0x00000000FFFFFFFFLL);
+    REGS[rd_bit + 1] = (unsigned)((readValue >> 32) & 0x00000000FFFFFFFFLL);
 }
 else{
-    REGS[rd_bit - 1] = (unsigned int)(readValue & 0x00000000FFFFFFFFLL);
-    rd = (unsigned int)((readValue >> 32) & 0x00000000FFFFFFFFLL);
+    REGS[rd_bit - 1] = (unsigned)(readValue & 0x00000000FFFFFFFFLL);
+    rd = (unsigned)((readValue >> 32) & 0x00000000FFFFFFFFLL);
 }
 #ifdef ACC_MODEL
-unlockQueue[0].push_back(REGS[rd_bit ^ 0x1].getPipeReg());
+unlock_queue[0].push_back(REGS[rd_bit ^ 0x1].get_pipe_reg());
 #endif
 """)
 ldd_imm_Instr = trap.Instruction('LDD_imm', True, frequency = 6)
@@ -630,15 +666,15 @@ else{
 """)
 opCodeWb = cxx_writer.Code("""
 if(rd_bit % 2 == 0){
-    rd = (unsigned int)(readValue & 0x00000000FFFFFFFFLL);
-    REGS[rd_bit + 1] = (unsigned int)((readValue >> 32) & 0x00000000FFFFFFFFLL);
+    rd = (unsigned)(readValue & 0x00000000FFFFFFFFLL);
+    REGS[rd_bit + 1] = (unsigned)((readValue >> 32) & 0x00000000FFFFFFFFLL);
 }
 else{
-    REGS[rd_bit - 1] = (unsigned int)(readValue & 0x00000000FFFFFFFFLL);
-    rd = (unsigned int)((readValue >> 32) & 0x00000000FFFFFFFFLL);
+    REGS[rd_bit - 1] = (unsigned)(readValue & 0x00000000FFFFFFFFLL);
+    rd = (unsigned)((readValue >> 32) & 0x00000000FFFFFFFFLL);
 }
 #ifdef ACC_MODEL
-unlockQueue[0].push_back(REGS[rd_bit ^ 0x1].getPipeReg());
+unlock_queue[0].push_back(REGS[rd_bit ^ 0x1].get_pipe_reg());
 #endif
 """)
 ldda_reg_Instr = trap.Instruction('LDDA_reg', True, frequency = 1)
@@ -851,7 +887,7 @@ std_imm_Instr.addVariable(('npcounter', 'BIT<32>'))
 std_imm_Instr.addVariable(('notAligned', 'BIT<1>'))
 std_imm_Instr.addVariable(('address', 'BIT<32>'))
 std_imm_Instr.addVariable(('toWrite', 'BIT<64>'))
-std_imm_Instr.addCheckHazardCode('REGS_decode[rd_bit ^ 0x1].isLocked()', 'decode')
+std_imm_Instr.addCheckHazardCode('REGS_decode[rd_bit ^ 0x1].is_locked()', 'decode')
 isa.addInstruction(std_imm_Instr)
 std_reg_Instr = trap.Instruction('STD_reg', True, frequency = 5)
 std_reg_Instr.setMachineCode(mem_format1, {'op3': [0, 0, 0, 1, 1, 1]}, ('std r', '%rd', ' r', '%rs1', '+r', '%rs2'))
@@ -868,7 +904,7 @@ std_reg_Instr.addVariable(('npcounter', 'BIT<32>'))
 std_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 std_reg_Instr.addVariable(('address', 'BIT<32>'))
 std_reg_Instr.addVariable(('toWrite', 'BIT<64>'))
-std_reg_Instr.addCheckHazardCode('REGS_decode[rd_bit ^ 0x1].isLocked()', 'decode')
+std_reg_Instr.addCheckHazardCode('REGS_decode[rd_bit ^ 0x1].is_locked()', 'decode')
 isa.addInstruction(std_reg_Instr)
 opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
@@ -1041,7 +1077,7 @@ stda_reg_Instr.addVariable(('supervisor', 'BIT<1>'))
 stda_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 stda_reg_Instr.addVariable(('address', 'BIT<32>'))
 stda_reg_Instr.addVariable(('toWrite', 'BIT<64>'))
-stda_reg_Instr.addCheckHazardCode('REGS_decode[rd_bit ^ 0x1].isLocked()', 'decode')
+stda_reg_Instr.addCheckHazardCode('REGS_decode[rd_bit ^ 0x1].is_locked()', 'decode')
 isa.addInstruction(stda_reg_Instr)
 
 # Atomic Load/Store
@@ -1590,7 +1626,7 @@ sll_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 sll_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 isa.addInstruction(sll_reg_Instr)
 opCodeExec = cxx_writer.Code("""
-result = ((unsigned int)rs1_op) >> simm13;
+result = ((unsigned)rs1_op) >> simm13;
 """)
 srl_imm_Instr = trap.Instruction('SRL_imm', True, frequency = 9)
 srl_imm_Instr.setMachineCode(dpi_format2, {'op3': [1, 0, 0, 1, 1, 0]}, ('srl r', '%rs1', ' ', '%simm13', ' r', '%rd'))
@@ -1602,7 +1638,7 @@ srl_imm_Instr.addVariable(('result', 'BIT<32>'))
 srl_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 isa.addInstruction(srl_imm_Instr)
 opCodeExec = cxx_writer.Code("""
-result = ((unsigned int)rs1_op) >> (rs2_op & 0x0000001f);
+result = ((unsigned)rs1_op) >> (rs2_op & 0x0000001f);
 """)
 srl_reg_Instr = trap.Instruction('SRL_reg', True, frequency = 3)
 srl_reg_Instr.setMachineCode(dpi_format1, {'op3': [1, 0, 0, 1, 1, 0], 'asi' : [0, 0, 0, 0, 0, 0, 0, 0]}, ('srl r', '%rs1', ' r', '%rs2', ' r', '%rd'))
@@ -1753,7 +1789,7 @@ addxcc_reg_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 isa.addInstruction(addxcc_reg_Instr)
 opCodeExec = cxx_writer.Code("""
 result = rs1_op + rs2_op;
-temp_V = ((unsigned int)((rs1_op & rs2_op & (~result)) | ((~rs1_op) & (~rs2_op) & result))) >> 31;
+temp_V = ((unsigned)((rs1_op & rs2_op & (~result)) | ((~rs1_op) & (~rs2_op) & result))) >> 31;
 if(!temp_V && (((rs1_op | rs2_op) & 0x00000003) != 0)){
     temp_V = 1;
 }
@@ -1937,7 +1973,7 @@ subxcc_reg_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 isa.addInstruction(subxcc_reg_Instr)
 opCodeExec = cxx_writer.Code("""
 result = rs1_op - rs2_op;
-temp_V = ((unsigned int)((rs1_op & (~rs2_op) & (~result)) | ((~rs1_op) & rs2_op & result))) >> 31;
+temp_V = ((unsigned)((rs1_op & (~rs2_op) & (~result)) | ((~rs1_op) & rs2_op & result))) >> 31;
 if(!temp_V && (((rs1_op | rs2_op) & 0x00000003) != 0)){
     temp_V = 1;
 }
@@ -2021,16 +2057,16 @@ rs2_op = rs2;
 """)
 opCodeExec = cxx_writer.Code("""
 #ifndef ACC_MODEL
-unsigned int yNew = (((unsigned int)Y) >> 1) | (rs1_op << 31);
+unsigned yNew = (((unsigned)Y) >> 1) | (rs1_op << 31);
 #else
-unsigned int yNew = (((unsigned int)Y_execute) >> 1) | (rs1_op << 31);
+unsigned yNew = (((unsigned)Y_execute) >> 1) | (rs1_op << 31);
 #endif
-rs1_op = ((PSR[key_ICC_n] ^ PSR[key_ICC_v]) << 31) | (((unsigned int)rs1_op) >> 1);
+rs1_op = ((PSR[key_ICC_n] ^ PSR[key_ICC_v]) << 31) | (((unsigned)rs1_op) >> 1);
 result = rs1_op;
 #ifndef ACC_MODEL
-unsigned int yOld = Y;
+unsigned yOld = Y;
 #else
-unsigned int yOld = Y_execute;
+unsigned yOld = Y_execute;
 #endif
 if((yOld & 0x00000001) != 0){
     result += rs2_op;
@@ -2085,7 +2121,7 @@ stall(3);
 #endif
 """)
 opCodeExecU = cxx_writer.Code("""
-unsigned long long resultTemp = (unsigned long long)(((unsigned long long)((unsigned int)rs1_op))*((unsigned long long)((unsigned int)rs2_op)));
+unsigned long long resultTemp = (unsigned long long)(((unsigned long long)((unsigned)rs1_op))*((unsigned long long)((unsigned)rs2_op)));
 Y = resultTemp >> 32;
 result = resultTemp & 0x00000000FFFFFFFF;
 #ifdef MULT_SIZE_16
@@ -2239,8 +2275,8 @@ result = resultAcc & 0x00000000FFFFFFFFLL;
 stall(1);
 """)
 opCodeExecU = cxx_writer.Code("""
-unsigned int resultTemp = ((unsigned int)rs1_op & 0x0000ffff)*((unsigned int)rs2_op & 0x0000ffff);
-unsigned long long resultAcc = ((((unsigned long long)(Y & 0x000000ff)) << 32) | (unsigned int)ASR[18]) + resultTemp;
+unsigned resultTemp = ((unsigned)rs1_op & 0x0000ffff)*((unsigned)rs2_op & 0x0000ffff);
+unsigned long long resultAcc = ((((unsigned long long)(Y & 0x000000ff)) << 32) | (unsigned)ASR[18]) + resultTemp;
 Y = (resultAcc & 0x000000ff00000000LL) >> 32;
 ASR[18] = resultAcc & 0x00000000FFFFFFFFLL;
 result = resultAcc & 0x00000000FFFFFFFFLL;
@@ -2317,7 +2353,7 @@ if(!exception){
         result = 0xFFFFFFFF;
     }
     else{
-        result = (unsigned int)(res64 & 0x00000000FFFFFFFFLL);
+        result = (unsigned)(res64 & 0x00000000FFFFFFFFLL);
     }
 }
 stall(34);
@@ -2340,7 +2376,7 @@ if(!exception){
         }
     }
     else{
-        result = (unsigned int)(res64 & 0x00000000FFFFFFFFLL);
+        result = (unsigned)(res64 & 0x00000000FFFFFFFFLL);
     }
 }
 stall(34);
@@ -2542,7 +2578,7 @@ opCodeWb = cxx_writer.Code("""
 if(okNewWin){
     rd = result;
     #ifdef ACC_MODEL
-    unlockQueue[0].push_back(rd.getPipeReg());
+    unlock_queue[0].push_back(rd.get_pipe_reg());
     #endif
 }
 """)
@@ -2652,7 +2688,7 @@ opCode = cxx_writer.Code(ReadNPCDecode + """
 switch(cond){
     case 0x8:{
         // Branch Always
-        unsigned int targetPc = pcounter + 4*(SignExtend(disp22, 22));
+        unsigned targetPc = pcounter + 4*(SignExtend(disp22, 22));
         #ifdef ACC_MODEL
         PC = targetPc;
         NPC = targetPc + 4;
@@ -2715,7 +2751,7 @@ switch(cond){
                     ((cond == 0xf) && !icc_v) ||
                     ((cond == 0x7) && icc_v);
         if(exec){
-            unsigned int targetPc = pcounter + 4*(SignExtend(disp22, 22));
+            unsigned targetPc = pcounter + 4*(SignExtend(disp22, 22));
             #ifdef ACC_MODEL
             PC = targetPc;
             NPC = targetPc + 4;
@@ -2763,7 +2799,7 @@ opCodeWb = cxx_writer.Code("""
 REGS[15] = pcounter;
 """)
 opCode = cxx_writer.Code(ReadNPCDecode + """
-unsigned int target = pcounter + (disp30 << 2);
+unsigned target = pcounter + (disp30 << 2);
 #ifdef ACC_MODEL
 PC = target;
 NPC = target + 4;
@@ -2805,10 +2841,10 @@ else{
 }
 """
 opCodeDecodeImm = cxx_writer.Code(ReadNPCDecode + """
-unsigned int jumpAddr = rs1 + SignExtend(simm13, 13);
+unsigned jumpAddr = rs1 + SignExtend(simm13, 13);
 """ + actualJumpCode)
 opCodeDecodeRegs = cxx_writer.Code(ReadNPCDecode + """
-unsigned int jumpAddr = rs1 + rs2;
+unsigned jumpAddr = rs1 + rs2;
 """ + actualJumpCode)
 opCodeTrap = cxx_writer.Code("""
 if(trapNotAligned){
@@ -2847,7 +2883,7 @@ isa.addInstruction(jump_reg_Instr)
 # N.B. In the reg read stage it writes the values of the SU and ET PSR
 # fields??????? TODO: check the stages where the operations are performed:
 # is everything performed in the decode stage?
-opCodeAll = """newCwp = ((unsigned int)(PSR[key_CWP] + 1)) % NUM_REG_WIN;
+opCodeAll = """newCwp = ((unsigned)(PSR[key_CWP] + 1)) % NUM_REG_WIN;
 exceptionEnabled = PSR[key_ET];
 supervisor = PSR[key_S];
 invalidWin = ((0x01 << (newCwp)) & WIM) != 0;
@@ -2869,7 +2905,7 @@ if(exceptionEnabled || !supervisor || invalidWin || notAligned){
     flush();
 }
 else{
-    PSR.immediateWrite((PSR & 0xFFFFFF40) | (newCwp | 0x20 | (PSR[key_PS] << 7)));
+    PSR.immediate_write((PSR & 0xFFFFFF40) | (newCwp | 0x20 | (PSR[key_PS] << 7)));
     stall(2);
 }
 """)
@@ -3211,7 +3247,7 @@ illegalCWP = (result & 0x0000001f) >= NUM_REG_WIN;
 """)
 opCodeExec = cxx_writer.Code("""
 if(!(supervisorException || illegalCWP)){
-    unsigned int newCwp = (unsigned int)result & 0x0000001f;
+    unsigned newCwp = (unsigned)result & 0x0000001f;
     PSR = result;
 """ +
 updateAliasCode_decode()
@@ -3266,7 +3302,7 @@ raiseException = (PSR[key_S] == 0);
 """)
 opCodeWb = cxx_writer.Code("""
 if(!raiseException){
-    WIM = result & ((unsigned int)0xFFFFFFFF >> (32 - NUM_REG_WIN));
+    WIM = result & ((unsigned)0xFFFFFFFF >> (32 - NUM_REG_WIN));
 }
 """)
 opCodeTrap = cxx_writer.Code("""

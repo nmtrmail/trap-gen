@@ -1,38 +1,42 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 3 of the License, or
-#   (at your option) any later version.
+# @file     SimpleDecls.py
+# @brief    This file is part of the TRAP CXX code generator module.
+# @details
+# @author   Luca Fossati
+# @author   Lillian Tadros (Technische Universitaet Dortmund)
+# @date     2008-2013 Luca Fossati
+#           2015-2016 Technische Universitaet Dortmund
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 import copy
 import CustomCode, Writer
@@ -51,10 +55,12 @@ class DumpElement:
     def printDocString(self, writer, detail = True):
       if self.docbrief == '' and self.docdetail == '': return
       if detail and self.docdetail != '':
-          writer.write('/** @brief    ' + self.docbrief + '\n')
-          writer.write('*   @details\n*   ' + self.docdetail + '\n*/\n', comment = '*   ')
+          writer.write('/**\n* @brief ')
+          writer.write(self.docbrief + '\n', prefix = '*        ')
+          writer.write('*\n' + self.docdetail + '\n', prefix = '* ')
+          writer.write('*/\n')
       else:
-          writer.write('///' + self.docbrief + '\n')
+          writer.write('/// ' + self.docbrief + '\n')
     def __str__(self):
         try:
             stringWriter = Writer.StringWriter()
@@ -153,7 +159,7 @@ class Type(DumpElement):
             writer.write('const ')
         writer.write(self.name)
         for i in self.modifiers:
-            writer.write(' ' + i)
+            writer.write(i)
 
     def getIncludes(self):
         return copy.copy(self.includes)
@@ -164,7 +170,7 @@ class Type(DumpElement):
             typeStr += 'const '
         typeStr += self.name
         for i in self.modifiers:
-            typeStr += ' ' + i
+            typeStr += i
         return typeStr
 
 class TemplateType(Type):
@@ -197,7 +203,7 @@ class TemplateType(Type):
                     writer.write(' ')
             writer.write('>')
         for i in currentModifiers:
-            writer.write(' ' + i)
+            writer.write(i)
         self.modifiers = currentModifiers
 
     def getIncludes(self):
@@ -223,7 +229,7 @@ class TemplateType(Type):
                     typeStr += ', '
             typeStr += ' >'
         for i in currentModifiers:
-            typeStr += ' ' + i
+            typeStr += i
         return typeStr
 
 intType = Type('int')
@@ -231,7 +237,7 @@ longlongType = Type('long long')
 ulonglongType = Type('unsigned long long')
 shortType = Type('short int')
 ushortType = Type('unsigned short int')
-uintType = Type('unsigned int')
+uintType = Type('unsigned')
 floatType = Type('float')
 doubleType = Type('double')
 charType = Type('char')
@@ -420,7 +426,7 @@ class Function(DumpElement):
         try:
             if self.virtual:
                 if self.static or self.inline:
-                    raise Exception('Operation ' + self.name + ' is virtual but also inline or static: this is not possible')
+                    raise Exception('Cannot set inline or static operation ' + self.name + ' as virtual.')
                 writer.write('virtual ')
         except AttributeError:
             pass
@@ -436,34 +442,34 @@ class Function(DumpElement):
         for i in self.parameters:
             i.writeDeclaration(writer)
             if i != self.parameters[-1]:
-                writer.write(', ', split = ',', indent = indent)
+                writer.write(', ', indent = indent, split = ',')
         if self.template or self.inline:
-            writer.write(')', split = ',', indent = indent)
+            writer.write(')', indent = indent, split = ',')
             try:
                 if self.const:
-                    writer.write(' const', split = ',', indent = indent)
+                    writer.write(' const', indent = indent, split = ',')
             except AttributeError:
                 pass
             if self.noException:
-                writer.write(' throw()', split = ',', indent = indent)
-            writer.write(' {\n', split = ',', indent = indent)
+                writer.write(' throw()', indent = indent, split = ',')
+            writer.write(' {\n', indent = indent, split = ',')
             self.body.writeImplementation(writer)
             writer.write('} // ' + self.name + '()\n\n')
         else:
-            writer.write(')', split = ',', indent = indent)
+            writer.write(')', indent = indent, split = ',')
             try:
                 if self.const:
-                    writer.write(' const', split = ',', indent = indent)
+                    writer.write(' const', indent = indent, split = ',')
             except AttributeError:
                 pass
             if self.noException:
-                writer.write(' throw()', split = ',', indent = indent)
+                writer.write(' throw()', indent = indent, split = ',')
             try:
                 if self.pure:
-                    writer.write(' = 0', split = ',', indent = indent)
+                    writer.write(' = 0', indent = indent, split = ',')
             except AttributeError:
                 pass
-            writer.write(';\n', split = ',', indent = indent)
+            writer.write(';\n', indent = indent, split = ',')
         for namespace in self.namespaces:
             writer.write('};\n')
 
@@ -490,11 +496,11 @@ class Function(DumpElement):
                 if (split == True):
                     writer.write(',\n', indent = indent)
                 else:
-                    writer.write(', ', split = ',', indent = indent)
-        writer.write(')', split = ',', indent = indent)
+                    writer.write(', ', indent = indent, split = ',')
+        writer.write(')', indent = indent, split = ',')
         if self.noException:
-            writer.write(' throw()', split = ',', indent = indent)
-        writer.write(' {\n', split = ',', indent = indent)
+            writer.write(' throw()', indent = indent, split = ',')
+        writer.write(' {\n', indent = indent, split = ',')
         self.body.writeImplementation(writer)
         writer.write('} // ' + self.name + '()\n\n')
 
@@ -536,7 +542,7 @@ class Enum(DumpElement):
         if self.docbrief:
             self.printDocString(writer)
         if not self.values:
-            raise Exception('There must be elements inside the Enum before printing it')
+            raise Exception('Cannot print empty enum.')
         code = 'enum ' + self.name + ' {\n'
         for key, val in self.values.items():
             code += key + ' = ' + str(val) + ' \n,'
@@ -561,7 +567,7 @@ class Union(DumpElement):
         if self.docbrief:
             self.printDocString(writer)
         if not self.members:
-            raise Exception('There must be elements inside the Union before printing it')
+            raise Exception('Cannot print empty union.')
         writer.write('union ' + self.name + ' {\n')
         for i in self.members:
             i.writeImplementation(writer)
@@ -597,7 +603,7 @@ class BitField(DumpElement):
         if self.docbrief:
             self.printDocString(writer)
         if not self.members:
-            raise Exception('There must be elements inside the BitField before printing it')
+            raise Exception('Cannot print empty bitfield.')
         writer.write('struct ' + self.name + ' {\n')
         for i in self.members:
             writer.write('unsigned ' + str(i[0]) + ':' + str(i[1]) + ';\n')

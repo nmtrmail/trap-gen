@@ -1,38 +1,40 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+# @file     ARMIsa.py
+# @brief    This file is part of the TRAP example processors.
+# @details  nstruction set definition file for the ARM97TDMI.
+# @author   Luca Fossati
+# @date     2008-2013 Luca Fossati
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 
 
@@ -64,7 +66,7 @@ isa.addMethod(UpdatePSRSub_method)
 #
 # Note the special operations:
 #
-# -- annull(): transforms the current instruction in a NOP; if we are
+# -- annul(): transforms the current instruction in a NOP; if we are
 # in the middle of the execution of some code, it also terminates the
 # execution of that part of code (it is like an exception)
 # -- flush(): flushes the pipeline stages preceding the one in which
@@ -754,8 +756,8 @@ isa.addInstruction(eor_imm_Instr)
 
 # LDM instruction family
 opCode = cxx_writer.Code("""
-unsigned int numRegsToLoad = 0;
-unsigned int loadLatency = 0;
+unsigned numRegsToLoad = 0;
+unsigned loadLatency = 0;
 if(s == 0){
     //I'm dealing just with the current registers: LDM type one or three
     //First af all I read the memory in the register I in the register list.
@@ -1467,10 +1469,10 @@ isa.addInstruction(smull_Instr)
 #-------------------
 opCode = cxx_writer.Code("""
 //Perform the operation
-result = (unsigned long long)(((unsigned long long)(((unsigned long long)((unsigned int)rm)) * ((unsigned long long)((unsigned int)rs)))) + (((unsigned long long)rd) << 32) + (unsigned int)REGS[rn]);
+result = (unsigned long long)(((unsigned long long)(((unsigned long long)((unsigned)rm)) * ((unsigned long long)((unsigned)rs)))) + (((unsigned long long)rd) << 32) + (unsigned)REGS[rn]);
 //Check if I have to update the processor flags
-rd = (unsigned int)((result >> 32) & 0x00000000FFFFFFFF);
-REGS[rn] = (unsigned int)(result & 0x00000000FFFFFFFFLL);
+rd = (unsigned)((result >> 32) & 0x00000000FFFFFFFF);
+REGS[rn] = (unsigned)(result & 0x00000000FFFFFFFFLL);
 
 if((rs & 0xFFFFFF00) == 0x0 || (rs & 0xFFFFFF00) == 0xFFFFFF00){
     stall(3);
@@ -1553,10 +1555,10 @@ isa.addInstruction(umlal_Instr)
 #-------------------
 opCode = cxx_writer.Code("""
 //Perform the operation
-result = (unsigned long long)(((unsigned long long)((unsigned int)rm)) * ((unsigned long long)((unsigned int)rs)));
+result = (unsigned long long)(((unsigned long long)((unsigned)rm)) * ((unsigned long long)((unsigned)rs)));
 //Check if I have to update the processor flags
-rd = (unsigned int)((result >> 32) & 0x00000000FFFFFFFF);
-REGS[rn] = (unsigned int)(result & 0x00000000FFFFFFFFLL);
+rd = (unsigned)((result >> 32) & 0x00000000FFFFFFFF);
+REGS[rn] = (unsigned)(result & 0x00000000FFFFFFFFLL);
 
 if((rs & 0xFFFFFF00) == 0x0 || (rs & 0xFFFFFF00) == 0xFFFFFF00){
     stall(3);
@@ -1797,7 +1799,7 @@ value = RotateRight(rotate*2, immediate);
 if((value & 0x00000010) == 0){
     THROW_EXCEPTION("MSR called with unvalid mode " << std::hex << std::showbase << value << ": we are trying to switch to 26 bit PC");
 }
-unsigned int currentMode = CPSR[key_mode];
+unsigned currentMode = CPSR[key_mode];
 //Firs of all I check whether I have to modify the CPSR or the SPSR
 if(r == 0){
     //CPSR
@@ -2016,7 +2018,7 @@ opCode = cxx_writer.Code("""
 if((rm & 0x00000010) == 0){
     THROW_EXCEPTION("MSR called with unvalid mode " << std::hex << std::showbase << rm << ": we are trying to switch to 26 bit PC");
 }
-unsigned int currentMode = CPSR[key_mode];
+unsigned currentMode = CPSR[key_mode];
 //Firs of all I check whether I have to modify the CPSR or the SPSR
 if(r == 0){
     //CPSR
@@ -3393,7 +3395,7 @@ opCodeDec = cxx_writer.Code("""
 #ifdef ACC_MODEL
 for(int i = 0; i < 16; i++){
     if((reg_list & (0x00000001 << i)) != 0){
-        RB[i].isLocked();
+        RB[i].is_locked();
     }
 }
 #endif

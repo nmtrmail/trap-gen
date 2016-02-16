@@ -1,45 +1,49 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 3 of the License, or
-#   (at your option) any later version.
+# @file     decoder.py
+# @brief    This file is part of the TRAP processor generator module.
+# @details
+# @author   Luca Fossati
+# @author   Lillian Tadros (Technische Universitaet Dortmund)
+# @date     2008-2013 Luca Fossati
+#           2015-2016 Technische Universitaet Dortmund
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 try:
     import networkx as NX
 except:
     import traceback
     traceback.print_exc()
-    raise Exception('Error occurred during the import of module networkx, required for the creation of the decoder. Please correctly install the module, at least version 0.36 required')
+    raise Exception('Cannot import required module networkx. Please install networkx >= 0.36.')
 
 try:
     import re
@@ -51,7 +55,7 @@ try:
 except:
     import traceback
     traceback.print_exc()
-    raise Exception('Error while determining the version of module networkx, try changing version, at least 0.36 required (newest non-development versions are usually ok)')
+    raise Exception('Cannot determine networkx version. Try changing versions >= 0.36.')
 
 import operator
 
@@ -144,21 +148,21 @@ class SplitFunction:
             return hex(int(mask, 2))
 
     def __repr__(self):
-        retVal = ''
+        ret_val = ''
         if self.pattern:
             for i in reversed(self.pattern):
                 if i !=  None:
-                    retVal += str(i)
+                    ret_val += str(i)
                 else:
                     retVal += '-'
             return retVal
         if self.table:
             for i in reversed(self.table):
                 if i !=  0:
-                    retVal += str(i)
+                    ret_val += str(i)
                 else:
-                    retVal += '-'
-            return retVal
+                    ret_val += '-'
+            return ret_val
 
     def __str__(self):
         return repr(self)
@@ -198,21 +202,21 @@ class DecodingNode:
         return hash(str(self.patterns))
 
     def __repr__(self):
-        retVal = ''
+        ret_val = ''
         if self.instrId != None:
-            retVal += 'id=' + str(self.instrId) + ' ** '
+            ret_val += 'id=' + str(self.instrId) + ' ** '
         if self.splitFunction:
-            retVal += str(self.splitFunction) + ' ** '
+            ret_val += str(self.splitFunction) + ' ** '
         # now I compute a summary of the patterns
         # associated with this node and then I
         # add it to the representation
         validPattern = bitStringUnion([i[0] for i in reversed(self.patterns)], 'x')
         for i in validPattern:
             if i !=  None:
-                retVal += str(i)
+                ret_val += str(i)
             else:
-                retVal += '-'
-        return retVal + ''
+                ret_val += '-'
+        return ret_val + ''
 
     def __str__(self):
         """Returns a representation of the current node
@@ -297,7 +301,7 @@ class decoderCreator:
                     value += '1'
                 else:
                     value += '0'
-            code += 'if ((instrCode & ' + hex(int(mask, 2)) + ') == ' + hex(int(value, 2)) + ') {\n// Instruction ' + instr.name + '\nreturn ' + str(instr.id) + ';\n}\n'
+            code += 'if ((instr_code & ' + hex(int(mask, 2)) + ') == ' + hex(int(value, 2)) + ') {\n// Instruction ' + instr.name + '\nreturn ' + str(instr.id) + ';\n}\n'
         return code
 
     def createPatternDecoder(self, subtree):
@@ -337,7 +341,7 @@ class decoderCreator:
                 compareFun = '=='
             else:
                 compareFun = '!='
-        code = 'if((instrCode & ' + mask + ') ' + compareFun + ' ' + value + '){\n'
+        code = 'if ((instr_code & ' + mask + ') ' + compareFun + ' ' + value + ') {\n'
         if nodeIf.instrId != None:
             if nodeIf.instrId != -1:
                 #code += '\n' + str(nodeIf.patterns) + '\n'
@@ -401,9 +405,9 @@ class decoderCreator:
             if numFs == len(mask) - 2:
                 hasToDeclareMask = False
         if hasToDeclareMask:
-            code = 'switch(instrCode & ' + mask + ') {\n'
+            code = 'switch(instr_code & ' + mask + ') {\n'
         else:
-            code = 'switch(instrCode) {\n'
+            code = 'switch(instr_code) {\n'
         for edge in outEdges:
             if nxVersion > 0.99:
                 decodePattern = edge[-1]['decodePattern'][0]
@@ -450,7 +454,7 @@ class decoderCreator:
             codeString += str(self.instrNum)
         codeString += ';\n'
         code = cxx_writer.Code(codeString)
-        parameters = [cxx_writer.Parameter('instrCode', fetchSizeType)]
+        parameters = [cxx_writer.Parameter('instr_code', fetchSizeType)]
         decodeMethod = cxx_writer.Method('decode', code, cxx_writer.intType, 'pu', parameters, const = True, noException = True)
         decodeClass = cxx_writer.ClassDeclaration('Decoder', [decodeMethod], namespaces = [namespace])
         decodeClass.addDocString(brief = 'Decoder Class', detail = 'Implements the state-machine that decodes an instruction string and returns an ID specifying the instruction.')
@@ -524,10 +528,10 @@ class decoderCreator:
                     expectedId = instrId
             pattern.reverse()
             if instrId != -1:
-                code += '// Checking Instruction ' + self.instrName[instrId] + '\n'
+                code += '// Checking Instruction ' + self.instrName[instrId] + '.\n'
             else:
-                code += '// Checking Invalid Instruction\n'
-            code += 'BOOST_CHECK_EQUAL(dec.decode( ' + hex(int(''.join(pattern), 2)) + ' ), ' + str(expectedId) + ');\n'
+                code += '// Checking Invalid Instruction.\n'
+            code += 'BOOST_CHECK_EQUAL(dec.decode(' + hex(int(''.join(pattern), 2)) + '), ' + str(expectedId) + ');\n'
             curTest = cxx_writer.Code(code)
             curTest.addInclude(['boost/test/test_tools.hpp', 'decoder.hpp'])
             if instrId != -1:
@@ -572,7 +576,7 @@ class decoderCreator:
         the subtrees and the respective splitting criteria (pattern
         equal or not)"""
         if newBit in curMask[0]:
-            raise Exception('Bit ' + newBit + ' is specified both by the current mask and as new bit')
+            raise Exception('Cannot set bit ' + newBit + ' as a new bit. Bit already exists in the current mask.')
         eqPattern = []
         neqPattern = []
         for pattern in subtree.patterns:
@@ -877,7 +881,7 @@ class decoderCreator:
                         break
                 if not found:
                     curInstrNames.append('Invalid')
-            raise Exception('Error, more than one instruction in the current decoder but no table or pattern decoder found --> ' + str(curInstrNames))
+            raise Exception('No table or pattern decoder found for remaining instructions ' + str(curInstrNames) + '.')
         if bestTable and not bestPattern:
             curInstrNames = []
             for instr in subtree.patterns:
@@ -885,7 +889,7 @@ class decoderCreator:
                     if instrVals[0] == instr[0]:
                         curInstrNames.append(self.instrName[instrId])
                         break
-            raise Exception('Error, more than one instruction in the current decoder but no pattern decoder found --> ' + str(curInstrNames))
+            raise Exception('No pattern decoder found for remaining instructions ' + str(curInstrNames) + '.')
         if bestTable and costPattern > costTable and len(leavesTable) > 1:
             # It is better to split on the table
             subtree.splitFunction = bestTable
@@ -908,10 +912,10 @@ class decoderCreator:
                         self.decodingTree.add_edge(subtree, i[0], i[1])
                     self.computeDecoderRec(i[0])
 
-    def printDecoder(self, fileName):
+    def printDecoder(self, filename):
         try:
-            NX.write_dot(self.decodingTree, fileName)
+            NX.write_dot(self.decodingTree, filename)
         except:
             import traceback
             traceback.print_exc()
-            print ('Error in printing the decoding tree on file ' + fileName)
+            print ('Error in printing the decoding tree on file ' + filename)

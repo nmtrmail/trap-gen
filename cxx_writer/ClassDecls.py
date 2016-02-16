@@ -1,38 +1,42 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 3 of the License, or
-#   (at your option) any later version.
+# @file     ClassDecls.py
+# @brief    This file is part of the TRAP CXX code generator module.
+# @details
+# @author   Luca Fossati
+# @author   Lillian Tadros (Technische Universitaet Dortmund)
+# @date     2008-2013 Luca Fossati
+#           2015-2016 Technische Universitaet Dortmund
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 
 from SimpleDecls import *
@@ -44,7 +48,7 @@ class ClassMember:
 
     def __init__(self, visibility, name):
         if not visibility in ['pri', 'pro', 'pu']:
-            raise Exception(str(visibility) + ' is not a valid visibility attribute for member ' + name)
+            raise Exception('Invalid visibility attribute ' + str(visibility) + ' for member ' + name + '.')
         self.visibility = visibility
 
 # TODO: add the possibility of defining templated methods as done for
@@ -88,13 +92,13 @@ class Method(ClassMember, Function):
                 if (split == True):
                     writer.write(',\n', indent = indent)
                 else:
-                    writer.write(', ', split = ',', indent = indent)
-        writer.write(')', split = ',', indent = indent)
+                    writer.write(', ', indent = indent, split = ',')
+        writer.write(')', indent = indent, split = ',')
         if self.const:
             writer.write(' const')
         if self.noException:
             writer.write(' throw()')
-        writer.write(' {\n', split = ',', indent = indent)
+        writer.write(' {\n', indent = indent, split = ',')
         self.body.writeImplementation(writer)
         writer.write('} // ' + self.name + '()\n\n')
 
@@ -137,15 +141,15 @@ class MemberOperator(ClassMember, Operator):
                 if (split == True):
                     writer.write(',\n', indent = indent)
                 else:
-                    writer.write(', ', split = ',', indent = indent)
-        writer.write(')', split = ',', indent = indent)
+                    writer.write(', ', indent = indent, split = ',')
+        writer.write(')', indent = indent, split = ',')
         if self.const:
             writer.write(' const')
         if self.noException:
             writer.write(' throw()')
-        writer.write(' {\n', split = ',', indent = indent)
+        writer.write(' {\n', indent = indent, split = ',')
         self.body.writeImplementation(writer)
-        writer.write('} // ' + self.name + '()\n\n')
+        writer.write('} // ' + className + '::' + self.name + '()\n\n')
 
 class Constructor(ClassMember, Function):
     def __init__(self, body, visibility, parameters = [], initList = []):
@@ -174,10 +178,10 @@ class Constructor(ClassMember, Function):
                 if (split == True):
                     writer.write(',\n', indent = indent)
                 else:
-                    writer.write(', ', split = ',', indent = indent)
-        writer.write(')', split = ',', indent = indent)
+                    writer.write(', ', indent = indent, split = ',')
+        writer.write(')', indent = indent, split = ',')
         if self.initList:
-            writer.write(' :\n', split = ',', indent = indent)
+            writer.write(' :\n', indent = indent, split = ',')
             indent = writer.curIndent+1
         else: indent = -1
         split = False
@@ -191,9 +195,9 @@ class Constructor(ClassMember, Function):
                 if (split == True):
                     writer.write(',\n', indent = indent)
                 else:
-                    writer.write(', ', split = ',', indent = indent)
+                    writer.write(', ', indent = indent, split = ',')
             else: writer.write(' ')
-        writer.write('{\n', split = ',', indent = indent)
+        writer.write('{\n', indent = indent, split = ',')
         self.body.writeImplementation(writer)
         writer.write('} // ' + self.name + '()\n\n')
 
@@ -215,7 +219,7 @@ class Destructor(ClassMember, Function):
         writer.write('} // ' + self.name + '()\n\n')
 
 class Attribute(ClassMember, Variable):
-    """Attribute of a class; note how, a part from the visibility,
+    """Attribute of a class; note how, apart from the visibility,
     it is simply a normal variable"""
 
     def __init__(self, name, varType, visibility, static = False, initValue = ''):
@@ -313,7 +317,6 @@ class ClassDeclaration(DumpElement):
         self.computeMemVisibility()
         for namespace in self.namespaces:
             writer.write('namespace ' + namespace + ' {\n\n')
-        # Now I can simply print the declarations
         if self.docbrief:
             self.printDocString(writer)
         if self.template:
@@ -338,9 +341,9 @@ class ClassDeclaration(DumpElement):
             if i != self.superclasses[-1]:
                 writer.write(', ')
         writer.write(' {\n')
-        # First of all I create the inner classes:
+        # Typedefs, enums and subclasses
         if self.innerClasses:
-            writer.write('public:\n')
+            writer.write('/// @name Typedefs, Enums and Subclasses\n/// @{\n\npublic:\n')
             for i in self.innerClasses:
                 if self.template:
                     try:
@@ -349,40 +352,156 @@ class ClassDeclaration(DumpElement):
                         pass
                 else:
                     i.writeDeclaration(writer)
-        # Now I create the normal members
-        if self.public:
-            writer.write('public:\n')
-            for i in self.public:
+            writer.write('/// @} Typedefs, Enums and Subclasses\n')
+            writer.writeFill('-')
+        # Constructors and destructors
+        writer.write('/// @name Constructors and Destructors\n/// @{\n\n')
+        visibility = False
+        for i in self.public:
+            if isinstance(i, Constructor) or isinstance(i, Destructor):
+                if not visibility:
+                    writer.write('public:\n')
+                    visibility = True
                 if self.template:
                     try:
                         i.writeImplementation(writer)
+                        writer.writeFill('.')
+                        writer.write('\n')
                     except AttributeError:
                         pass
                 else:
                     i.writeDeclaration(writer)
-            writer.write('\n')
-        if self.protected:
-            writer.write('protected:\n')
-            for i in self.protected:
+        visibility = False
+        for i in self.protected:
+            if isinstance(i, Constructor) or isinstance(i, Destructor):
+                if not visibility:
+                    writer.write('protected:\n')
+                    visibility = True
                 if self.template:
                     try:
                         i.writeImplementation(writer)
+                        writer.writeFill('.')
+                        writer.write('\n')
                     except AttributeError:
                         pass
                 else:
                     i.writeDeclaration(writer)
-            writer.write('\n')
-        if self.private:
-            writer.write('private:\n')
-            for i in self.private:
+        visibility = False
+        for i in self.private:
+            if isinstance(i, Constructor) or isinstance(i, Destructor):
+                if not visibility:
+                    writer.write('private:\n')
+                    visibility = True
                 if self.template:
                     try:
                         i.writeImplementation(writer)
+                        writer.writeFill('.')
+                        writer.write('\n')
                     except AttributeError:
                         pass
                 else:
                     i.writeDeclaration(writer)
-            writer.write('\n')
+        writer.write('\n/// @} Constructors and Destructors\n')
+        writer.writeFill('-')
+        # Methods
+        writer.write('/// @name Methods\n/// @{\n\n')
+        visibility = False
+        for i in self.public:
+            if isinstance(i, Method) or isinstance(i, Operator):
+                if not visibility:
+                    writer.write('public:\n')
+                    visibility = True
+                if self.template:
+                    try:
+                        i.writeImplementation(writer)
+                        writer.writeFill('.')
+                        writer.write('\n')
+                    except AttributeError:
+                        pass
+                else:
+                    i.writeDeclaration(writer)
+        visibility = False
+        for i in self.protected:
+            if isinstance(i, Method) or isinstance(i, Operator):
+                if not visibility:
+                    writer.write('protected:\n')
+                    visibility = True
+                if self.template:
+                    try:
+                        i.writeImplementation(writer)
+                        writer.writeFill('.')
+                        writer.write('\n')
+                    except AttributeError:
+                        pass
+                else:
+                    i.writeDeclaration(writer)
+        visibility = False
+        for i in self.private:
+            if isinstance(i, Method) or isinstance(i, Operator):
+                if not visibility:
+                    writer.write('private:\n')
+                    visibility = True
+                if self.template:
+                    try:
+                        i.writeImplementation(writer)
+                        writer.writeFill('.')
+                        writer.write('\n')
+                    except AttributeError:
+                        pass
+                else:
+                    i.writeDeclaration(writer)
+        writer.write('\n/// @} Methods\n')
+        writer.writeFill('-')
+        # Data members
+        writer.write('/// @name Data\n/// @{\n\n')
+        visibility = False
+        for i in self.public:
+            if isinstance(i, Constructor) or isinstance(i, Destructor) or isinstance(i, Method) or isinstance(i, Operator):
+                continue
+            if not visibility:
+                writer.write('public:\n')
+                visibility = True
+            if self.template:
+                try:
+                    i.writeImplementation(writer)
+                except AttributeError:
+                    pass
+            else:
+                i.writeDeclaration(writer)
+        if visibility: writer.write('\n')
+        visibility = False
+        for i in self.protected:
+            if isinstance(i, Constructor) or isinstance(i, Destructor) or isinstance(i, Method) or isinstance(i, Operator):
+                continue
+            if not visibility:
+                writer.write('protected:\n')
+                visibility = True
+            if self.template:
+                try:
+                    i.writeImplementation(writer)
+                except AttributeError:
+                    pass
+            else:
+                i.writeDeclaration(writer)
+        if visibility: writer.write('\n')
+        visibility = False
+        for i in self.private:
+            if isinstance(i, Constructor) or isinstance(i, Destructor) or isinstance(i, Method) or isinstance(i, Operator):
+                continue
+            if not visibility:
+                writer.write('private:\n')
+                visibility = True
+            if self.template:
+                try:
+                    i.writeImplementation(writer)
+                except AttributeError:
+                    pass
+            else:
+                i.writeDeclaration(writer)
+        if visibility: writer.write('\n')
+        writer.write('/// @} Data\n')
+        writer.writeFill('-')
+        writer.write('\n')
         writer.write('}; // class ' + self.name + '\n\n')
         for namespace in self.namespaces:
             writer.write('} // namespace ' + namespace + '\n\n')
@@ -401,6 +520,12 @@ class ClassDeclaration(DumpElement):
         for i in self.members:
             try:
                 i.writeImplementation(writer, self.name, namespaces + self.namespaces)
+                if isinstance(i, Constructor) or isinstance(i, Destructor):
+                    writer.writeFill('-')
+                    writer.write('\n')
+                elif isinstance(i, Method) or isinstance(i, MemberOperator) and not (i.inline or i.pure):
+                    writer.writeFill('-')
+                    writer.write('\n')
             except AttributeError:
                 pass
 

@@ -1,42 +1,48 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 3 of the License, or
-#   (at your option) any later version.
+# @file     FileDumper.py
+# @brief    This file is part of the TRAP CXX code generator module.
+# @details
+# @author   Luca Fossati
+# @author   Lillian Tadros (Technische Universitaet Dortmund)
+# @date     2008-2013 Luca Fossati
+#           2015-2016 Technische Universitaet Dortmund
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 import os
 import Writer
 from Writer import printOnFile
+from SimpleDecls import *
+from ClassDecls import *
 
 class FileDumper:
     """Dumps a file; a file is composed of members which are the ones described
@@ -79,7 +85,7 @@ class FileDumper:
         if copyright: copyright = '(c) ' + copyright
 
         fileHnd = open(self.name, 'wt')
-        printOnFile('/*******************************************************************************', fileHnd)
+        printOnFile('/***************************************************************************//**', fileHnd)
         for line in FileDumper.banner.split('\n'):
             # Avoid trailing whitespace
             if line == '':
@@ -106,7 +112,7 @@ class FileDumper:
         writer = Writer.CodeWriter(fileHnd, self.indentSize, self.lineWidth)
         if self.isHeader:
             writer.write('#ifndef ' + FileDumper.def_prefix + self.name.replace('.','_').upper() + '\n')
-            writer.write('#define ' + FileDumper.def_prefix + self.name.replace('.','_').upper() + '\n')
+            writer.write('#define ' + FileDumper.def_prefix + self.name.replace('.','_').upper() + '\n\n')
         # as a first thing I compute the includes and print them
         for member in self.members:
             try:
@@ -121,34 +127,32 @@ class FileDumper:
                         self.includes.append(include)
             except AttributeError:
                 pass
-        if self.includes:
-            writer.write('\n')
         # This is to choose between the #include <xxx> and #include "xxx" syntax.
         # By sorting the includes in three different lists we can group them logically.
         defines = []
         trapfiles = [
-          'ABIIf.hpp',
-          'ToolsIf.hpp',
-          'debugger/BreakpointManager.hpp',
-          'debugger/GDBConnectionManager.hpp',
-          'debugger/GDBStub.hpp',
-          'debugger/WatchpointManager.hpp',
-          'elfloader/elfFrontend.hpp',
-          'elfloader/execLoader.hpp',
-          'instructionBase.hpp',
-          'misc/MemoryAT.hpp',
-          'misc/MemoryLT.hpp',
-          'misc/PINTarget.hpp',
-          'misc/SparseMemoryAT.hpp',
-          'misc/SparseMemoryLT.hpp',
-          'misc/memAccessType.hpp',
-          'osEmulator/osEmulator.hpp',
-          'osEmulator/syscCallB.hpp',
-          'profiler/profInfo.hpp',
+          'common/report.hpp',
+          'common/tools_if.hpp',
+          'debugger/breakpoint_manager.hpp',
+          'debugger/gdb_connection_manager.hpp',
+          'debugger/gdb_stub.hpp',
+          'debugger/watchpoint_manager.hpp',
+          'elfloader/elf_frontend.hpp',
+          'elfloader/exec_loader.hpp',
+          'modules/abi_if.hpp',
+          'modules/instruction.hpp',
+          'modules/memory_at.hpp',
+          'modules/memory_lt.hpp',
+          'modules/pin_target.hpp',
+          'modules/scireg.h',
+          'modules/sparse_memory_at.hpp',
+          'modules/sparse_memory_lt.hpp',
+          'osemu/osemu_base.hpp',
+          'osemu/osemu.hpp',
+          'osemu/syscall.hpp',
+          'profiler/profiler_elements.hpp',
           'profiler/profiler.hpp',
-          'trap.hpp',
-          'utils/customExceptions.hpp',
-          'utils/trap_utils.hpp']
+          'trap.hpp']
         trapincludes = []
         sysincludes = []
         for include in self.includes:
@@ -177,16 +181,21 @@ class FileDumper:
             if self.isHeader:
                 try:
                     member.writeDeclaration(writer)
+                    if isinstance(member, ClassDeclaration) or isinstance(member, SCModule):
+                        writer.writeFill('*')
+                        printOnFile('', fileHnd)
                 except AttributeError:
                     pass
             else:
                 try:
                     member.writeImplementation(writer)
+                    if isinstance(member, Function) or isinstance(member, Operator) or isinstance(member, ClassDeclaration) or isinstance(member, SCModule):
+                        writer.writeFill('*')
+                        printOnFile('', fileHnd)
                 except AttributeError:
                     pass
         if self.isHeader:
-            writer.write('\n\n#endif')
-        writer.write('\n')
+            writer.write('#endif // ' + FileDumper.def_prefix + self.name.replace('.','_').upper() + '\n')
         fileHnd.close()
 
 class Folder:
@@ -419,7 +428,7 @@ class Folder:
         # now I check for the vmonauto_gcc.o object file
         taskEnv = ctx.env.copy()
         taskEnv.append_unique('LINKFLAGS', os.path.join(vmonautoPath, 'vmonauto_gcc.o'))
-        ctx.check_cxx(fragment='int main(){return 0;}', uselib='VPROF', mandatory=1, env=taskEnv)
+        ctx.check_cxx(fragment='int main() {return 0;}', uselib='VPROF', mandatory=1, env=taskEnv)
         ctx.env.append_unique('LINKFLAGS', os.path.join(vmonautoPath, 'vmonauto_gcc.o'))
 
     ##############################################################
@@ -579,8 +588,8 @@ class Folder:
         ctx.check_cxx(fragment='''
             #include <libelf.h>
 
-            int main(int argc, char *argv[]){
-                void * funPtr = (void *)elf_getphdrnum;
+            int main(int argc, char* argv[]) {
+                void* funPtr = (void*)elf_getphdrnum;
                 return 0;
             }
         ''', msg='Checking for function elf_getphdrnum', use='ELF_LIB', mandatory=1, errmsg='Error, elf_getphdrnum not present in libelf; try to update to a newer version (e.g. at least version 0.144 of the libelf package distributed with Ubuntu)')
@@ -621,8 +630,8 @@ class Folder:
         ctx.check_cxx(fragment='''
             #include <libelf.h>
 
-            int main(int argc, char *argv[]){
-                void * funPtr = (void *)elf_getphdrnum;
+            int main(int argc, char* argv[]) {
+                void* funPtr = (void*)elf_getphdrnum;
                 return 0;
             }
         ''', msg='Checking for function elf_getphdrnum', use='ELF_LIB', mandatory=1, errmsg='Error, elf_getphdrnum not present in libelf; try to update to a newest version')
@@ -749,7 +758,7 @@ class Folder:
         }
 
         int main(int argc, char** argv) {
-            bfd_section *p = NULL;
+            bfd_section* p = NULL;
             #ifndef bfd_is_target_special_symbol
             #error "too old BFD library"
             #endif
@@ -766,7 +775,7 @@ class Folder:
         }
 
         int main(int argc, char** argv) {
-            char * tempRet = bfd_demangle(NULL, NULL, 0);
+            char* tempRet = bfd_demangle(NULL, NULL, 0);
             return 0;
         };
 '''
@@ -822,10 +831,10 @@ class Folder:
     if not sys.platform == 'cygwin':
         systemCerrmsg='Error, at least version 2.2.0 required'
     else:
-        systemCerrmsg='Error, at least version 2.2.0 required.\\nSystemC also needs patching under cygwin:\\nplease controll that lines 175 and 177 of header systemc.h are commented;\\nfor more details refer to http://www.ht-lab.com/howto/sccygwin/sccygwin.html\\nhttp://www.dti.dk/_root/media/27325_SystemC_Getting_Started_artikel.pdf'
+        systemCerrmsg='Error, at least version 2.2.0 required.\\nSystemC also needs patching under cygwin:\\nplease control that lines 175 and 177 of header systemc.h are commented;\\nfor more details refer to http://www.ht-lab.com/howto/sccygwin/sccygwin.html\\nhttp://www.dti.dk/_root/media/27325_SystemC_Getting_Started_artikel.pdf'
     ctx.check_cxx(fragment='''
         #include <systemc.h>
-        int sc_main(int argc, char** argv){
+        int sc_main(int argc, char** argv) {
             return 0;
         }
 ''', header_name='systemc.h', use='SYSTEMC', uselib_store='SYSTEMC', mandatory=1, includes=syscpath)
@@ -842,8 +851,7 @@ class Folder:
 
         extern "C" {
             int sc_main(int argc, char** argv) {
-                wif_trace_file trace("");
-                trace.set_time_unit(1, SC_NS);
+                sc_start();
                 return 0;
             };
         }
@@ -856,7 +864,7 @@ class Folder:
         #include <systemc.h>
         #include <tlm.h>
 
-        extern "C" int sc_main(int argc, char **argv){
+        extern "C" int sc_main(int argc, char** argv) {
             return 0;
         }        
 '''
@@ -891,7 +899,7 @@ class Folder:
         #error Wrong TLM version; required 2.0
         #endif
 
-        extern "C" int sc_main(int argc, char **argv){
+        extern "C" int sc_main(int argc, char** argv) {
             return 0;
         }
 ''', msg='Check for TLM version', use='SYSTEMC TLM', mandatory=1, errmsg='Error, at least version 2.0 required or SystemC version 2.3 or greater')
@@ -926,7 +934,7 @@ class Folder:
         #include <systemc.h>
         #include "trap.hpp"
 
-        extern "C" int sc_main(int argc, char **argv){
+        extern "C" int sc_main(int argc, char** argv) {
             return 0;
         }        
 ''', header_name='trap.hpp', use='TRAP ELF_LIB BOOST SYSTEMC', uselib_store='TRAP', mandatory=1, includes=trapDirInc)
@@ -942,7 +950,7 @@ class Folder:
             #error Wrong version of the TRAP runtime: too old
             #endif
 
-            int sc_main(int argc, char ** argv){return 0;}
+            int sc_main(int argc, char** argv) {return 0;}
 ''', msg='Check for TRAP version', use='TRAP ELF_LIB BOOST SYSTEMC', mandatory=1, includes=trapDirInc, errmsg='Error, at least revision ' + str(trapRevisionNum) + ' required')
     else:
         ctx.check_cxx(lib='trap', use='ELF_LIB BOOST SYSTEMC', uselib_store='TRAP', mandatory=1, errmsg=trapLibErrmsg)
@@ -960,7 +968,7 @@ class Folder:
         #include <systemc.h>
         #include "trap.hpp"
 
-        extern "C" int sc_main(int argc, char **argv){
+        extern "C" int sc_main(int argc, char** argv) {
             return 0;
         }        
 ''', header_name='trap.hpp', use='TRAP ELF_LIB BOOST SYSTEMC', uselib_store='TRAP', mandatory=1)
@@ -976,7 +984,7 @@ class Folder:
             #error Wrong version of the TRAP runtime: too old
             #endif
 
-            int sc_main(int argc, char ** argv){return 0;}
+            int sc_main(int argc, char** argv) {return 0;}
 ''', msg='Check for TRAP version', use='TRAP ELF_LIB BOOST SYSTEMC', mandatory=1, errmsg='Error, at least revision ' + str(trapRevisionNum) + ' required')
 
 """, wscriptFile)

@@ -1,38 +1,42 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 3 of the License, or
-#   (at your option) any later version.
+# @file     processor.py
+# @brief    This file is part of the TRAP processor generator module.
+# @details
+# @author   Luca Fossati
+# @author   Lillian Tadros (Technische Universitaet Dortmund)
+# @date     2008-2013 Luca Fossati
+#           2015-2016 Technische Universitaet Dortmund
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 import cxx_writer
 import procWriter, registerWriter, memWriter, interfaceWriter, portsWriter, pipelineWriter, irqWriter, licenses
@@ -45,18 +49,18 @@ def extractRegInterval(regBankString):
     interval, None otherwise. An exception is raised in case
     the string is malformed"""
     if ('[' in regBankString and not ']' in regBankString) or (']' in regBankString and not '[' in regBankString):
-        raise Exception(regBankString + ': Malformed string: if there is an open bracket there should be a closing one and viceversa')
+        raise Exception('Malformed brackets in registry bank identifier ' + regBankString + '.')
     if not '[' in regBankString:
         return None
     if not regBankString.endswith(']'):
-        raise Exception(regBankString + ': represents a registry bank so it should end with ]')
+        raise Exception('Missing closing bracket in registry bank identifier ' + regBankString + '.')
     interval = regBankString[regBankString.index('[') + 1:-1].split('-')
     if len(interval) > 2:
-        raise Exception(regBankString + ': Contains ' + str(len(interval)) + ' intervals')
+        raise Exception('Invalid number of intervals ' + str(len(interval)) + ' in registry bank identifier ' + regBankString + '.')
     if len(interval) == 1:
         return (int(interval[0]), int(interval[0]))
     if int(interval[0]) > int(interval[1]):
-        raise Exception(regBankString + ': The first index should never be bigger than the second')
+        raise Exception('Invalid indices in registry bank identifier ' + regBankString + '.')
     return (int(interval[0]), int(interval[1]))
 
 
@@ -71,13 +75,13 @@ class Register:
         if bitMask:
             for key, value in bitMask.items():
                 if value[0] > value[1]:
-                    raise Exception('The bit mask specified for register ' + self.name + ' for field ' + key + ' has the start value ' + str(value[0]) + ' bigger than the end value ' + str(value[1]))
+                    raise Exception('Bit mask start value ' +  str(value[0]) + ' for field ' + key + ' in register ' + self.name + ' is larger than end value ' + str(value[1]) + '.')
                 if value[1] >= bitWidth:
-                    raise Exception('The bit mask specified for register ' + self.name + ' for field ' + key + ' is of size ' + str(value[1]) + ' while the register has size ' + str(bitWidth))
+                    raise Exception('Bit mask size ' + str(value[1]) + ' for field ' + key + ' in register ' + self.name + ' is larger than register size ' + str(bitWidth) + '.')
                 for key1, value1 in bitMask.items():
                     if key1 != key:
                         if (value1[0] <= value[0] and value1[1] >= value[0]) or (value1[0] <= value[1] and value1[1] >= value[1]):
-                            raise Exception('The bit mask specified for register ' + self.name + ' for field ' + key + ' intersects with the mask of field ' + key1)
+                            raise Exception('Bit mask for field ' + key + ' in register ' + self.name + ' intersects with the mask of field ' + key1 + '.')
         self.bitMask = bitMask
         self.defValue = 0
         self.offset = 0
@@ -87,30 +91,30 @@ class Register:
 
     def setDefaultValue(self, value):
         if self.defValue:
-            raise Exception('Default value already set for register ' + self.name)
+            raise Exception('Default value for register ' + self.name +  ' already set.')
         try:
             if value > 0:
                 import math
                 if math.log(value, 2) > self.bitWidth:
-                    raise Exception('Register ' + self.name + ' has a width of ' + str(self.bitWidth) + ' bits, but the default value ' + str(value) + ' needs ' + str(int(math.ceil(math.log(value, 2)))) + ' bits for being represented')
+                    raise Exception('Default value ' + str(value) + ' of register ' + self.name + ' requires ' + str(int(math.ceil(math.log(value, 2)))) + ' bits, but the register has a width of ' + str(self.bitWidth) + ' bits.')
         except TypeError:
             pass
         self.defValue = value
 
     def setConst(self, value):
         if self.delay:
-            raise Exception('Register ' + self.name + ' contains a delay assignment, so specifying it as constant does not make sense')
+            raise Exception('Cannot set register ' + self.name + ' as constant because it contains a delay assignment.')
         self.constValue = value
 
     def setDelay(self, value):
         if self.constValue != None:
-            raise Exception('Register ' + self.name + ' is specified as contant, so setting a delay assignment does not make sense')
+            raise Exception('Cannot set a delay assignment for register ' + self.name + ' because it is set as constant.')
         self.delay = value
 
     def setOffset(self, value):
         """TODO: eliminate this restriction"""
         if self.bitMask:
-            raise Exception('For register ' + self.name + ' unable to set an offset since a bit mask is used')
+            raise Exception('Cannot set offset for register ' + self.name + ' because it uses a bit mask.')
         self.offset = value
 
     def setWbStageOrder(self, order):
@@ -131,13 +135,13 @@ class RegisterBank:
         if bitMask:
             for key, value in bitMask.items():
                 if value[0] > value[1]:
-                    raise Exception('The bit mask specified for register bank ' + self.name + ' for field ' + key + ' has the start value ' + str(value[0]) + ' bigger than the end value ' + str(value[0]))
+                    raise Exception('Bit mask start value ' +  str(value[0]) + ' for field ' + key + ' in register bank ' + self.name + ' is larger than end value ' + str(value[1]) + '.')
                 if value[1] >= bitWidth:
-                    raise Exception('The bit mask specified for register bank ' + self.name + ' for field ' + key + ' is of size ' + str(value[1]) + ' while the register has size ' + str(bitWidth))
+                    raise Exception('Bit mask size ' + str(value[1]) + ' for field ' + key + ' in register bank ' + self.name + ' is larger than register size ' + str(bitWidth) + '.')
                 for key1, value1 in bitMask.items():
                     if key1 != key:
                         if (value1[0] <= value[0] and value1[1] >= value[0]) or (value1[0] <= value[1] and value1[1] >= value[1]):
-                            raise Exception('The bit mask specified for register bank ' + self.name + ' for field ' + key + ' intersects with the mask of field ' + key1)
+                            raise Exception('Bit mask of field ' + key + ' in register bank ' + self.name + ' intersects with the mask of field ' + key1 + '.')
         self.bitMask = bitMask
         self.numRegs = numRegs
         self.defValues = [0 for i in range(0, numRegs)]
@@ -147,7 +151,7 @@ class RegisterBank:
 
     def setConst(self, numReg, value):
         if self.delay.has_key(numReg):
-            raise Exception('Register ' + str(numReg) + ' in register bank ' + self.name + ' contains a delay assignment, so specifying it as constant does not make sense')
+            raise Exception('Cannot set register ' + str(numReg) + ' in register bank ' + self.name + ' as constant because it contains a delay assignment.')
         self.constValue[numReg] = value
 
     def getConstRegs(self):
@@ -163,7 +167,7 @@ class RegisterBank:
 
     def setDelay(self, numReg, value):
         if self.constValue.has_key(numReg):
-            raise Exception('Register ' + str(numReg) + ' in register bank ' + self.name + ' is declared as constant, so specifying a delay assignment does not make sense')
+            raise Exception('Cannot set a delay assignment for register ' + str(numReg) + ' in register bank ' + self.name + ' because it is set as constant.')
         if value > 0:
             self.delay[numReg] = value
 
@@ -171,7 +175,7 @@ class RegisterBank:
         if value > 0:
             for i in range(0, self.numRegs):
                 if self.constValue.has_key(i):
-                    raise Exception('Register ' + str(i) + ' in register bank ' + self.name + ' is declared as constant, so specifying a delay assignment does not make sense')
+                    raise Exception('Cannot set a delay assignment for register ' + str(i) + ' in register bank ' + self.name + ' because it is set as constant.')
                 self.delay[i] = value
 
     def getDelayRegs(self):
@@ -188,28 +192,28 @@ class RegisterBank:
     def setDefaultValues(self, values):
         for i in range(0, len(self.defValues)):
             if self.defValues[i]:
-                raise Exception('Default value already set for register ' + str(i) + ' in register bank' + self.name)
+                raise Exception('Default value for register ' + str(i) + ' in register bank' + self.name + ' already set.')
             try:
                 if values[i] > 0:
                     import math
                     if math.log(values[i], 2) > self.bitWidth:
-                        raise Exception('Register ' + str(i) + ' in register bank ' + self.name + ' has a width of ' + str(self.bitWidth) + ' bits, but the default value ' + str(values[i]) + ' needs ' + str(int(math.ceil(math.log(values[i], 2)))) + ' bits for being represented')
+                        raise Exception('Default value '  + str(values[i]) + ' of register ' + str(i) + ' in register bank ' + self.name + ' requires ' + str(int(math.ceil(math.log(values[i], 2)))) + ' bits, but the register has a width of ' + str(self.bitWidth) + ' bits.')
             except TypeError:
                 pass
         if len(values) != self.numRegs:
-            raise Exception('The initialization values for register bank ' + self.name + ' are different, in number, from the number of registers')
+            raise Exception('The number of initialization values for register bank ' + self.name + ' does not match the number of registers.')
         self.defValues = values
 
     def setDefaultValue(self, value, position):
         if position < 0 or position >= self.numRegs:
-            raise Exception('The initialization value for register bank ' + self.name + ' position ' + position + ' is not valid: position out of range')
+            raise Exception('Cannot set initialization value for register ' + position + ' in register bank ' + self.name + '. Index out of range.')
         if self.defValues[position]:
-            raise Exception('Default value already set for register ' + str(position) + ' in register bank' + self.name)
+            raise Exception('Default value for register ' + str(position) + ' in register bank' + self.name + ' already set.')
         try:
             if value > 0:
                 import math
                 if math.log(value, 2) > self.bitWidth:
-                    raise Exception('Register ' + str(position) + ' in register bank ' + self.name + ' has a width of ' + str(self.bitWidth) + ' bits, but the default value ' + str(value) + ' needs ' + str(int(math.ceil(math.log(value, 2)))) + ' bits for being represented')
+                    raise Exception('Default value ' + str(value) + ' of register ' + str(position) + ' in register bank ' + self.name + ' requires ' + str(int(math.ceil(math.log(value, 2)))) + 'bits, but the register has a width of ' + str(self.bitWidth) + ' bits.')
         except TypeError:
             pass
         self.defValues[position] = value
@@ -234,7 +238,7 @@ class AliasRegister:
         index = extractRegInterval(initAlias)
         if index:
             if index[0] != index[1]:
-                raise Exception('Aliasing a single register, so ' + initAlias + ' cannot specify an interval of more than on register')
+                raise Exception('Cannot specify an interval of more than one register in ' + initAlias + ' when aliasing a single register.')
         self.initAlias = initAlias
         self.offset = offset
         self.defValue = None
@@ -269,10 +273,10 @@ class AliasRegBank:
             index = extractRegInterval(initAlias)
             if index:
                 if index[1] - index[0] + 1 != numRegs:
-                    raise Exception('Aliasing a register bank of width ' + str(numRegs) + ', while ' + str(initAlias) + ' contains a different number of registers')
+                    raise Exception('Alias register bank ' + str(initAlias) + ' contains ' + str(index[1]-index[0]+1) + ' registers but the aliased register bank contains ' + str(numRegs) + ' registers.')
             else:
                 if numRegs > 1:
-                    raise Exception('Aliasing a register bank of width ' + str(numRegs) + ', while ' + str(initAlias) + ' contains only one register')
+                    raise Exception('Alias register bank ' + str(initAlias) + ' contains one register but the aliased register bank contains ' + str(numRegs) + ' registers.')
         else:
             totalRegs = 0
             for i in initAlias:
@@ -282,7 +286,7 @@ class AliasRegBank:
                 else:
                     totalRegs += 1
             if totalRegs != numRegs:
-                raise Exception('Aliasing a register bank of width ' + str(numRegs) + ', while ' + str(initAlias) + ' contains a different number of registers')
+                raise Exception('Alias register bank ' + str(initAlias) + ' contains ' + str(totalregs) + ' registers but the aliased register bank contains ' + str(numRegs) + ' registers.')
         self.initAlias = initAlias
         self.defValues = [None for i in range(0, numRegs)]
         self.offsets = {}
@@ -295,10 +299,10 @@ class AliasRegBank:
     def setFixed(self, indices):
         for index in indices:
             if index >= self.numRegs:
-                raise Exception('Alias bank ' + self.name + ' does not have index ' + str(index) + ' in setting fixed indices')
+                raise Exception('Cannot set fixed index ' + str(index) + ' for alias register bank ' + self.name + '. Index out of range.')
         for i in range(0, len(self.fixedIndices) - 1):
             if self.fixedIndices[i] > self.fixedIndices[i + 1]:
-                raise Exception('Alias bank ' + self.name + ' have fixed indices not in acending order')
+                raise Exception('Indices specified for alias register bank ' + self.name + ' are not in ascending order.')
         self.fixedIndices = indices
 
     def setOffset(self, regId, offset):
@@ -306,12 +310,12 @@ class AliasRegBank:
 
     def setDefaultValues(self, values):
         if len(values) != self.numRegs:
-            raise Exception('The initialization values for alias bank ' + self.name + ' are different, in number, from the number of registers')
+            raise Exception('The number of initialization values for alias register bank ' + self.name + ' does not match the number of registers.')
         self.defValues = values
 
     def setDefaultValue(self, value, position):
         if position < 0 or position >= self.numRegs:
-            raise Exception('The initialization value for alias bank ' + self.name + ' position ' + position + ' is not valid: position out of range')
+            raise Exception('Cannot set initialization value for register ' + position + ' in alias register bank ' + self.name + '. Index out of range.')
         self.defValues[position] = value
 
 class Processor:
@@ -338,9 +342,9 @@ class Processor:
     """
     def __init__(self, name, version, systemc = True, coprocessor = False, instructionCache = True, fastFetch = False, externalClock = False, cacheLimit = 256):
         if coprocessor:
-            raise Exception('Generation of co-processors not yet enabled')
+            raise Exception('Generation of co-processors not yet supported.')
         if externalClock:
-            raise Exception('Use of an external signal as clock not yet supported')
+            raise Exception('Use of an external clock signal not yet supported.')
 
         self.name = name
         self.version = version
@@ -360,9 +364,9 @@ class Processor:
         self.pipes = []
         self.isa = None
         self.coprocessor = coprocessor
-        self.beginOp = None
-        self.endOp = None
-        self.resetOp = None
+        self.startup = None
+        self.shutdown = None
+        self.reset = None
         self.irqs = []
         self.pins = []
         self.fetchReg = None
@@ -386,10 +390,10 @@ class Processor:
     def setIpRights(self, license, developer_name = '', developer_email = '', banner = '', license_text = ''):
         validLicense = ['gpl', 'lgpl', 'affero', 'esa', 'custom']
         if not license.lower() in validLicense:
-            raise Exception('Unknown license ' + license + '; please use one of ' + ' '.join(validLicense))
+            raise Exception('Invalid license ' + license + ', expected one of ' + ' '.join(validLicense))
         if license.lower() == 'custom':
             if not license_text:
-                raise Exception('A custom license has been specified, but no text has been given with the license_text parameter')
+                raise Exception('Expected license_text parameter for custom license.')
             else:
                 self.license_text = license_text
         else:
@@ -399,9 +403,9 @@ class Processor:
         self.banner = banner
         self.license = license.lower()
 
-    def setTLMMem(self, memSize, memLatency, sparse = False):
+    def setTLMMem(self, mem_size, memLatency, sparse = False):
         """the memory latency is exrepssed in us"""
-        self.tlmFakeMemProperties = (memSize, memLatency, sparse)
+        self.tlmFakeMemProperties = (mem_size, memLatency, sparse)
 
     def setPreProcMacro(self, wafOption, macro):
         self.preProcMacros.append( (wafOption, macro) )
@@ -409,11 +413,11 @@ class Processor:
     def setISA(self, isa):
         self.isa = isa
 
-    def setMemory(self, name, memSize, debug = False, programCounter = ''):
-        for name, isFetch  in self.tlmPorts.items():
+    def setMemory(self, name, mem_size, debug = False, program_counter = ''):
+        for name, isFetch in self.tlmPorts.items():
             if isFetch:
-                raise Exception('Cannot add internal memory since instructions will be fetched from port ' + name)
-        self.memory = (name, memSize, debug, programCounter)
+                raise Exception('Cannot specify internal memory for fetching instructions since an external fetch port ' + name + ' is already set.')
+        self.memory = (name, mem_size, debug, program_counter)
 
     def addTLMPort(self, portName, fetch = False):
         """Note that for the TLM port, if only one is specified and the it is the
@@ -421,14 +425,14 @@ class Processor:
         instantiated. the port called portName can be, instead, used for accessing normal
         data"""
         if not self.systemc:
-            raise Exception('The processor must be created with SystemC enabled in order to be able to use TLM ports')
+            raise Exception('Cannot use TLM ports if SystemC is not enabled.')
         if fetch and self.memory:
-            raise Exception('An internal memory is specified, so the instruction fetch will be performed from that memory and not from port ' + portName)
+            raise Exception('Cannot specify port ' + portName + ' as a fetch port since the internal memory is already set for fetching instructions.')
         for name,isFetch  in self.tlmPorts.items():
             if name == portName:
-                raise Exception('A Port with ' + portName + ' already exists')
+                raise Exception('Port ' + portName + ' already exists.')
             if fetch and isFetch:
-                raise Exception('Cannot specify port ' + portName + ' as a fetch port since ' + name + ' has already been specified as a fetch port')
+                raise Exception('Cannot specify port ' + portName + ' as a fetch port since port ' + name + ' is already set as a fetch port.')
         self.tlmPorts[portName] = fetch
 
     def setBigEndian(self):
@@ -447,79 +451,79 @@ class Processor:
     def addParameter(self, name, varType, default):
         for i in self.parameters:
             if i.name == name:
-                raise Exception('A parameter with name ' + name + ' already exists in processor ' + self.name)
+                raise Exception('Parameter ' + name + ' already exists in processor ' + self.name + '.')
         parameter = cxx_writer.Parameter(name, type = varType, initValue = default)
         self.parameters.append(parameter)
 
     def addRegister(self, reg):
         for i in self.regs:
             if reg.name == i.name:
-                raise Exception('A register with name ' + reg.name + ' conflicts with register ' + i.name + ' in processor ' + self.name)
+                raise Exception('Register ' + reg.name + ' conflicts with register ' + i.name + ' in processor ' + self.name + '.')
         for i in self.regBanks:
             if reg.name == i.name:
-                raise Exception('A register with name ' + reg.name + ' conflicts with register bank ' + i.name + ' in processor ' + self.name)
+                raise Exception('Register ' + reg.name + ' conflicts with register bank ' + i.name + ' in processor ' + self.name + '.')
         for i in self.aliasRegs:
             if reg.name == i.name:
-                raise Exception('A register with name ' + reg.name + ' conflicts with alias ' + i.name + ' in processor ' + self.name)
+                raise Exception('Register ' + reg.name + ' conflicts with alias register ' + i.name + ' in processor ' + self.name + '.')
         for i in self.aliasRegBanks:
             if reg.name == i.name:
-                raise Exception('A register with name ' + reg.name + ' conflicts with alias bank ' + i.name + ' in processor ' + self.name)
+                raise Exception('Register ' + reg.name + ' conflicts with alias register bank ' + i.name + ' in processor ' + self.name + '.')
         self.regs.append(reg)
 
     def addRegBank(self, regBank):
         for i in self.regs:
             if regBank.name == i.name:
-                raise Exception('A register bank with name ' + regBank.name + ' conflicts with register ' + i.name + ' in processor ' + self.name)
+                raise Exception('Register bank ' + regBank.name + ' conflicts with register ' + i.name + ' in processor ' + self.name + '.')
         for i in self.regBanks:
             if regBank.name == i.name:
-                raise Exception('A register bank with name ' + regBank.name + ' conflicts with register bank ' + i.name + ' in processor ' + self.name)
+                raise Exception('Register bank ' + regBank.name + ' conflicts with register bank ' + i.name + ' in processor ' + self.name + '.')
         for i in self.aliasRegs:
             if regBank.name == i.name:
-                raise Exception('An register bank with name ' + regBank.name + ' conflicts with alias ' + i.name + ' in processor ' + self.name)
+                raise Exception('Register bank ' + regBank.name + ' conflicts with alias register ' + i.name + ' in processor ' + self.name + '.')
         for i in self.aliasRegBanks:
             if regBank.name == i.name:
-                raise Exception('An register bank with name ' + regBank.name + ' conflicts with alias bank ' + i.name + ' in processor ' + self.name)
+                raise Exception('Register bank ' + regBank.name + ' conflicts with alias register bank ' + i.name + ' in processor ' + self.name + '.')
         self.regBanks.append(regBank)
 
     def addAliasReg(self, alias):
         for i in self.regs:
             if alias.name == i.name:
-                raise Exception('An alias with name ' + alias.name + ' conflicts with register ' + i.name + ' in processor ' + self.name)
+                raise Exception('Alias register ' + alias.name + ' conflicts with register ' + i.name + ' in processor ' + self.name + '.')
         for i in self.regBanks:
             if alias.name == i.name:
-                raise Exception('An alias with name ' + alias.name + ' conflicts with register bank ' + i.name + ' in processor ' + self.name)
+                raise Exception('Alias register ' + alias.name + ' conflicts with register bank ' + i.name + ' in processor ' + self.name + '.')
         for i in self.aliasRegs:
             if alias.name == i.name:
-                raise Exception('An alias with name ' + alias.name + ' conflicts with alias ' + i.name + ' in processor ' + self.name)
+                raise Exception('Alias register ' + alias.name + ' conflicts with alias register ' + i.name + ' in processor ' + self.name + '.')
         for i in self.aliasRegBanks:
             if alias.name == i.name:
-                raise Exception('An alias with name ' + alias.name + ' conflicts with alias bank ' + i.name + ' in processor ' + self.name)
+                raise Exception('Alias register ' + alias.name + ' conflicts with alias register bank ' + i.name + ' in processor ' + self.name + '.')
         self.aliasRegs.append(alias)
 
     def addAliasRegBank(self, alias):
         for i in self.regs:
             if alias.name == i.name:
-                raise Exception('An alias bank with name ' + alias.name + ' conflicts with register ' + i.name + ' in processor ' + self.name)
+                raise Exception('Alias register bank ' + alias.name + ' conflicts with register ' + i.name + ' in processor ' + self.name + '.')
         for i in self.regBanks:
             if alias.name == i.name:
-                raise Exception('An alias bank with name ' + alias.name + ' conflicts with register bank ' + i.name + ' in processor ' + self.name)
+                raise Exception('Alias register bank ' + alias.name + ' conflicts with register bank ' + i.name + ' in processor ' + self.name + '.')
         for i in self.aliasRegs:
             if i.name in alias.name or alias.name in i.name:
-                raise Exception('An alias bank with name ' + alias.name + ' conflicts with alias ' + i.name + ' in processor ' + self.name)
+                raise Exception('Alias register bank ' + alias.name + ' conflicts with alias register ' + i.name + ' in processor ' + self.name + '.')
         for i in self.aliasRegBanks:
             if alias.name == i.name:
-                raise Exception('An alias bank with name ' + alias.name + ' conflicts with alias bank ' + i.name + ' in processor ' + self.name)
+                raise Exception('Alias register bank ' + alias.name + ' conflicts with alias register bank ' + i.name + ' in processor ' + self.name + '.')
         self.aliasRegBanks.append(alias)
 
     def setABI(self, abi):
         if self.coprocessor:
-            print ('WARNING: processor ' + self.name + ' is a coprocessor, so there is not need to set the ABI')
+            print ('Warning: No need to set an ABI for coprocessor ' + self.name + '.')
         self.abi = abi
 
     def addPipeStage(self, pipe):
         for i in self.pipes:
             if i.name == pipe.name:
-                raise Exception('A pipeline stage with name ' + pipe.name + ' already exists in processor ' + self.name)
+                raise Exception('Pipeline stage ' + pipe.name + ' already exists in processor ' + self.name + '.')
         self.pipes.append(pipe)
 
     def setBeginOperation(self, code):
@@ -527,32 +531,32 @@ class Processor:
         containing the code for the behavior
         If no begin operation is specified, the default
         values for the registers are used"""
-        self.beginOp = code
+        self.startup = code
 
     def setEndOperation(self, code):
         """if is an instance of cxx_writer.CustomCode,
         containing the code for the behavior
         If no end operation is specified, nothing
         is done"""
-        self.endOp = code
+        self.shutdown = code
 
     def setResetOperation(self, code):
         """if is an instance of cxx_writer.CustomCode,
         containing the code for the behavior
         if no reset operation is specified, the
         begin operation is called"""
-        self.resetOp = code
+        self.reset = code
 
     def addIrq(self, irq):
         for i in self.irqs:
             if i.name == irq.name:
-                raise Exception('An Interrupt port with name ' + i.name + ' already exists in processor ' + self.name)
+                raise Exception('Interrupt port ' + i.name + ' already exists in processor ' + self.name + '.')
         self.irqs.append(irq)
 
     def addPin(self, pin):
         for i in self.pins:
             if i.name == pin.name:
-                raise Exception('An external pin with name ' + i.name + ' already exists in processor ' + self.name)
+                raise Exception('External pin ' + i.name + ' already exists in processor ' + self.name + '.')
         self.pins.append(pin)
 
     def setFetchRegister(self, fetchReg,  offset = 0):
@@ -566,9 +570,9 @@ class Processor:
         if not found:
             index = extractRegInterval(fetchReg)
             if not index:
-                raise Exception('Register ' + fetchReg + ' is not part of the processor architecture')
+                raise Exception('Cannot set register ' + fetchReg + ' as a fetch register. Register does not exist.')
             if index[0] != index[1]:
-                raise Exception('The fetch register must be a single register while ' + fetchReg + ' was specified')
+                raise Exception('Cannot set multiple registers ' + fetchReg + ' as a fetch register.')
             name = fetchReg[:fetchReg.index('[')]
             for i in self.aliasRegBanks + self.regBanks:
                 if i.name == name:
@@ -576,9 +580,9 @@ class Processor:
                         found = True
                         break
                     else:
-                        raise Exception('Register ' + fetchReg + ' is not containe in register bank ' + name + ' which has only ' + str(i.numRegs) + ' registers')
+                        raise Exception('Register ' + fetchReg + ' does not exist in register bank ' + name + ' containing ' + str(i.numRegs) + ' registers.')
         if not found:
-            raise Exception('Register ' + fetchReg + ' is not part of the processor architecture')
+            raise Exception('Cannot set register ' + fetchReg + ' as a fetch register. Register does not exist.')
         self.fetchReg = (fetchReg,  offset)
 
     def addMemAlias(self, memAlias):
@@ -592,13 +596,13 @@ class Processor:
                     if index[0] >= 0 and index[1] <= i.numRegs:
                         return i
                     else:
-                        raise Exception('Register Bank ' + i.name + ' has width ' + str(i.numRegs) + ' but we are trying to access register ' + str(index[1]))
+                        raise Exception('Register ' + str(index[1]) + ' does not exist in register bank ' + i.name + ' containing ' + str(i.numRegs) + ' registers.')
             for i in self.aliasRegBanks:
                 if name == i.name:
                     if index[0] >= 0 and index[1] <= i.numRegs:
                         return i
                     else:
-                        raise Exception('Alias Register Bank ' + i.name + ' has width ' + str(i.numRegs) + ' but we are trying to access register ' + str(index[1]))
+                        raise Exception('Register ' + str(index[1]) + ' does not exist in alias register bank ' + i.name + ' containing ' + str(i.numRegs) + ' registers.')
         else:
             for i in self.regs:
                 if name == i.name:
@@ -617,7 +621,7 @@ class Processor:
     #def setWBOrder(self, regName, order):
         #for i in order:
             #if not i in [curPipe.name for curPipe in self.pipes]:
-                #raise Exception('Pipeline stage ' + i + ' specified for write back of register ' + regName + ' not present in the pipeline')
+                #raise Exception('Pipeline stage ' + i + ' specified for write back of register ' + regName + ' does not exist.')
         #order = list(order)
         #for curPipe in self.pipes:
             #if not curPipe.name in order:
@@ -628,13 +632,13 @@ class Processor:
         for instrName, instr in self.isa.instructions.items():
             for stage, beh in instr.prebehaviors.items():
                 if not stage in [i.name for i in self.pipes]:
-                    raise Exception('Pipeline stage ' + stage + ' declared for behavior ' + beh.name + ' in instruction ' + instrName + ' does not exist')
+                    raise Exception('Pipeline stage ' + stage + ' specified for behavior ' + beh.name + ' in instruction ' + instrName + ' does not exist.')
             for stage, beh in instr.postbehaviors.items():
                 if not stage in [i.name for i in self.pipes]:
-                    raise Exception('Pipeline stage ' + stage + ' declared for behavior ' + beh.name + ' in instruction ' + instrName + ' does not exist')
+                    raise Exception('Pipeline stage ' + stage + ' specified for behavior ' + beh.name + ' in instruction ' + instrName + ' does not exist.')
             for stage in instr.code.keys():
                 if not stage in [i.name for i in self.pipes]:
-                    raise Exception('Pipeline stage ' + stage + ' declared for code in instruction ' + instrName + ' does not exist')
+                    raise Exception('Pipeline stage ' + stage + ' specified for code in instruction ' + instrName + ' does not exist.')
         wbStage = False
         checkHazardStage = False
         for pipeStage in self.pipes:
@@ -643,16 +647,16 @@ class Processor:
             if pipeStage.checkHazard:
                 checkHazardStage = True
         if (wbStage and not checkHazardStage) or (not wbStage and checkHazardStage):
-            raise Exception('Error, both the writeback and the check hazards stages must be specified')
+            raise Exception('Both writeback and check hazards stages must be specified.')
         for method in self.isa.methods:
             if not method.stage in [i.name for i in self.pipes]:
-                raise Exception('Pipeline stage ' + stage + ' declared for method ' + method.name + ' does not exist')
+                raise Exception('Pipeline stage ' + stage + ' specified for method ' + method.name + ' does not exist.')
 
     def checkMemRegisters(self):
         if not self.memory and not self.tlmPorts:
-            raise Exception("Memories are not specified; please specify either an internal memory (with the setMemory method) or a TLM memory port (with the addTLMPort method)")
+            raise Exception('Please specify either an internal memory (using setMemory()) or a TLM memory port (using addTLMPort()).')
         if not self.fetchReg:
-            raise Exception('Please specify the register containing the address of the instructions to be fetched (usually the PC) using the setFetchRegister method')
+            raise Exception('Please specify a fetch register using setFetchRegister() (usually the PC).')
         for memAliasReg in self.memAlias:
             index = extractRegInterval(memAliasReg.alias)
             if index:
@@ -661,11 +665,11 @@ class Processor:
                 # boundaries
                 regName = memAliasReg.alias[:memAliasReg.alias.find('[')]
                 if self.isRegExisting(regName, index) is None:
-                    raise Exception('Register ' + memAliasReg.alias + ' indicated in memory alias for address ' + memAliasReg.address)
+                    raise Exception('Cannot set memory alias for register ' + memAliasReg.alias + ' at address ' + memAliasReg.address + '. Register does not exist.')
             else:
                 # Single register or alias: I check that it exists
                 if self.isRegExisting(memAliasReg.alias) is None:
-                    raise Exception('Register ' + memAliasReg.alias + ' indicated in memory alias for address ' + memAliasReg.address)
+                    raise Exception('Cannot set memory alias for register ' + memAliasReg.alias + ' at address ' + memAliasReg.address + '. Register does not exist.')
         if self.memory and self.memory[3]:
             index = extractRegInterval(self.memory[3])
             if index:
@@ -674,14 +678,14 @@ class Processor:
                 # boundaries
                 regName = self.memory[3][:self.memory[3].find('[')]
                 if self.isRegExisting(regName, index) is None:
-                    raise Exception('Register ' + self.memory[3] + ' indicated for program counter of local memory does not exists')
+                    raise Exception('Cannot set register ' + self.memory[3] + ' as the program counter. Register does not exist in local memory.')
             else:
                 # Single register or alias: I check that it exists
                 if self.isRegExisting(self.memory[3]) is None:
-                    raise Exception('Register ' + self.memory[3] + ' indicated for program counter of local memory does not exists')
+                    raise Exception('Cannot set register ' + self.memory[3] + ' as the program counter. Register does not exist in local memory.')
 
     def checkTestRegs(self):
-        """We check that the registers specifies in the tests are existing"""
+        """We check that the registers specified in the tests exist"""
         outPinPorts = []
         for pinPort in self.pins:
             if not pinPort.inbound:
@@ -692,7 +696,7 @@ class Processor:
                 # Now I check the existence of the instruction fields
                 for name, elemValue in test[0].items():
                     if not instr.machineCode.bitLen.has_key(name):
-                        raise Exception('Field ' + name + ' in test of instruction ' + instr.name + ' is not present in the machine code of the instruction')
+                        raise Exception('Field ' + name + ' in test of instruction ' + instr.name + ' does not exist in the machine code.')
                 for resource, value in test[1].items():
                     # Now I check the existence of the global resources
                     brackIndex = resource.find('[')
@@ -704,10 +708,10 @@ class Processor:
                         if index:
                             resourceName = resource[:brackIndex]
                             if self.isRegExisting(resourceName, index) is None:
-                                raise Exception('Resource ' + resource + ' not found in test for instruction ' + instr.name)
+                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
                         else:
                             if self.isRegExisting(resource) is None:
-                                raise Exception('Resource ' + resource + ' not found in test for instruction ' + instr.name)
+                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
                 for resource, value in test[2].items():
                     brackIndex = resource.find('[')
                     memories = self.tlmPorts.keys()
@@ -718,10 +722,10 @@ class Processor:
                         if index:
                             resourceName = resource[:brackIndex]
                             if self.isRegExisting(resourceName, index) is None:
-                                raise Exception('Resource ' + resource + ' not found in test for instruction ' + instr.name)
+                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
                         else:
                             if self.isRegExisting(resource) is None:
-                                raise Exception('Resource ' + resource + ' not found in test for instruction ' + instr.name)
+                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
     def checkAliases(self):
         """checks that the declared aliases actually refer to
         existing registers"""
@@ -737,14 +741,14 @@ class Processor:
                 refName = alias.initAlias[:alias.initAlias.find('[')]
                 regInstance = self.isRegExisting(refName, index)
                 if regInstance is None:
-                    raise Exception('Register Bank ' + refName + ' referenced by alias ' + alias.name + ' does not exists')
+                    raise Exception('Register bank ' + refName + ' referenced by alias ' + alias.name + ' does not exist.')
                 try:
                     try:
                         for value in alias.defValues:
                             if value != None and value > 0:
                                 import math
                                 if math.log(value, 2) > regInstance.bitWidth:
-                                    raise Exception('Alias Bank ' + alias.name + ' points to a register of width of ' + str(regInstance.bitWidth) + ' bits, but the default value ' + str(value) + ' needs ' + str(int(math.ceil(math.log(value, 2)))) + ' bits for being represented')
+                                    raise Exception('Default value ' + str(value) + ' of alias register bank ' + alias.name + ' requires ' + str(int(math.ceil(math.log(value, 2)))) + ' bits, but the register has a width of ' + str(regInstance.bitWidth) + ' bits.')
                     except TypeError:
                         pass
                 except AttributeError:
@@ -760,13 +764,13 @@ class Processor:
                         refName = alias.initAlias[i][:alias.initAlias[i].find('[')]
                         regInstance = self.isRegExisting(refName, index)
                         if regInstance is None:
-                            raise Exception('Register Bank ' + alias.initAlias[i] + ' referenced by alias ' + alias.name + ' does not exists')
+                            raise Exception('Register bank ' + alias.initAlias[i] + ' referenced by alias ' + alias.name + ' does not exist.')
                         try:
                             try:
                                 if alias.defValues[i] != None and alias.defValues[i] > 0:
                                     import math
                                     if math.log(alias.defValues[i], 2) > regInstance.bitWidth:
-                                        raise Exception('Alias Bank ' + alias.name + ' points to a register of width of ' + str(regInstance.bitWidth) + ' bits, but the default value ' + str(alias.defValues[i]) + ' needs ' + str(int(math.ceil(math.log(alias.defValues[i], 2)))) + ' bits for being represented')
+                                        raise Exception('Default value ' + str(alias.defValues[i]) + ' of alias register bank ' + alias.name + ' requires ' + str(int(math.ceil(math.log(alias.defValues[i], 2)))) + ' bits, but the register has a width of ' + str(regInstance.bitWidth) + ' bits.')
                             except TypeError:
                                 pass
                         except AttributeError:
@@ -775,13 +779,13 @@ class Processor:
                         # Single register or alias: I check that it exists
                         regInstance = self.isRegExisting(alias.initAlias[i])
                         if regInstance is None:
-                            raise Exception('Register ' + alias.initAlias[i] + ' referenced by alias ' + alias.name + ' does not exists')
+                            raise Exception('Register ' + alias.initAlias[i] + ' referenced by alias ' + alias.name + ' does not exist.')
                         try:
                             try:
                                 if alias.defValues[i] != None and alias.defValues[i] > 0:
                                     import math
                                     if math.log(alias.defValues[i], 2) > regInstance.bitWidth:
-                                        raise Exception('Alias Bank ' + alias.name + ' points to a register of width of ' + str(regInstance.bitWidth) + ' bits, but the default value ' + str(alias.defValues[i]) + ' needs ' + str(int(math.ceil(math.log(alias.defValues[i], 2)))) + ' bits for being represented')
+                                        raise Exception('Default value ' + str(alias.defValues[i]) + ' of alias register bank ' + alias.name + ' requires ' + str(int(math.ceil(math.log(alias.defValues[i], 2)))) + ' bits, but the register has a width of ' + str(regInstance.bitWidth) + ' bits.')
                             except TypeError:
                                 pass
                         except AttributeError:
@@ -795,13 +799,13 @@ class Processor:
                 refName = alias.initAlias[:alias.initAlias.find('[')]
                 regInstance = self.isRegExisting(refName, index)
                 if regInstance is None:
-                    raise Exception('Register Bank ' + alias.initAlias + ' referenced by alias ' + alias.name + ' does not exists')
+                    raise Exception('Register bank ' + alias.initAlias + ' referenced by alias ' + alias.name + ' does not exist.')
                 try:
                     try:
                         if alias.defValue != None and alias.defValue > 0:
                             import math
                             if math.log(alias.defValue, 2) > regInstance.bitWidth:
-                                raise Exception('Alias Bank ' + alias.name + ' points to a register of width of ' + str(regInstance.bitWidth) + ' bits, but the default value ' + str(alias.defValue) + ' needs ' + str(int(math.ceil(math.log(alias.defValue, 2)))) + ' bits for being represented')
+                                raise Exception('Default value ' + str(alias.defValue) + ' of alias register bank ' + alias.name + ' requires ' + str(int(math.ceil(math.log(alias.defValue, 2)))) + ' bits, but the register has a width of ' + str(regInstance.bitWidth) + ' bits.')
                     except TypeError:
                         pass
                 except AttributeError:
@@ -810,13 +814,13 @@ class Processor:
                 # Single register or alias: I check that it exists
                 regInstance = self.isRegExisting(refName, index)
                 if regInstance is None:
-                    raise Exception('Register ' + alias.initAlias + ' referenced by alias ' + alias.name + ' does not exists')
+                    raise Exception('Register ' + alias.initAlias + ' referenced by alias ' + alias.name + ' does not exist.')
                 try:
                     try:
                         if alias.defValue != None and alias.defValue > 0:
                             import math
                             if math.log(alias.defValue, 2) > regInstance.bitWidth:
-                                raise Exception('Alias Bank ' + alias.name + ' points to a register of width of ' + str(regInstance.bitWidth) + ' bits, but the default value ' + str(alias.defValue) + ' needs ' + str(int(math.ceil(math.log(alias.defValue, 2)))) + ' bits for being represented')
+                                raise Exception('Default value ' + str(alias.defValue) + ' of alias register bank ' + alias.name + ' requires ' + str(int(math.ceil(math.log(alias.defValue, 2)))) + ' bits, but the register has a width of ' + str(regInstance.bitWidth) + ' bits.')
                     except TypeError:
                         pass
                 except AttributeError:
@@ -831,10 +835,10 @@ class Processor:
             # special registers (specialInRegs, specialOutRegs)
             for regName in instruction.machineCode.bitCorrespondence.values():
                 if not regName[0] in architecturalNames:
-                    raise Exception('Architectural Element ' + str(regName[0]) + ' specified in machine code of instruction ' + name + ' does not exist')
+                    raise Exception('Architectural element ' + str(regName[0]) + ' specified in the machine code of instruction ' + name + ' does not exist.')
             for regName in instruction.bitCorrespondence.values():
                 if not regName[0] in architecturalNames:
-                    raise Exception('Architectural Element ' + str(regName[0]) + ' specified in machine code of instruction ' + name + ' does not exist')
+                    raise Exception('Architectural element ' + str(regName[0]) + ' specified in the machine code of instruction ' + name + ' does not exist.')
             outRegs = []
             for regList in instruction.specialOutRegs.values():
                 outRegs += regList
@@ -849,11 +853,11 @@ class Processor:
                     # boundaries
                     refName = regName[:regName.find('[')]
                     if self.isRegExisting(refName, index) is None:
-                        raise Exception('Register Bank ' + regName + ' referenced as spcieal register in insrtuction ' + name + ' does not exists')
+                        raise Exception('Register bank ' + regName + ' referenced as spcial register in instruction ' + name + ' does not exist.')
                 else:
                     # Single register or alias: I check that it exists
                     if self.isRegExisting(regName) is None:
-                        raise Exception('Register ' + regName + ' referenced as spcieal register in insrtuction ' + name + ' does not exists')
+                        raise Exception('Register ' + regName + ' referenced as spcial register in instruction ' + name + ' does not exist.')
             pipeStageName = [i.name for i in self.pipes] + ['default']
             beforeCheck = []
             wbStageName = 'default'
@@ -868,7 +872,7 @@ class Processor:
                 if stage == 'default':
                     stage = wbStageName
                 if not stage in pipeStageName:
-                    raise Exception('Stage ' + stage + ' specified for special register of instruction ' + name + ' does not exists')
+                    raise Exception('Stage ' + stage + ' specified for special register of instruction ' + name + ' does not exist.')
                 newOutRegs[stage] = regs
             instruction.specialOutRegs = newOutRegs
             newInRegs = {}
@@ -876,19 +880,19 @@ class Processor:
                 if stage == 'default':
                     stage = hazardStageName
                 if not stage in pipeStageName:
-                    raise Exception('Stage ' + stage + ' specified for special register of instruction ' + name + ' does not exists')
+                    raise Exception('Stage ' + stage + ' specified for special register of instruction ' + name + ' does not exist.')
                 newInRegs[stage] = regs
             instruction.specialInRegs = newInRegs
 
     def checkABI(self):
         """checks that the registers specified for the ABI interface
         refer to existing registers"""
-        index = extractRegInterval(self.abi.retVal)
+        index = extractRegInterval(self.abi.RetVal)
         if index:
-            regBound = self.abi.retVal[self.abi.retVal.find('['):self.abi.retVal.find(']')]
+            regBound = self.abi.RetVal[self.abi.RetVal.find('['):self.abi.RetVal.find(']')]
             if '-' in regBound:
-                raise Exception('Only a single register can be specified in the ABI for the return value')
-        toCheck = [self.abi.retVal, self.abi.PC]
+                raise Exception('Cannot set multiple registers as an ABI return value register.')
+        toCheck = [self.abi.RetVal, self.abi.PC]
         if self.abi.LR:
             toCheck.append(self.abi.LR)
         if self.abi.FP:
@@ -917,14 +921,14 @@ class Processor:
                 # boundaries
                 refName = i[:i.find('[')]
                 if self.isRegExisting(refName, index) is None:
-                    raise Exception('Register Bank ' + i + ' used in the ABI does not exists')
+                    raise Exception('Register bank ' + i + ' used in the ABI does not exist.')
             else:
                 # Single register or alias: I check that it exists
                 if self.isRegExisting(i) is None:
-                    raise Exception('Register ' + i + ' used in the ABI does not exists')
+                    raise Exception('Register ' + i + ' used in the ABI does not exist.')
         # warning in case details are not specified
         if not self.abi.returnCallInstr or not self.abi.callInstr:
-            print('Warning: "returnCallInstr" or "callInstr" not specified in the ABI: the profiler may give uncorrect results')
+            print('Warning: "returnCallInstr" or "callInstr" not specified in the ABI. The profiler may give incorrect results.')
         ################# TODO: check also the memories #######################
 
     def checkIRQPorts(self):
@@ -933,7 +937,7 @@ class Processor:
         for irq in self.irqs:
             for stage in irq.operation.keys():
                 if not stage in stageNames:
-                    raise Exception('Pipeline stage ' + stage + ' declared for interrupt ' + irq.name + ' does not exist')
+                    raise Exception('Pipeline stage ' + stage + ' specified for interrupt ' + irq.name + ' does not exist.')
 
     def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         """This method creates all the classes necessary for declaring
@@ -1014,10 +1018,10 @@ class Processor:
         coherent. Second it actually calls the write method of the
         processor components (registers, instructions, etc.) to create
         the code of the simulator"""
-        print ('\tCREATING IMPLEMENTATION FOR PROCESSOR MODEL --> ' + self.name)
-        print ('\t\tChecking the consistency of the specification')
+        print ('\tCreating processor model ' + self.name + '...')
+        print ('\t\tChecking the consistency of the specification...')
         if ('funcAT' in models or 'accAT' in models or 'accLT' in models) and not self.tlmPorts:
-            raise Exception('Only the creation of the funcLT model is suported without defining TLM ports. Please specify at least one')
+            raise Exception('TLM ports are required for all models other than funcLT. Please specify at least one TLM port.')
         self.isa.computeCoding()
         self.isa.checkCoding()
         self.checkAliases()
@@ -1070,21 +1074,21 @@ class Processor:
             else:
                 forceDecoderCreation = True
         if forceDecoderCreation:
-            print ('\t\tCreating the decoder')
+            print ('\t\tCreating the decoder...')
             dec = decoder.decoderCreator(self.isa.instructions, self.isa.subInstructions, memPenaltyFactor)
             dec.invalid_instr = self.invalid_instr
             import copy
             decCopy = copy.deepcopy(dec)
         else:
             try:
-                print ('\t\tLoading the decoder from cache')
+                print ('\t\tLoading the decoder from cache...')
                 import pickle
                 decDumpFile = open(os.path.join(os.path.expanduser(os.path.expandvars(folder)), '.decoderDump.pickle'), 'r')
                 dec = pickle.load(decDumpFile)
                 decDumpFile.close()
             except:
-                print ('\t\tError in loading the decoder')
-                print ('\t\tRe-Creating the decoder')
+                print ('\t\tError in loading the decoder.')
+                print ('\t\tRe-creating the decoder...')
                 dec = decoder.decoderCreator(self.isa.instructions, self.isa.subInstructions, memPenaltyFactor)
                 dec.invalid_instr = self.invalid_instr
                 import copy
@@ -1106,9 +1110,9 @@ class Processor:
             # use separate names for the processor class
             procWriter.processor_name = 'Core' + self.name + model[-2:]
 
-            print ('\t\tCreating the implementation for model ' + model)
+            print ('\t\tCreating ' + model + ' implementation...')
             if not model in validModels:
-                raise Exception(model + ' is not a valid model type')
+                raise Exception('Invalid model ' + model + '.')
             if not namespace:
                 namespace = 'core_' + self.name.lower() + '_' + model[-2:].lower()
             namespaceUse = cxx_writer.UseNamespace(namespace)
@@ -1259,7 +1263,7 @@ class Processor:
                     irqTestsFile = cxx_writer.FileDumper('irqTests.cpp', False)
                     irqTestsFile.addInclude('#include \"irqTests.hpp\"')
                     if PINClasses:
-                        irqTestsFile.addInclude('misc/PINTarget.hpp')
+                        irqTestsFile.addInclude('modules/pin_target.hpp')
                         irqTestsFile.addInclude('externalPins.hpp')
                     mainTestFile.addInclude('#include \"irqTests.hpp\"')
                     hirqTestsFile = cxx_writer.FileDumper('irqTests.hpp', True)
@@ -1278,7 +1282,7 @@ class Processor:
                     ISATestsFile = cxx_writer.FileDumper('isaTests' + str(i) + '.cpp', False)
                     ISATestsFile.addInclude('#include \"isaTests' + str(i) + '.hpp\"')
                     if PINClasses:
-                        ISATestsFile.addInclude('misc/PINTarget.hpp')
+                        ISATestsFile.addInclude('modules/pin_target.hpp')
                         ISATestsFile.addInclude('externalPins.hpp')
                     mainTestFile.addInclude('#include \"isaTests' + str(i) + '.hpp\"')
                     hISATestsFile = cxx_writer.FileDumper('isaTests' + str(i) + '.hpp', True)
@@ -1292,7 +1296,7 @@ class Processor:
                     ISATestsFile = cxx_writer.FileDumper('isaTests' + str(numTestFiles) + '.cpp', False)
                     ISATestsFile.addInclude('#include \"isaTests' + str(numTestFiles) + '.hpp\"')
                     if PINClasses:
-                        ISATestsFile.addInclude('misc/PINTarget.hpp')
+                        ISATestsFile.addInclude('modules/pin_target.hpp')
                         ISATestsFile.addInclude('externalPins.hpp')
                     mainTestFile.addInclude('#include \"isaTests' + str(numTestFiles) + '.hpp\"')
                     hISATestsFile = cxx_writer.FileDumper('isaTests' + str(numTestFiles) + '.hpp', True)
@@ -1342,7 +1346,7 @@ class Processor:
             curFolder.create()
             if (model == 'funcLT') and (not self.systemc) and tests:
                 testFolder.create(configure = False, tests = True)
-            print ('\t\tCreated in folder ' + os.path.expanduser(os.path.expandvars(folder)))
+            print ('\t\tProcessor model successfully created in folder ' + os.path.expanduser(os.path.expandvars(folder)))
             namespace = ''
         # We create and print the main folder and also add a configuration
         # part to the wscript
@@ -1420,7 +1424,7 @@ class Coprocessor:
         value of the bits which specify if the instruction
         is for this co-processor or not"""
         if self.isa.has_key(name):
-            raise Exception('Instruction ' + name + ' has already been specified for coprocessor ' + self.name)
+            raise Exception('Instruction ' + name + ' already assigned to coprocessor ' + self.name + '.')
         self.isa[name] = (idBits, code)
 
     def addIsaCall(self, name, functionName, idBits):
@@ -1431,7 +1435,7 @@ class Coprocessor:
         value of the bits which specify if the instruction
         is for this co-processor or not"""
         if self.isa.has_key(name):
-            raise Exception('Instruction ' + name + ' has already been specified for coprocessor ' + self.name)
+            raise Exception('Instruction ' + name + ' already assigned to coprocessor ' + self.name + '.')
         self.isa[name] = (idBits, functionName)
 
 class Interrupt:
@@ -1460,7 +1464,7 @@ class Interrupt:
         for instrVar in self.variables:
             if variable.name == instrVar.name:
                 if variable.varType.name != instrVar.varType.name:
-                    raise Exception('Trying to add variable ' + variable.name + ' of type ' + variable.varType.name + ' to instruction ' + self.name + ' which already has a variable with such a name of type ' + instrVar.varType.name)
+                    raise Exception('Variable ' + variable.name + ' of type ' + variable.varType.name + ' already exists in instruction ' + self.name + ' with type ' + instrVar.varType.name + '.')
                 else:
                     return
         self.variables.append(variable)
@@ -1496,7 +1500,7 @@ class Pins:
 
     def setOperation(self, operation):
         if not self.inbound:
-            raise Exception('Error, port ' + self.name + ' is out-going, so not operation can be specified')
+            raise Exception('Cannot specify operation for outbound port ' + self.name + '.')
         self.operation = operation
 
 class ABI:
@@ -1517,10 +1521,10 @@ class ABI:
     Note that for each of these correspondences I can also specify
     an offset (in the sense that PC can be r15 + 8 for ex).
     """
-    def __init__(self, retVal, args, PC, LR = None, SP = None, FP = None):
+    def __init__(self, RetVal, args, PC, LR = None, SP = None, FP = None):
         """Regsiter for the return value (either a register or a tuple
         regback, index)"""
-        self.retVal = retVal
+        self.RetVal = RetVal
         # Register cprrespondence (offsets should also be specified)
         self.LR = LR
         self.PC = PC
@@ -1563,8 +1567,8 @@ class ABI:
             self.name[self.SP] = 'SP'
         if self.FP:
             self.name[self.FP] = 'FP'
-        if self.retVal:
-            self.name[self.retVal] = 'RetVal'
+        if self.RetVal:
+            self.name[self.RetVal] = 'return_value'
         # Specifies the memories which can be accessed; if more than one memory is specified,
         # we have to associate the address range to each of them
         self.memories = {}
@@ -1616,25 +1620,25 @@ class ABI:
             index = extractRegInterval(key)
             if index:
                 if index[1] - index[0] != value[1] - value[0]:
-                    raise Exception('specifying correspondence for ' + str(value) + ', while ' + str(key) + ' contains a different number of registers')
+                    raise Exception('Cannot set correspondence between ' + str(value) + ' and ' + str(key) + '. Mismatch in number of registers.')
             else:
                 if value[1] - value[0]:
-                    raise Exception('specifying correspondence for ' + str(value) + ', while ' + str(key) + ' contains a different number of registers')
+                    raise Exception('Cannot set correspondence between ' + str(value) + ' and ' + str(key) + '. Mismatch in number of registers.')
             for i in range(value[0], value[1] + 1):
                 if i in self.regCorrespondence.values():
-                    raise Exception('Correspondence for register ' + str(i) + ' already specified')
+                    raise Exception('Correspondence for register ' + str(i) + ' already exists.')
                 if index:
                     self.regCorrespondence[key[:key.find('[')] + '[' + str(index[0] + i - value[0]) + ']'] = i
                 else:
                     self.regCorrespondence[key] = value[0]
 
     def setOffset(self, register, offset):
-        if not register in [self.LR, self.PC, self.SP, self.FP, self.retVal, self.args] + self.regCorrespondence.keys():
+        if not register in [self.LR, self.PC, self.SP, self.FP, self.RetVal, self.args] + self.regCorrespondence.keys():
             # Ok, the offset register specified does not encode a single register
             # I try to see if it is part of a register bank
             index = extractRegInterval(register)
             if not index:
-                raise Exception('Register ' + register + ' of which we are specifying the offset is not part of the ABI')
+                raise Exception('Cannot specify offset for register ' + register + '. Register does not exist in the ABI.')
             rangeToCheck = self.corrReg
             argsIndex = extractRegInterval(self.args)
             if argsIndex:
@@ -1642,16 +1646,16 @@ class ABI:
                     rangeToCheck.append(i)
             for i in range(index[0], index[1] + 1):
                 if not i in rangeToCheck:
-                    raise Exception('Register ' + register + ' of which we are specifying the offset is not part of the ABI')
+                    raise Exception('Cannot specify offset for register ' + register + '. Register does not exist in the ABI.')
         self.offset[register] = offset
 
     def addMemory(self, memory, addr = ()):
         if self.memories and not addr:
-            raise Exception('More than one memory specified in the ABI: an address range must be specified for memory ' + memory)
+            raise Exception('More than one memory specified in the ABI. An address range is required for memory ' + memory + '.')
         for name, savedAddr in self.memories.items():
             if not savedAddr:
-                raise Exception('More than one memory specified in the ABI: an address range must be specified for memory ' + name)
+                raise Exception('More than one memory specified in the ABI. An address range is required for memory ' + name + '.')
             else:
                 if (savedAddr[0] <= addr[0] and savedAddr[1] >= addr[0]) or (savedAddr[0] <= addr[1] and savedAddr[1] >= addr[1]):
-                    raise Exception('Clash between address ranges of memory ' + name + ' and ' + memory)
+                    raise Exception('Address range overlap between memories ' + name + ' and ' + memory + '.')
         self.memories[memory] = addr

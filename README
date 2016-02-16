@@ -1,59 +1,58 @@
-####################################################################################
-#                    ___           ___           ___
-#        ___        /  /\         /  /\         /  /\
-#       /  /\      /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \__\/    \  \:\        \  \:\        \  \:\
-#                   \__\/         \__\/         \__\/
+################################################################################
 #
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
 #
-####################################################################################
+################################################################################
 
 
-
-TRAP (TRansactional Automatic Processor generator) is a tool for the automatic generation of
-processor simulators starting from high level descriptions. This means that the developer only
-need to provide basic structural information (i.e. the number of registers, the endianess etc.)
-and the behavior of each instruction of the processor ISA; this data is then used for the generation
-of C++ code emulating the processor behavior. Such an approach consistently eases the developer's
-work (with respect to manual coding of the simulator) both because it requires only the specification
-of the necessary details and because it forces a separation of the processor behavior from its structure.
-The tool is written in Python and it produces SystemC based simulators. With respect to standard
-ADL, having the input directly from Python eliminates the need for having an ad-hoc front-end thus
-consistently reducing the development effort.
+TRAP (TRansactional Automatic Processor generator) is a tool for the automatic
+generation of processor simulators starting from high level descriptions. This
+means that the developer only needs to provide basic structural information
+(e.g the number of registers, the endianess, etc.) and the behavior of each
+instruction of the processor ISA. This data is then used for the generation of
+C++ code emulating the processor behavior. Such an approach consistently eases
+the developer's work (with respect to manual coding of the simulator), both
+because it requires only the specification of the necessary details and also
+because it forces a separation of the processor behavior from its structure.
+The tool is written in Python and it produces SystemC based simulators. With
+respect to standard ADL, having the input directly from Python eliminates the
+need for having an ad-hoc front-end thus consistently reducing the development
+effort.
 
 TRAP is mainly composed of three folders:
- -- cxx_writer: consists in the library, used by TRAP backend, for the creation of
-                C++ code from Python. This library is self contained, it does not
-                depend on the rest of TRAP and it can be useful on its own
- -- trap: contains the processor generator itself.
- -- processors: processor models created to test TRAP
+-- cxx_writer: Consists of the library used by TRAP backend for the creation of
+               C++ code from Python. This library is self contained, it does not
+               depend on the rest of TRAP and it can be useful on its own.
+-- trap: Contains the processor generator.
+-- processors: Processor models created to test TRAP.
 
-TRAP depends on the NetworkX (https://networkx.lanl.gov/wiki) package for the creation and representation of the decoding tree
-(see decoder.py for more details).
+TRAP depends on the NetworkX (https://networkx.lanl.gov/wiki) package for the
+creation and representation of the decoding tree (see decoder.py for more
+details).
 
-COMPILATION
+INSTALLATION
 
-run ./waf configure --with-systemc=YOUR_SYSTEMC_LOCATION and ./waf from the command line
+$ ./waf configure --with-systemc=YOUR_SYSTEMC_LOCATION
+$ ./waf
 
 For more details see http://code.google.com/p/trap-gen/wiki/Setup
 
---------------------------- LICENSING ---------------------------
+LICENSE
 
-TRAP tool itself is licensed under the LGPL license; the C++ code composing TRAP
-library (to be linked with the generated Instruction Set Simulators) is
-composed of both GPL and LGPL code. At configuration time it is possible to
-choose to not use GPL code, thus creating an LGPL only library.
+TRAP tool itself is licensed under the LGPL license. The C++ code composing TRAP
+library (to be linked with the generated Instruction Set Simulators) is composed
+of both GPL and LGPL code. At configuration time it is possible to choose to not
+use GPL code, thus creating an LGPL only library.
 
-The GPL code is the one depending on libbfd, while LGPL code replaces such functionality
-by using libelf (with reduced capabilities, though).
+The GPL code is the one depending on libbfd, while LGPL code replaces such
+functionality by using libelf (with reduced capabilities, though).
 
 For more details on the GPL and LGPL licenses, refer to the COPYING.GPL and COPYING.LGPL
 files in TRAP's root folder.

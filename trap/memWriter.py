@@ -1,38 +1,42 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 3 of the License, or
-#   (at your option) any later version.
+# @file     memWriter.py
+# @brief    This file is part of the TRAP processor generator module.
+# @details
+# @author   Luca Fossati
+# @author   Lillian Tadros (Technische Universitaet Dortmund)
+# @date     2008-2013 Luca Fossati
+#           2015-2016 Technische Universitaet Dortmund
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 import cxx_writer
 
@@ -111,17 +115,17 @@ def getCPPMemoryIf(self, model, namespace):
         methodsCode[methName] = emptyBody
     addMemoryMethods(self, memoryIfElements, methodsCode, methodsAttrs)
 
-    for curType in [archWordType, archHWordType]:
-        swapEndianessCode = str(archByteType) + """ helperByte = 0;
-        for (unsigned int i = 0; i < sizeof(""" + str(curType) + """)/2; i++) {
-            helperByte = ((""" + str(archByteType) + """ *)&datum)[i];
-            ((""" + str(archByteType) + """ *)&datum)[i] = ((""" + str(archByteType) + """ *)&datum)[sizeof(""" + str(curType) + """) -1 -i];
-            ((""" + str(archByteType) + """ *)&datum)[sizeof(""" + str(curType) + """) -1 -i] = helperByte;
+    for cur_type in [archWordType, archHWordType]:
+        swapEndianessCode = str(archByteType) + """ helper_byte = 0;
+        for (unsigned i = 0; i < sizeof(""" + str(cur_type) + """)/2; i++) {
+            helper_byte = ((""" + str(archByteType) + """ *)&datum)[i];
+            ((""" + str(archByteType) + """ *)&datum)[i] = ((""" + str(archByteType) + """ *)&datum)[sizeof(""" + str(cur_type) + """) -1 -i];
+            ((""" + str(archByteType) + """ *)&datum)[sizeof(""" + str(cur_type) + """) -1 -i] = helper_byte;
         }
         """
         swapEndianessBody = cxx_writer.Code(swapEndianessCode)
-        datumParam = cxx_writer.Parameter('datum', curType.makeRef())
-        swapEndianessDecl = cxx_writer.Method('swapEndianess', swapEndianessBody, cxx_writer.voidType, 'pu', [datumParam], inline = True, noException = True, const = True)
+        datumParam = cxx_writer.Parameter('datum', cur_type.makeRef())
+        swapEndianessDecl = cxx_writer.Method('swap_endianess', swapEndianessBody, cxx_writer.voidType, 'pu', [datumParam], inline = True, noException = True, const = True)
         memoryIfElements.append(swapEndianessDecl)
 
     memoryIfDecl = cxx_writer.ClassDeclaration('MemoryInterface', memoryIfElements, namespaces = [namespace])
@@ -136,39 +140,36 @@ def getCPPMemoryIf(self, model, namespace):
     aliasAttrs = []
     aliasParams = []
     aliasInit = []
-    MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'ToolsIf.hpp')
+    MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
     for alias in self.memAlias:
         aliasAttrs.append(cxx_writer.Attribute(alias.alias, resourceType[alias.alias].makeRef(), 'pri'))
         aliasParams.append(cxx_writer.Parameter(alias.alias, resourceType[alias.alias].makeRef()))
         aliasInit.append(alias.alias + '(' + alias.alias + ')')
 
-    checkAddressCode = 'if (address >= this->size) {\nTHROW_ERROR("Address " << std::hex << std::showbase << address << " out of memory");\n}\n'
-    checkAddressCodeException = 'if (address >= this->size) {\nTHROW_EXCEPTION("Address " << std::hex << std::showbase << address << " out of memory");\n}\n'
+    checkAddressCode = 'if (address >= this->size) {\nTHROW_ERROR("Address " << std::hex << std::showbase << address << " out of memory.");\n}\n'
+    checkAddressCodeException = 'if (address >= this->size) {\nTHROW_EXCEPTION("Address " << std::hex << std::showbase << address << " out of memory.");\n}\n'
 
-    swapEndianessCode = """// Now the code for endianess conversion: the processor is always modeled
-            // with the host endianess; in case they are different, the endianess
-            // is turned
-            """
+    swapEndianessCode = '// Endianess conversion: The processor is always modeled with the host endianess. In case they are different, the endianess is swapped.\n'
     if self.isBigEndian:
         swapEndianessDefine = '#ifdef LITTLE_ENDIAN_BO\n'
     else:
         swapEndianessDefine = '#ifdef BIG_ENDIAN_BO\n'
 
-    swapEndianessCode += swapEndianessDefine + 'this->swapEndianess(datum);\n#endif\n'
+    swapEndianessCode += swapEndianessDefine + 'this->swap_endianess(datum);\n#endif\n'
 
     if self.isBigEndian:
         swapDEndianessCode = '#ifdef LITTLE_ENDIAN_BO\n'
     else:
         swapDEndianessCode = '#ifdef BIG_ENDIAN_BO\n'
-    swapDEndianessCode += str(archWordType) + ' datum1 = (' + str(archWordType) + ')(datum);\nthis->swapEndianess(datum1);\n'
-    swapDEndianessCode += str(archWordType) + ' datum2 = (' + str(archWordType) + ')(datum >> ' + str(self.wordSize*self.byteSize) + ');\nthis->swapEndianess(datum2);\n'
+    swapDEndianessCode += str(archWordType) + ' datum1 = (' + str(archWordType) + ')(datum);\nthis->swap_endianess(datum1);\n'
+    swapDEndianessCode += str(archWordType) + ' datum2 = (' + str(archWordType) + ')(datum >> ' + str(self.wordSize*self.byteSize) + ');\nthis->swap_endianess(datum2);\n'
     swapDEndianessCode += 'datum = datum1 | (((' + str(archDWordType) + ')datum2) << ' + str(self.wordSize*self.byteSize) + ');\n#endif\n'
 
     memoryElements.append(cxx_writer.Attribute('debugger', MemoryToolsIfType.makePointer(), 'pri'))
     setDebuggerBody = cxx_writer.Code('this->debugger = debugger;')
-    memoryElements.append(cxx_writer.Method('setDebugger', setDebuggerBody, cxx_writer.voidType, 'pu', [cxx_writer.Parameter('debugger', MemoryToolsIfType.makePointer())]))
+    memoryElements.append(cxx_writer.Method('set_debugger', setDebuggerBody, cxx_writer.voidType, 'pu', [cxx_writer.Parameter('debugger', MemoryToolsIfType.makePointer())]))
     checkWatchPointCode = """if (this->debugger != NULL) {
-        this->debugger->notifyAddress(address, sizeof(datum));
+        this->debugger->notify_address(address, sizeof(datum));
     }
     """
     endianessCode = {'read_dword': swapDEndianessCode, 'read_word': swapEndianessCode, 'read_half': swapEndianessCode, 'read_byte': '',
@@ -185,16 +186,16 @@ def getCPPMemoryIf(self, model, namespace):
     readAliasCode['read_word_dbg'] = readMemAliasCode
     readMemAliasCode = ''
     for alias in self.memAlias:
-        readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swapEndianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archHWordType) + ')' + alias.alias + '_temp;\n}\n'
-        readMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swapEndianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archHWordType) + ' *)&(' + alias.alias + '_temp)) + 1);\n}\n'
+        readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archHWordType) + ')' + alias.alias + '_temp;\n}\n'
+        readMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archHWordType) + ' *)&(' + alias.alias + '_temp)) + 1);\n}\n'
     readAliasCode['read_half_dbg'] = readMemAliasCode
     readAliasCode['read_half'] = readMemAliasCode
     readMemAliasCode = ''
     for alias in self.memAlias:
-        readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swapEndianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archByteType) + ')' + alias.alias + '_temp;\n}\n'
-        readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 1) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swapEndianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 1);\n}\n'
-        readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swapEndianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 2);\n}\n'
-        readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swapEndianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 3);\n}\n'
+        readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archByteType) + ')' + alias.alias + '_temp;\n}\n'
+        readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 1) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 1);\n}\n'
+        readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 2);\n}\n'
+        readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 3);\n}\n'
     readAliasCode['read_byte_dbg'] = readMemAliasCode
     readAliasCode['read_byte'] = readMemAliasCode
     writeAliasCode = {}
@@ -245,7 +246,7 @@ def getCPPMemoryIf(self, model, namespace):
                 readBody = cxx_writer.Code(readAliasCode[methName] + checkAddressCode + '\n' + str(methodTypes[methName]) + ' datum = *(' + str(methodTypes[methName].makePointer()) + ')(this->memory + (unsigned long)address);\n' + endianessCode[methName] + '\nreturn datum;')
                 if methName == 'read_word':
                     methodsAttrs[methName].append('inline')
-            readBody.addInclude('utils/trap_utils.hpp')
+            readBody.addInclude('common/report.hpp')
             methodsCode[methName] = readBody
         for methName in writeMethodNames + writeMethodNames_dbg:
             methodsAttrs[methName] = []
@@ -277,20 +278,20 @@ def getCPPMemoryIf(self, model, namespace):
         classes.append(localMemDecl)
     else:
         # Here I have a local memory with debugging enabled.
-        dumpCode1 = '\n\nMemAccessType dumpInfo;\n'
+        dumpCode1 = '\n\nMemAccessType dump_info;\n'
         if not self.systemc and not model.startswith('acc')  and not model.endswith('AT'):
-            dumpCode1 += 'dumpInfo.simulationTime = curCycle;\n'
+            dumpCode1 += 'dump_info.simulation_time = cur_cycle;\n'
         else:
-            dumpCode1 += 'dumpInfo.simulationTime = sc_time_stamp().to_double();\n'
+            dumpCode1 += 'dump_info.simulation_time = sc_time_stamp().to_double();\n'
         if self.memory[3]:
-            dumpCode1 += 'dumpInfo.programCounter = this->' + self.memory[3] + ';\n'
+            dumpCode1 += 'dump_info.program_counter = this->' + self.memory[3] + ';\n'
         else:
-            dumpCode1 += 'dumpInfo.programCounter = 0;\n'
-        dumpCode1 += 'for (unsigned int i = 0; i < '
+            dumpCode1 += 'dump_info.program_counter = 0;\n'
+        dumpCode1 += 'for (unsigned i = 0; i < '
         dumpCode2 = """; i++) {
-    dumpInfo.address = address + i;
-    dumpInfo.val = (char)((datum & (0xFF << i*8)) >> i*8);
-    this->dumpFile.write((char *)&dumpInfo, sizeof(MemAccessType));
+    dump_info.address = address + i;
+    dump_info.val = (char)((datum & (0xFF << i*8)) >> i*8);
+    this->dump_file.write((char*)&dump_info, sizeof(MemAccessType));
 }
 """
 
@@ -304,8 +305,7 @@ def getCPPMemoryIf(self, model, namespace):
                 readBody = cxx_writer.Code(readAliasCode[methName] + checkAddressCode + '\n' + str(methodTypes[methName]) + ' datum = *(' + str(methodTypes[methName].makePointer()) + ')(this->memory + (unsigned long)address);\n' + endianessCode[methName] + '\nreturn datum;')
                 if methName == 'read_word':
                     methodsAttrs[methName].append('inline')
-            readBody.addInclude('utils/trap_utils.hpp')
-            readBody.addInclude('misc/memAccessType.hpp')
+            readBody.addInclude('common/report.hpp')
             methodsCode[methName] = readBody
         for methName in writeMethodNames + writeMethodNames_dbg:
             methodsAttrs[methName] = []
@@ -321,9 +321,9 @@ def getCPPMemoryIf(self, model, namespace):
             methodsCode[methName] = emptyBody
         addMemoryMethods(self, memoryElements, methodsCode, methodsAttrs)
 
-        endOfSimBody = cxx_writer.Code("""if (this->dumpFile) {
-           this->dumpFile.flush();
-           this->dumpFile.close();
+        endOfSimBody = cxx_writer.Code("""if (this->dump_file) {
+           this->dump_file.flush();
+           this->dump_file.close();
         }
         """)
         endOfSimDecl = cxx_writer.Method('end_of_simulation', endOfSimBody, cxx_writer.voidType, 'pu')
@@ -336,14 +336,14 @@ def getCPPMemoryIf(self, model, namespace):
         memoryElements.append(arrayAttribute)
 
         if not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
-            cycleAttribute = cxx_writer.Attribute('curCycle', cxx_writer.uintType.makeRef(), 'pri')
-            constructorParams.append(cxx_writer.Parameter('curCycle', cxx_writer.uintType.makeRef()))
-            constructorInit.append('curCycle(curCycle)')
+            cycleAttribute = cxx_writer.Attribute('cur_cycle', cxx_writer.uintType.makeRef(), 'pri')
+            constructorParams.append(cxx_writer.Parameter('cur_cycle', cxx_writer.uintType.makeRef()))
+            constructorInit.append('cur_cycle(cur_cycle)')
             memoryElements.append(cycleAttribute)
 
         sizeAttribute = cxx_writer.Attribute('size', cxx_writer.uintType, 'pri')
         memoryElements.append(sizeAttribute)
-        dumpFileAttribute = cxx_writer.Attribute('dumpFile', cxx_writer.ofstreamType, 'pri')
+        dumpFileAttribute = cxx_writer.Attribute('dump_file', cxx_writer.ofstreamType, 'pri')
         memoryElements.append(dumpFileAttribute)
         memoryElements += aliasAttrs
         if self.memory[3]:
@@ -354,17 +354,17 @@ def getCPPMemoryIf(self, model, namespace):
         localMemDecl.addDocString(brief = 'Memory Interface Class', detail = 'Interface used by the core to communicate with memory. Defines the required TLM ports.')
         constructorBody = cxx_writer.Code("""this->memory = new char[size];
             this->debugger = NULL;
-            this->dumpFile.open("memoryDump.dmp", ios::out | ios::binary | ios::ate);
-            if (!this->dumpFile) {
-                THROW_EXCEPTION("Error in opening file memoryDump.dmp for writing");
+            this->dump_file.open("memoryDump.dmp", ios::out | ios::binary | ios::ate);
+            if (!this->dump_file) {
+                THROW_EXCEPTION("Cannot open file memoryDump.dmp for writing.");
             }
         """)
         publicMemConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams + aliasParams + pcRegParam, constructorInit + aliasInit + pcRegInit)
         localMemDecl.addConstructor(publicMemConstr)
         destructorBody = cxx_writer.Code("""delete [] this->memory;
-        if (this->dumpFile) {
-           this->dumpFile.flush();
-           this->dumpFile.close();
+        if (this->dump_file) {
+           this->dump_file.flush();
+           this->dump_file.close();
         }
         """)
         publicMemDestr = cxx_writer.Destructor(destructorBody, 'pu', True)

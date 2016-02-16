@@ -1,38 +1,40 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+# @file     MICROBLAZEIsa.py
+# @brief    This file is part of the TRAP example processors.
+# @details  nstruction set definition file for the Microblaze.
+# @author   Luca Fossati
+# @date     2008-2013 Luca Fossati
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 
 
@@ -60,7 +62,7 @@ isa.addMethod(handleUserPermissionException_method)
 #
 # Note the special operations:
 #
-# -- annull(): transforms the current instruction in a NOP; if we are
+# -- annul(): transforms the current instruction in a NOP; if we are
 # in the middle of the execution of some code, it also terminates the
 # execution of that part of code (it is like an exception)
 # -- flush(): flushes the pipeline stages preceding the one in which
@@ -84,9 +86,8 @@ isa.addMethod(handleUserPermissionException_method)
 # ADD
 opCode = cxx_writer.Code("""
 long long result = (long long)((int)rb) + (long long)((int)ra);
-MSR[key_C] = ((ra^rb^(unsigned int)(result >> 1)) & 0x80000000) != 0;
-rd = (int)result; 
-""")
+MSR[key_C] = ((ra^rb^(unsigned)(result >> 1)) & 0x80000000) != 0;
+rd = (int)result;""")
 add_Instr = trap.Instruction('ADD', True)
 add_Instr.setMachineCode(oper_reg, {'opcode0': [0,0,0,0,0,0], 'opcode1': [0,0,0,0,0,0,0,0,0,0,0]}, ('add r', '%rd', ' r', '%ra', ' r', '%rb'))
 add_Instr.setCode(opCode,'execute')
@@ -110,7 +111,7 @@ isa.addInstruction(add_Instr)
 # ADDC
 opCode = cxx_writer.Code("""
 long long result = (long long)((int)ra) + (long long)((int)rb) + (long long)MSR[key_C];
-MSR[key_C] = ((ra^rb^(unsigned int)(result >> 1)) & 0x80000000) != 0;
+MSR[key_C] = ((ra^rb^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result;
 """)
 addc_Instr = trap.Instruction('ADDC', True)
@@ -177,7 +178,7 @@ isa.addInstruction(addkc_Instr)
 #ADDI
 opCode = cxx_writer.Code("""
 long long result = (long long)((long long)((int)ra) + ((long long)(int)imm_value));
-MSR[key_C] = ((ra^imm_value^(unsigned int)(result >> 1)) & 0x80000000) != 0;
+MSR[key_C] = ((ra^imm_value^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result;
 """)
 addi_Instr = trap.Instruction('ADDI', True)
@@ -196,7 +197,7 @@ isa.addInstruction(addi_Instr)
 #ADDIC
 opCode = cxx_writer.Code("""
 long long result = (long long)((long long)((int)ra) + ((long long)(int)imm_value) + (long long)MSR[key_C]);
-MSR[key_C] = ((ra^imm_value^(unsigned int)(result >> 1)) & 0x80000000) != 0;
+MSR[key_C] = ((ra^imm_value^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result;
 """)
 addic_Instr = trap.Instruction('ADDIC', True)
@@ -896,7 +897,7 @@ isa.addInstruction(brki_Instr)
 #BARREL SHIFT family
 #BSRL (S=0, T=0)
 opCode = cxx_writer.Code("""
-rd = (unsigned int)ra >> ((int)rb & 0x1f); /* I consider only the five less significant bits */
+rd = (unsigned)ra >> ((int)rb & 0x1f); /* I consider only the five less significant bits */
 """)
 bsrl_Instr = trap.Instruction('BSRL', True)
 bsrl_Instr.setMachineCode(barrel_reg, {'opcode0': [0,1,0,0,0,1], 'opcode1': [0,0,0,0,0,0,0,0,0,0,0]}, ('bsrl r', '%rd', ' r', '%ra', ' r', '%rb'))
@@ -924,7 +925,7 @@ isa.addInstruction(bsra_Instr)
 
 #BSLL (S=1, T=0)
 opCode = cxx_writer.Code("""
-rd = (unsigned int)ra << ((int)rb & 0x1f);
+rd = (unsigned)ra << ((int)rb & 0x1f);
 """)
 bsll_Instr = trap.Instruction('BSLL', True)
 bsll_Instr.setMachineCode(barrel_reg, {'opcode0': [0,1,0,0,0,1], 'opcode1': [1,0,0,0,0,0,0,0,0,0,0]}, ('bsll r', '%rd', ' r', '%ra', ' r', '%rb'))
@@ -938,7 +939,7 @@ isa.addInstruction(bsll_Instr)
 
 #BSRLI (S=0, T=0)
 opCode = cxx_writer.Code("""
-rd = (unsigned int)ra >> (int)imm_value;
+rd = (unsigned)ra >> (int)imm_value;
 """)
 bsrli_Instr = trap.Instruction('BSRLI', True)
 bsrli_Instr.setMachineCode(barrel_imm, {'opcode0': [0,1,1,0,0,1], 'opcode1': [0,0,0,0,0,0]}, ('bsrli r', '%rd', ' r', '%ra', ' ', '%imm'))
@@ -964,7 +965,7 @@ isa.addInstruction(bsrai_Instr)
 
 #BSLLI (S=0, T=1)
 opCode = cxx_writer.Code("""
-rd = (unsigned int)ra << (int)imm_value;
+rd = (unsigned)ra << (int)imm_value;
 """)
 bslli_Instr = trap.Instruction('BSLLI', True)
 bslli_Instr.setMachineCode(barrel_imm, {'opcode0': [0,1,1,0,0,1], 'opcode1': [1,0,0,0,0,0]}, ('bslli r', '%rd', ' r', '%ra', ' ', '%imm'))
@@ -1003,8 +1004,8 @@ isa.addInstruction(cmp_Instr)
 
 #CMPU
 opCode = cxx_writer.Code("""
-int result = (unsigned int)rb + ~((unsigned int)ra) + 1;
-if ((unsigned int)ra > (unsigned int) rb) {
+int result = (unsigned)rb + ~((unsigned)ra) + 1;
+if ((unsigned)ra > (unsigned) rb) {
 	result |= 0x80000000;
 } else {
 	result &= 0x7fffffff;
@@ -1030,15 +1031,14 @@ isa.addInstruction(cmpu_Instr)
 #FLOAT family
 #FADD
 opCode = cxx_writer.Code("""
-unsigned int ira=(unsigned int)ra;
+unsigned ira=(unsigned)ra;
 float fra=  *( (float*)( (void*)(&ira) ) );
-unsigned int irb=(unsigned int)rb;
+unsigned irb=(unsigned)rb;
 float frb= *( (float*)( (void*)(&irb) ) );
 float fres=fra+frb;
-unsigned int res= *( (int*)( (void*)(&fres) ) );
+unsigned res= *( (int*)( (void*)(&fres) ) );
 //if isDnz(ra) or isDnz(rb):
-if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){ 
-	rd=(unsigned int)0xffc00000;
+if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){	rd=(unsigned)0xffc00000;
 	FSR[key_DO]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
@@ -1055,7 +1055,7 @@ else if (	(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x004
 			(irb & 0x7f800000 == 0x7f800000 && irb & 0x007fffff == 0 & irb & 0x80000000 == 0x80000000)
 		)
 	){
-	rd=(unsigned int)0xffc00000;
+	rd=(unsigned)0xffc00000;
 	FSR[key_IO]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
@@ -1065,24 +1065,24 @@ else if (
 		(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x00400000 == 0x00400000) ||
 		(irb & 0x7f800000 == 0x7f800000 && irb & 0x007fffff !=0 && irb & 0x00400000 == 0x00400000)
 	){
-	rd=(unsigned int)0xffc00000;
+	rd=(unsigned)0xffc00000;
 }
 //else if isDnz (ra+rb):
 else if(res & 0x7f800000 == 0 && res & 0x007fffff != 0){
-	rd=(unsigned int) res & 0x80000000 == 0x80000000;
+	rd=(unsigned) res & 0x80000000 == 0x80000000;
 	FSR[key_UF]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isNaN(ra+rb):
 else if (res & 0x7f800000 == 0x7f800000 && res & 0x007fffff !=0){
-	rd=(unsigned int) res & 0x80000000 == 0x80000000;
+	rd=(unsigned) res & 0x80000000 == 0x80000000;
 	FSR[key_OF]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
 }
 else {
-	rd=(unsigned int)res;
+	rd=(unsigned)res;
 }
 """)
 fadd_Instr = trap.Instruction('FADD', True)
@@ -1095,15 +1095,14 @@ isa.addInstruction(fadd_Instr)
 
 #FRSUB
 opCode = cxx_writer.Code("""
-unsigned int ira=(unsigned int)ra;
+unsigned ira=(unsigned)ra;
 float fra=  *( (float*)( (void*)(&ira) ) );
-unsigned int irb=(unsigned int)rb;
+unsigned irb=(unsigned)rb;
 float frb= *( (float*)( (void*)(&irb) ) );
 float fres=frb-fra;
-unsigned int res= *( (int*)( (void*)(&fres) ) );
+unsigned res= *( (int*)( (void*)(&fres) ) );
 //if isDnz(ra) or isDnz(rb):
-if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){ 
-	rd=(unsigned int)0xffc00000;
+if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){	rd=(unsigned)0xffc00000;
 	FSR[key_DO]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
@@ -1120,7 +1119,7 @@ else if (	(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x004
 			(irb & 0x7f800000 == 0x7f800000 && irb & 0x007fffff == 0 & irb & 0x80000000 == 0)
 		)
 	){
-	rd=(unsigned int)0xffc00000;
+	rd=(unsigned)0xffc00000;
 	FSR[key_IO]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
@@ -1130,24 +1129,24 @@ else if (
 		(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x00400000 == 0x00400000) ||
 		(irb & 0x7f800000 == 0x7f800000 && irb & 0x007fffff !=0 && irb & 0x00400000 == 0x00400000)
 	){
-	rd=(unsigned int)0xffc00000;
+	rd=(unsigned)0xffc00000;
 }
 //else if isDnz (rb-ra):
 else if(res & 0x7f800000 == 0 && res & 0x007fffff != 0){
-	rd=(unsigned int) res & 0x80000000 == 0x80000000;
+	rd=(unsigned) res & 0x80000000 == 0x80000000;
 	FSR[key_UF]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isNaN(rb-ra):
 else if (res & 0x7f800000 == 0x7f800000 && res & 0x007fffff !=0){
-	rd=(unsigned int) res & 0x80000000 == 0x80000000;
+	rd=(unsigned) res & 0x80000000 == 0x80000000;
 	FSR[key_OF]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
 }
 else {
-	rd=(unsigned int)res;
+	rd=(unsigned)res;
 }
 """)
 frsub_Instr = trap.Instruction('FRSUB', True)
@@ -1160,15 +1159,14 @@ isa.addInstruction(frsub_Instr)
 
 #FMUL
 opCode = cxx_writer.Code("""
-unsigned int ira=(unsigned int)ra;
+unsigned ira=(unsigned)ra;
 float fra=  *( (float*)( (void*)(&ira) ) );
-unsigned int irb=(unsigned int)rb;
+unsigned irb=(unsigned)rb;
 float frb= *( (float*)( (void*)(&irb) ) );
 float fres=frb * fra;
-unsigned int res= *( (int*)( (void*)(&fres) ) );
+unsigned res= *( (int*)( (void*)(&fres) ) );
 //if isDnz(ra) or isDnz(rb):
-if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){ 
-	rd=(unsigned int)0xffc00000;
+if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){	rd=(unsigned)0xffc00000;
 	FSR[key_DO]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
@@ -1185,7 +1183,7 @@ else if (	(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x004
 			(irb & 0x7f800000 == 0 && irb & 0x007fffff == 0)
 		)
 	){
-	rd=(unsigned int)0xffc00000;
+	rd=(unsigned)0xffc00000;
 	FSR[key_IO]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
@@ -1195,24 +1193,24 @@ else if (
 		(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x00400000 == 0x00400000) ||
 		(irb & 0x7f800000 == 0x7f800000 && irb & 0x007fffff !=0 && irb & 0x00400000 == 0x00400000)
 	){
-	rd=(unsigned int)0xffc00000;
+	rd=(unsigned)0xffc00000;
 }
 //else if isDnz (rb*ra):
 else if(res & 0x7f800000 == 0 && res & 0x007fffff != 0){
-	rd=(unsigned int) res & 0x80000000 == 0x80000000;
+	rd=(unsigned) res & 0x80000000 == 0x80000000;
 	FSR[key_UF]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isNaN(rb*ra):
 else if (res & 0x7f800000 == 0x7f800000 && res & 0x007fffff !=0){
-	rd=(unsigned int) res & 0x80000000 == 0x80000000;
+	rd=(unsigned) res & 0x80000000 == 0x80000000;
 	FSR[key_OF]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
 }
 else {
-	rd=(unsigned int)res;
+	rd=(unsigned)res;
 }
 """)
 fmul_Instr = trap.Instruction('FMUL', True)
@@ -1225,15 +1223,14 @@ isa.addInstruction(fmul_Instr)
 
 #FDIV
 opCode = cxx_writer.Code("""
-unsigned int ira=(unsigned int)ra;
+unsigned ira=(unsigned)ra;
 float fra=  *( (float*)( (void*)(&ira) ) );
-unsigned int irb=(unsigned int)rb;
+unsigned irb=(unsigned)rb;
 float frb= *( (float*)( (void*)(&irb) ) );
 float fres=frb / fra;
-unsigned int res= *( (int*)( (void*)(&fres) ) );
+unsigned res= *( (int*)( (void*)(&fres) ) );
 //if isDnz(ra) or isDnz(rb):
-if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){ 
-	rd=(unsigned int)0xffc00000;
+if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){	rd=(unsigned)0xffc00000;
 	FSR[key_DO]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
@@ -1244,23 +1241,21 @@ else if (	(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x004
 		(
 			(ira & 0x7f800000 == 0 && ira & 0x007fffff == 0) &&
 			(irb & 0x7f800000 == 0 && irb & 0x007fffff == 0)
-			
+
 		) ||
 		(
 			(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff == 0) &&
 			(irb & 0x7f800000 == 0x7f800000 && irb & 0x007fffff == 0)
 		)
 	){
-	rd=(unsigned int)0xffc00000;
+	rd=(unsigned)0xffc00000;
 	FSR[key_IO]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isZero(ra) and not isInfinite(rb):
-else if ( 
-		(ira & 0x7f800000 == 0 && ira & 0x007fffff == 0) && 
-		( ! ( irb & 0x7f800000 == 0x7f800000 && irb & 0x007fffff == 0 )) ){
-	rd =(unsigned int) res & 0x80000000 == 0x80000000;
+else if (		(ira & 0x7f800000 == 0 && ira & 0x007fffff == 0) &&		( ! ( irb & 0x7f800000 == 0x7f800000 && irb & 0x007fffff == 0 )) ){
+	rd =(unsigned) res & 0x80000000 == 0x80000000;
 	FSR[key_DZ]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
@@ -1270,24 +1265,24 @@ else if (
 		(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x00400000 == 0x00400000) ||
 		(irb & 0x7f800000 == 0x7f800000 && irb & 0x007fffff !=0 && irb & 0x00400000 == 0x00400000)
 	){
-	rd=(unsigned int)0xffc00000;
+	rd=(unsigned)0xffc00000;
 }
 //else if isDnz (rb/ra):
 else if(res & 0x7f800000 == 0 && res & 0x007fffff != 0){
-	rd=(unsigned int) res & 0x80000000 == 0x80000000;
+	rd=(unsigned) res & 0x80000000 == 0x80000000;
 	FSR[key_UF]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isNaN(rb/ra):
 else if (res & 0x7f800000 == 0x7f800000 && res & 0x007fffff !=0){
-	rd=(unsigned int) res & 0x80000000 == 0x80000000;
+	rd=(unsigned) res & 0x80000000 == 0x80000000;
 	FSR[key_OF]=1;
 	ESR[key_EC]=0x0c;
 	//EXCEPTION
 }
 else {
-	rd=(unsigned int)res;
+	rd=(unsigned)res;
 }
 """)
 fdiv_Instr = trap.Instruction('FDIV', True)
@@ -1367,13 +1362,13 @@ isa.addInstruction(idiv_Instr)
 #IDIVU
 opCode = cxx_writer.Code("""
 if (ra==0){
-	rd=(unsigned int)0;
+	rd=(unsigned)0;
 	MSR[key_DZ]=1;
 	ESR[key_EC]=0x5;
 	//EXCEPTION
 }
 else{
-	rd=(unsigned int) (((unsigned int)rb)/((unsigned int)ra));
+	rd=(unsigned) (((unsigned)rb)/((unsigned)ra));
 }
 """)
 idivu_Instr = trap.Instruction('IDIVU', True)
@@ -1575,15 +1570,15 @@ isa.addInstruction(mfs_Instr)
 
 #MSRCLR. The bit reversing problem is handled
 opCode = cxx_writer.Code("""
-if (MSR[key_UM] == 1 && ((unsigned int)imm15) != 0x4 ){
+if (MSR[key_UM] == 1 && ((unsigned)imm15) != 0x4 ){
 	ESR[key_EC]=0x1c; // 00111 -----> 11100
 	//EXCEPTION
 }
 else{
 	rd=MSR;
-	unsigned int imm=0;
+	unsigned imm=0;
 	for (int i=0;i<15;i++){
-		imm+=(((unsigned int)imm15)%2)==0;
+		imm+=(((unsigned)imm15)%2)==0;
 		imm15>>=1;
 		imm<<=1;
 	}
@@ -1604,15 +1599,15 @@ isa.addInstruction(msrclr_Instr)
 
 #MSRSET
 opCode = cxx_writer.Code("""
-if (MSR[key_UM] == 1 && ((unsigned int)imm15) != 0x4 ){
+if (MSR[key_UM] == 1 && ((unsigned)imm15) != 0x4 ){
 	ESR[key_EC]=0x1c; // 00111 -----> 11100
 	//EXCEPTION
 }
 else{
 	rd=MSR;
-	unsigned int imm=0;
+	unsigned imm=0;
 	for (int i=0;i<15;i++){
-		imm+=((unsigned int)imm15)%2;
+		imm+=((unsigned)imm15)%2;
 		imm15>>=1;
 		imm<<=1;
 	}
@@ -1715,9 +1710,9 @@ isa.addInstruction(mulh_Instr)
 
 #MULHU
 opCode = cxx_writer.Code("""
-unsigned long long res = (  (unsigned long long)(unsigned int)ra *  (unsigned long long)(unsigned int)rb );
+unsigned long long res = (  (unsigned long long)(unsigned)ra *  (unsigned long long)(unsigned)rb );
 res>>=32;
-rd = (unsigned int) res;
+rd = (unsigned) res;
 """)
 mulhu_Instr = trap.Instruction('MULHU', True)
 mulhu_Instr.setMachineCode(oper_reg, {'opcode0': [0,1,0,0,0,0], 'opcode1': [0,0,0,0,0,0,0,0,0,1,1]}, ('mulhu r', '%rd', ' r', '%ra', ' r', '%rb'))
@@ -1732,9 +1727,9 @@ isa.addInstruction(mulhu_Instr)
 
 #MULHSU
 opCode = cxx_writer.Code("""
-long long res = (long long)(int)ra * (unsigned long long)(unsigned int) rb;
+long long res = (long long)(int)ra * (unsigned long long)(unsigned) rb;
 res>>=32;
-rd = (unsigned int) res;
+rd = (unsigned) res;
 """)
 mulhsu_Instr = trap.Instruction('MULHSU', True)
 mulhsu_Instr.setMachineCode(oper_reg, {'opcode0': [0,1,0,0,0,0], 'opcode1': [0,0,0,0,0,0,0,0,0,1,0]}, ('mulhsu r', '%rd', ' r', '%ra', ' r', '%rb'))
@@ -1855,7 +1850,7 @@ opCode = cxx_writer.Code("""
 int a = (int)ra;
 int b = (int)rb;
 long long result = (long long)( (long long)b + ~((long long)a) + 1);
-MSR[key_C] = (( (~a + 1)^b^(unsigned int)(result >> 1)) & 0x80000000) != 0;
+MSR[key_C] = (( (~a + 1)^b^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd=(int)result;
 """)
 rsub_Instr = trap.Instruction('RSUB', True)
@@ -1875,7 +1870,7 @@ opCode = cxx_writer.Code("""
 int a = (int)ra;
 int b = (int)rb;
 long long result = (long long)( (long long)b + ~((long long)a) + (int)MSR[key_C]);
-MSR[key_C] = (( (~a + MSR[key_C])^b^(unsigned int)(result >> 1)) & 0x80000000) != 0;
+MSR[key_C] = (( (~a + MSR[key_C])^b^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd=(int)result;
 """)
 rsubc_Instr = trap.Instruction('RSUBC', True)
@@ -1932,7 +1927,7 @@ opCode = cxx_writer.Code("""
 int a = (int)ra;
 int imm = (int)imm_value;
 long long result = (long long) ( ((long long)imm) + ~((long long)a) + 1);
-MSR[key_C] = ( ((~a + 1)^imm^(unsigned int)(result >> 1)) & 0x80000000) != 0;
+MSR[key_C] = ( ((~a + 1)^imm^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd=(int)result;
 """)
 rsubi_Instr = trap.Instruction('RSUBI', True)
@@ -1953,7 +1948,7 @@ opCode = cxx_writer.Code("""
 int a = (int)ra;
 int imm = (int)imm_value;
 long long result = (long long) ( ((long long)imm) + ~((long long)a) + (int)MSR[key_C]);
-MSR[key_C] = ( ((~a + MSR[key_C])^imm^(unsigned int)(result >> 1)) & 0x80000000) != 0;
+MSR[key_C] = ( ((~a + MSR[key_C])^imm^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd=(int)result;
 """)
 rsubic_Instr = trap.Instruction('RSUBIC', True)
@@ -2017,8 +2012,7 @@ if ( MSR[key_UM] == 1 ) {
 	MSR[key_BIP] = 0x0;
 	MSR[key_UM] = MSR[key_UMS];
 	MSR[key_VM] = MSR[key_VMS];
-	PC = PC + 4;	
-}
+	PC = PC + 4;}
 """)
 rtbd_Instr = trap.Instruction('RTBD','True')
 rtbd_Instr.setMachineCode(branch_cond_imm, {'opcode0': [1,0,1,1,0,1], 'opcode1': [1,0,0,1,0]}, ('rtbd r', '%ra', ' ', '%imm'));
@@ -2038,8 +2032,7 @@ if ( MSR[key_UM] == 1 ) {
 	MSR[key_IE] = 0x1;
 	MSR[key_UM] = MSR[key_UMS];
 	MSR[key_VM] = MSR[key_VMS];
-	PC = PC + 4;	
-}
+	PC = PC + 4;}
 """)
 rtid_Instr = trap.Instruction('RTID','True')
 rtid_Instr.setMachineCode(branch_cond_imm, {'opcode0': [1,0,1,1,0,1], 'opcode1': [1,0,0,0,1]}, ('rtid r', '%ra', ' ', '%imm'))
@@ -2056,8 +2049,7 @@ if ( MSR[key_UM] == 1 ) {
 	handleUserPermissionException();
 } else {
 	if (ESR[key_DS] ) {
-		TARGET = BTR;	
-	} else {
+		TARGET = BTR;	} else {
 		TARGET = (int)ra + (int)imm_value;
 	}
 	MSR[key_EE] = 0x1;
@@ -2065,8 +2057,7 @@ if ( MSR[key_UM] == 1 ) {
 	MSR[key_UM] = MSR[key_UMS];
 	MSR[key_VM] = MSR[key_VMS];
 	ESR = 0x0;
-	PC = PC + 4;	
-}
+	PC = PC + 4;}
 """)
 rted_Instr = trap.Instruction('RTED','True')
 rted_Instr.setMachineCode(branch_cond_imm, {'opcode0': [1,0,1,1,0,1], 'opcode1': [1,0,1,0,0]}, ('rted r', '%ra', ' ', '%imm'))
@@ -2128,7 +2119,7 @@ int addr = (int)ra + (int)rb;
 if ( ( addr & 0x00000001 ) != 0 ) {
 	handleMemoryException(0x0,0x1,rd_bit,addr);
 } else {
-	dataMem.write_half(addr, (unsigned int)(rd & 0x0000ffff));
+	dataMem.write_half(addr, (unsigned)(rd & 0x0000ffff));
 }
 """)
 sh_Instr = trap.Instruction('SH', True)
@@ -2149,7 +2140,7 @@ int addr = (int)ra + (int)imm_value;
 if ( ( addr & 0x00000001 ) != 0 ) {
 	handleMemoryException(0x0,0x1,rd_bit,addr);
 } else {
-	dataMem.write_half(addr, (unsigned int)(rd & 0x0000ffff));
+	dataMem.write_half(addr, (unsigned)(rd & 0x0000ffff));
 }
 """)
 shi_Instr = trap.Instruction('SHI', True)
@@ -2170,7 +2161,7 @@ int addr = (int)ra + (int)rb;
 if ( ( addr & 0x00000003 ) != 0 ) {
 	handleMemoryException(0x1,0x1,rd_bit,addr);
 } else {
-	dataMem.write_word(addr, (unsigned int)(rd));
+	dataMem.write_word(addr, (unsigned)(rd));
 }
 """)
 sw_Instr = trap.Instruction('SW', True)
@@ -2191,7 +2182,7 @@ int addr = (int)ra + (int)imm_value;
 if ( ( addr & 0x00000003 ) != 0 ) {
 	handleMemoryException(0x1,0x1,rd_bit,addr);
 } else {
-	dataMem.write_word(addr, (unsigned int)(rd));
+	dataMem.write_word(addr, (unsigned)(rd));
 }
 """)
 swi_Instr = trap.Instruction('SWI', True)
@@ -2321,8 +2312,7 @@ isa.addInstruction(srl_Instr)
 #WDC
 opCode = cxx_writer.Code("""
 /* This instruction is related to the Cache. Since we don't have
-   Cache in our model, we simply ignore the implementation of 
-   this instruction. */
+   Cache in our model, we simply ignore the implementation of   this instruction. */
 """)
 wdc_Instr = trap.Instruction('WDC', True)
 wdc_Instr.setMachineCode(cache_oper, {'opcode0': [1,0,0,1,0,0], 'opcode1': [0,0,0,0,1,1,0,0,1,0,0]}, ('wdc r', '%ra', ' r', '%rb'))
@@ -2334,8 +2324,7 @@ isa.addInstruction(wdc_Instr)
 #WIC
 opCode = cxx_writer.Code("""
 /* This instruction is related to the Cache. Since we don't have
-   Cache in our model, we simply ignore the implementation of 
-   this instruction. */
+   Cache in our model, we simply ignore the implementation of   this instruction. */
 """)
 wic_Instr = trap.Instruction('WIC', True)
 wic_Instr.setMachineCode(cache_oper, {'opcode0': [1,0,0,1,0,0], 'opcode1': [0,0,0,0,1,1,0,1,0,0,0]}, ('wic r', '%ra', ' r', '%rb'))

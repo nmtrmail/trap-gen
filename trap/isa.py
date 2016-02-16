@@ -1,38 +1,42 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 3 of the License, or
-#   (at your option) any later version.
+# @file     isa.py
+# @brief    This file is part of the TRAP processor generator module.
+# @details
+# @author   Luca Fossati
+# @author   Lillian Tadros (Technische Universitaet Dortmund)
+# @date     2008-2013 Luca Fossati
+#           2015-2016 Technische Universitaet Dortmund
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 import re
 import cxx_writer
@@ -44,19 +48,19 @@ def resolveBitType(typeString):
     if isinstance(typeString, cxx_writer.Type):
       return typeString
     if not isinstance(typeString, type('')):
-        raise Exception(str(typeString) + ' Wrong variable type')
+        raise Exception('Invalid variable type ' + str(typeString) + '.')
     validBitType = '^( )*BIT( )*<( )*[0-9]+( )*>( )*$'
     if not re.match(validBitType, typeString):
-        raise Exception(str(typeString) + ' Wrong variable type: the custom bit types must have the stucture \"BIT < BITWIDTH >\"')
+        raise Exception('Invalid variable type ' + str(typeString) + ', expected \"BIT <BITWIDTH>\" for custom bit types.')
     # Now I can finally get the bitwidth
     bitWidthRe = re.search('[0-9]+', typeString)
     if not bitWidthRe:
-        raise Exception(str(typeString) + ' Wrong variable type: the custom bit types must have the stucture \"BIT < BITWIDTH >\"')
+        raise Exception('Invalid variable type ' + str(typeString) + ', expected \"BIT <BITWIDTH>\" for custom bit types.')
     bitWidth = int(typeString[bitWidthRe.start():bitWidthRe.end()])
     # Now I have to take decisions based on the bit-width and on the host machine in order
     # to generate the appropriate variable; performance reasons can also affect the decision.
     # In particular we decide that:
-    # 32 BIT: unsigned int
+    # 32 BIT: unsigned
     # 64 bit: unsigned long long
     # 1 bit: bool
     # 16 bit: unsigned short
@@ -88,8 +92,8 @@ class ISA:
         self.instructions = {}
         self.helperOps = []
         self.methods = []
-        self.beginOp = None
-        self.endOp = None
+        self.startup = None
+        self.shutdown = None
         self.subInstructions = {}
         # Definition of constant variables which can be accessed from the instructions
         self.constants = []
@@ -115,23 +119,23 @@ class ISA:
 
     def addInstruction(self, instruction):
         if self.instructions.has_key(instruction.name):
-            raise Exception('Instruction with name ' + instruction.name + ' already present in the ISA')
+            raise Exception('Instruction ' + instruction.name + ' already exists in the ISA.')
         instruction.id = len(self.instructions)
         self.instructions[instruction.name] = instruction
 
     def addOperation(self, operation):
         if operation.instrvars:
-            raise Exception('Operation ' + operation.name + ' contains instruction variables, but this is not allowed for operations not assegned to a particular instruction')
+            raise Exception('Operation ' + operation.name + ' contains instruction variables but is not assigned to a particular instruction.')
         for i in self.helperOps + self.methods:
             if i.name == operation.name:
-                raise Exception('Operation ' + operation.name + ' already added to the ISA')
+                raise Exception('Operation ' + operation.name + ' already exists in the ISA.')
         operation.numUsed += 1
         self.helperOps.append(operation)
 
     def addMethod(self, method):
         for i in self.methods + self.helperOps:
             if i.name == method.name:
-                raise Exception('Method ' + method.name + ' already added to the ISA')
+                raise Exception('Method ' + method.name + ' already exists in the ISA.')
         self.methods.append(method)
 
     def addBeginOp(self, operation):
@@ -141,8 +145,8 @@ class ISA:
         the instructions?"""
         for i in self.helperOps + self.methods:
             if i.name == operation.name:
-                raise Exception('Operation ' + operation.name + ' already added to the ISA')
-        self.beginOp = operation
+                raise Exception('Operation ' + operation.name + ' already exists in the ISA.')
+        self.startup = operation
 
     def addEndOp(self, operation):
         """Operation executed at the end of every instruction
@@ -150,8 +154,8 @@ class ISA:
         of the instruction fields?"""
         for i in self.helperOps + self.methods:
             if i.name == operation.name:
-                raise Exception('Operation ' + operation.name + ' already added to the ISA')
-        self.endOp = operation
+                raise Exception('Operation ' + operation.name + ' already exists in the ISA.')
+        self.shutdown = operation
 
     def computeCoding(self):
         """for each instruction it puts together the machine code
@@ -186,21 +190,21 @@ class ISA:
                             break
                 if equal:
                     if i.subInstr and j.subInstr:
-                        raise Exception('Instructions ' + i.name + ' and ' + j.name + ' have an ambiguous coding and both of them are classified as sub-instructions: hierarchical sub-instructions are not allowed')
+                        raise Exception('Instructions ' + i.name + ' and ' + j.name + ' have ambiguous coding and are both classified as sub-instructions, hierarchical sub-instructions are not allowed.')
                     if i.subInstr:
                         for bit in range(0, minLen):
                             if j.bitstring[bit] != None and j.bitstring[bit] != i.bitstring[bit]:
-                                raise Exception('Instruction ' + str(i) + ' has a coding clash with ' + str(j) + ' but it is not a sub-instruction of it')
+                                raise Exception('Instruction ' + str(i) + ' has a coding clash with ' + str(j) + ' but is not a sub-instruction of it.')
                         self.subInstructions[i.name] = i
                         j.subInstructions.append(i)
                     elif j.subInstr:
                         for bit in range(0, minLen):
                             if i.bitstring[bit] != None and i.bitstring[bit] != j.bitstring[bit]:
-                                raise Exception('Instruction ' + str(j) + ' has a coding clash with ' + str(i) + ' but it is not a sub-instruction of it')
+                                raise Exception('Instruction ' + str(j) + ' has a coding clash with ' + str(i) + ' but is not a sub-instruction of it.')
                         self.subInstructions[j.name] = j
                         i.subInstructions.append(j)
                     else:
-                        raise Exception('Coding of instructions ' + str(i) + ' and ' + str(j) + ' is ambiguous')
+                        raise Exception('Coding of instructions ' + str(i) + ' and ' + str(j) + ' is ambiguous.')
 
     def checkRegisters(self, indexExtractor, checkerMethod):
         """Checks that all the registers used in the instruction encoding are
@@ -220,9 +224,9 @@ class ISA:
             # the register names
             for var in i.variables:
                 if checkerMethod(var.name) != None:
-                    raise Exception('Variable ' + var.name + ' in insturction ' + i.name + ' has the same name of a processor register')
+                    raise Exception('Variable name ' + var.name + ' in instruction ' + i.name + ' already used for a processor register.')
                 if checkerMethod(var.name, (0, 0)) != None:
-                    raise Exception('Variable ' + var.name + ' in insturction ' + i.name + ' has the same name of a processor register bank')
+                    raise Exception('Variable name ' + var.name + ' in instruction ' + i.name + ' already used for a processor register bank.')
         for reg in toCheck:
             index = indexExtractor(reg)
             if index:
@@ -231,11 +235,11 @@ class ISA:
                 # boundaries
                 refName = reg[:reg.find('[')]
                 if checkerMethod(refName, index) is None:
-                    raise Exception('Register Bank ' + reg + ' used in the MachineCode description does not exists')
+                    raise Exception('Register bank ' + reg + ' specified in the machine code does not exist.')
             else:
                 # Single register or alias: I check that it exists
                 if checkerMethod(reg) is None:
-                    raise Exception('Register ' + reg + ' used in the MachineCode description does not exists')
+                    raise Exception('Register ' + reg + ' specified in the machine code does not exist.')
 
     def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
         return isaWriter.getCPPClasses(self, processor, model, trace, combinedTrace, namespace)
@@ -284,7 +288,7 @@ class Instruction:
         # the more the frequency repspects the real frequency of the instruction
         # in the better will be the decoder
         if frequency < 1:
-            raise Exception('Error in the frequency value for instruction ' + name + ': it has to be a non-zero positive integer number')
+            raise Exception('Invalid frequency value for instruction ' + name + ', expected non-zero, positive integer.')
         self.frequency = frequency
         # Instruction id; note that the ID is automatically assigned to
         # the instruction by the ISA class
@@ -300,7 +304,8 @@ class Instruction:
         # these variables are instances of the variables class as
         # contained in cxx_writer.SimpleDecls
         self.variables = []
-        self.docString = ''
+        self.docbrief = ''
+        self.docdetail = ''
         self.machineCode = None
         self.machineBits = None
         # The bits of the machine code of the instruction; the elements of
@@ -369,22 +374,22 @@ class Instruction:
             if type(i) == type(''):
                 if i.startswith('%'):
                     if not i[1:] in bitFieldNames:
-                        raise Exception('The machine code for instruction ' + self.name + ' does not contain field ' + i[1:] + ' specified in the mnemonic')
+                        raise Exception('Field ' + i[1:] + ' in mnemonic of instruction ' + self.name + ' does not exist in the machine code.')
             else:
                 if i[0].startswith('%'):
                     if not i[0][1:] in bitFieldNames:
-                        raise Exception('The machine code for instruction ' + self.name + ' does not contain field ' + i[0][1:] + ' specified in the mnemonic')
+                        raise Exception('Field ' + i[0][1:] + ' in mnemonic of instruction ' + self.name + ' does not exist in the machine code.')
                 elif i[0].startswith('$'):
                     for j in i[1:]:
                         if type(j) == type(''):
                             if j.startswith('%'):
                                 if not j[1:] in bitFieldNames:
-                                    raise Exception('The machine code for instruction ' + self.name + ' does not contain field ' + j[1:] + ' specified in the mnemonic')
+                                    raise Exception('Field ' + j[1:] + ' in mnemonic of instruction ' + self.name + ' does not exist in the machine code.')
                 else:
-                    raise Exception('The mnemonic for instruction ' + self.name + ' has a multi-variable part where the first element ' + i[0][1:] + ' does not start with % or $')
+                    raise Exception('First element ' + i[0][1:] + ' of multi-variable part in mnemonic of instruction ' + self.name + ' does not start with % or $.')
         self.mnemonic = mnemonic
         if self.machineCode or self.machineBits:
-            raise Exception('The machine code for instruction ' + self.name + ' has already been added')
+            raise Exception('Machine code for instruction ' + self.name + ' already exists.')
         for i in machineBits.keys():
             found = False
             for k in machineCode.bitFields:
@@ -392,9 +397,9 @@ class Instruction:
                     found = True
                     break
             if not found:
-                raise Exception('Field ' + i + ' not found in the machine code for instruction ' + self.name)
+                raise Exception('Bitfield ' + i + ' does not exist in machine code for instruction ' + self.name + '.')
             if i in machineCode.bitValue.keys() or i in  machineCode.bitCorrespondence.keys():
-                raise Exception('Field ' + i + ' already specified in the machine code for instruction ' + self.name)
+                raise Exception('Value of bitfield ' + i + ' in instruction ' + self.name + ' already set in the machine code.')
         self.machineCode = machineCode
         self.machineBits = machineBits
         for behavior in self.postbehaviors.values() + self.prebehaviors.values():
@@ -406,7 +411,7 @@ class Instruction:
                         found = True
                         break
                 if not found:
-                    raise Exception('Error, architectural element ' + procElem + ' specified in operation ' + behavior.name + ' is not present in the machine code of instruction ' + self.name)
+                    raise Exception('Architectural element ' + procElem + ' specified in operation ' + behavior.name + ' does not exist in the machine code of instruction ' + self.name + '.')
                 # Finally I separate the elements which are really constant from those which are, instead,
                 # only variable parts of the instruction
                 if procElem in self.machineCode.bitCorrespondence.keys():
@@ -437,7 +442,7 @@ class Instruction:
             for instrVar in self.variables:
                 if var.name == instrVar.name:
                     if var.type.name != instrVar.type.name:
-                        raise Exception('A Helper Operation is trying to add variable ' + var.name + ' of type ' + var.type.name + ' to instruction ' + self.name + ' which already has a variable with such a name of type ' + instrVar.type.name)
+                        raise Exception('Cannot add variable ' + var.name + ' of type ' + var.type.name + ' to helper operation of instruction ' + self.name + '. Variable of type ' + instrVar.type.name + 'already exists in the instruction.')
                 else:
                     self.variables.remove(instrVar)
                     break
@@ -450,7 +455,7 @@ class Instruction:
                         found = True
                         break
                 if not found:
-                    raise Exception('Error, architectural element ' + procElem + ' specified in operation ' + behavior.name + ' is not present in the machine code of instruction ' + self.name)
+                    raise Exception('Architectural element ' + procElem + ' specified in operation ' + behavior.name + ' does not exist in the machine code of instruction ' + self.name + '.')
                 if procElem in self.machineCode.bitCorrespondence.keys():
                     newProcElem.append(procElem)
                 elif not procElem in behavior.archVars:
@@ -461,7 +466,7 @@ class Instruction:
         """code is simply a string containing the code
         Code must be an instance of cxx_writer.CustomCode"""
         if self.code.has_key(stage):
-            raise Exception('The code for instruction ' + self.name + ' for stage ' + stage + ' has already been added')
+            raise Exception('Code for stage ' + stage + ' in instruction ' + self.name + ' already set.')
         self.code[stage] = code
 
     def addVariable(self, variable):
@@ -472,37 +477,37 @@ class Instruction:
         for instrVar in self.variables:
             if variable.name == instrVar.name:
                 if variable.varType.name != instrVar.varType.name:
-                    raise Exception('Trying to add variable ' + variable.name + ' of type ' + variable.varType.name + ' to instruction ' + self.name + ' which already has a variable with such a name of type ' + instrVar.varType.name)
+                    raise Exception('Cannot add variable ' + variable.name + ' of type ' + variable.varType.name + ' to instruction ' + self.name + '. Variable of type ' + instrVar.varType.name + 'already exists in the instruction.')
                 else:
                     return
         self.variables.append(variable)
 
     def setVarField(self, name, correspondence, bitDir = 'inout'):
         if not self.machineCode:
-            raise Exception('The machine code for instruction ' + self.name + ' must be set before calling method ' + setVarField)
+            raise Exception('The machine code for instruction ' + self.name + ' must be set before calling method ' + setVarField + '.')
         found = False
         for i in self.machineCode.bitFields:
             if name == i[0]:
                 found = True
                 break
         if not found:
-            raise Exception('Machine code for instruction ' + self.name + ' does not have field ' + name + '; error in trying to set the correspondencce with ' + str(correspondence))
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Field does not exist in instruction.')
         if self.machineCode.bitCorrespondence.has_key(name):
-            raise Exception('Correspondence for field ' + name + ' already set in machine code, unable to set correspondence for instruction ' + self.name)
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Correspondence already set in machine code.')
         if self.bitCorrespondence.has_key(name):
-            raise Exception('Correspondence for field ' + name + ' already set in instruction ' + self.name)
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Correspondence already set in instruction.')
         if self.machineCode.bitValue.has_key(name):
-            raise Exception('Value for bitfield ' + name + ' already set in machine code, unable to set correspondence for instruction ' + self.name)
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Bitfield value already set in machine code.')
         self.bitCorrespondence[name] = correspondence
         self.bitDirection[name] = bitDir.lower()
 
-
-    def addDocString(self, docString):
-        self.docString += docString + '\n'
+    def addDocString(self, brief, detail):
+        self.docbrief = brief
+        self.docdetail = detail
 
     def setTemplateString(self, templateString):
         """This information is used for gcc retargeting."""
-        raise Exception('GCC Retargeting not yet supported')
+        raise Exception('GCC retargeting not yet supported')
         self.templateString = templateString
 
     def addSpecialRegister(self, regName, direction = 'inout', stage = 'default'):
@@ -517,7 +522,7 @@ class Instruction:
             else:
                 self.specialOutRegs[stage] = [regName]
         if not direction in ['inout', 'out', 'in']:
-            raise Exception(str(direction) + ' is  not valid; valid values are: \'inout\', \'in\', and \'out\'')
+            raise Exception('Invalid value ' + str(direction) + ' for direction of register ' + regName + ', expected \'inout\', \'in\', or \'out\'.')
 
     def addTest(self, variables, inputState, expOut):
         """input and expected output are two maps, each one containing the
@@ -583,7 +588,7 @@ class HelperOperation:
         validModel = ['all', 'func', 'acc']
         # Now we check which model has to include the operation
         if not model in validModel:
-            raise Exception('Not valid model: it must be one of: ' + str(validModel))
+            raise Exception('Invalid model ' + model + ', expected ' + str(validModel) + '.')
         self.model = model
 
     def addVariable(self, variable):
@@ -594,10 +599,10 @@ class HelperOperation:
         for instrVar in self.localvars + self.instrvars:
             if variable.name == instrVar.name:
                 if variable.type.name != instrVar.type.name:
-                    raise Exception('Trying to add variable ' + variable.name + ' of type ' + variable.type.name + ' to operation ' + self.name + ' which already has a variable with such a name of type ' + instrVar.type.name)
+                    raise Exception('Cannot add variable ' + variable.name + ' of type ' + variable.type.name + ' to operation ' + self.name + '. Variable of type ' + instrVar.type.name + ' already exists in operation.')
         self.localvars.append(variable)
 
-    def addInstuctionVar(self, variable):
+    def addInstructionVar(self, variable):
         """adds a variable global to the all instructions containig this operation;
         note that variable has to be an instance of cxx_writer.Variable"""
         if isinstance(variable, type(())):
@@ -605,7 +610,7 @@ class HelperOperation:
         for instrVar in self.instrvars + self.localvars:
             if variable.name == instrVar.name:
                 if variable.type.name != instrVar.type.name:
-                    raise Exception('Trying to add variable ' + variable.name + ' of type ' + variable.type.name + ' to operation ' + self.name + ' which already has a variable with such a name of type ' + instrVar.type.name)
+                    raise Exception('Cannot add variable ' + variable.name + ' of type ' + variable.type.name + ' to operation ' + self.name + '. Variable of type ' + instrVar.type.name + ' already exists in operation.')
         self.instrvars.append(variable)
 
     def addUserInstructionElement(self, archElem):
@@ -652,10 +657,10 @@ class HelperMethod:
         for instrVar in self.localvars:
             if variable.name == instrVar.name:
                 if variable.type.name != instrVar.type.name:
-                    raise Exception('Trying to add variable ' + variable.name + ' of type ' + variable.type.name + ' to operation ' + self.name + ' which already has a variable with such a name of type ' + instrVar.type.name)
+                    raise Exception('Cannot add variable ' + variable.name + ' of type ' + variable.type.name + ' to operation ' + self.name + '. Variable of type ' + instrVar.type.name + ' already exists in operation.')
         for param in self.parameters:
             if variable.name == param.name:
-                raise Exception('Trying to add parameter ' + param.name + ' to operation ' + self.name + ' which already has a variable with such a name')
+                raise Exception('Cannot add parameter ' + param.name + ' to operation ' + self.name + '. Variable already exists in operation.')
         self.localvars.append(variable)
 
     def setSignature(self, retType = cxx_writer.Type('void'), parameters = []):
@@ -672,10 +677,10 @@ class HelperMethod:
 
             for instrVar in self.localvars:
                 if param.name == instrVar.name:
-                    raise Exception('Trying to add parameter ' + param.name + ' to operation ' + self.name + ' which already has a variable with such a name')
+                    raise Exception('Cannot add parameter ' + param.name + ' to operation ' + self.name + '. Variable already exists in operation.')
             for lparam in self.parameters:
                 if param.name == lparam.name:
-                    raise Exception('Trying to add parameter ' + param.name + ' to operation ' + self.name + ' which already has a parameter with such a name')
+                    raise Exception('Cannot add parameter ' + param.name + ' to operation ' + self.name + '. Parameter already exists in operation.')
             self.parameters.append(param)
 
     def getCppMethod(self, model, processor):
@@ -716,7 +721,7 @@ class MachineCode:
                 while self.bitPos.has_key(key):
                     key = key + '_d'
             if self.bitPos.has_key(key):
-                raise Exception('Machine code cannot contain duplicate fields (a part from zero and one fields.). ' + key + ' is duplicatede')
+                raise Exception('Duplicate key ' + key + ' in machine code.')
             self.bitLen[key] = fieldLen
             self.bitFields.append((key, fieldLen))
             self.bitPos[key] = curPosition
@@ -742,16 +747,14 @@ class MachineCode:
                 found = i
                 break
         if not found:
-            raise Exception('Machine code does not have bitfield ' + name)
-        if self.bitValue.has_key(name):
-            raise Exception('Value for bitfield ' + name + ' already set in machine code')
-        if self.bitCorrespondence.has_key(name):
-            raise Exception('Correspondence for field ' + name + ' already set in machine code, unable to set bitfield')
+            raise Exception('Bitfield ' + name + ' does not exist in machine code.')
+        if self.bitValue.has_key(name) or self.bitCorrespondence.has_key(name):
+            raise Exception('Value of bitfield ' + name + ' already set in machine code.')
         if len(value) != found[1]:
-            raise Exception('Value ' + str(value) + ' for bitfield ' + name + ' in machine code has length ' + str(len(value)) + ' while ' + str(found[1]) + ' was expected')
+            raise Exception('Value ' + str(value) + ' of bitfield ' + name + ' in machine code has length ' + str(len(value)) + ', expected ' + str(found[1]) + '.')
         for i in value:
             if i and i != 0 and i != 1:
-                raise Exception('Value ' + str(value) + ' for bitfield ' + name + ' in machine code is invalid: only binary values (0 or 1) are allowed')
+                raise Exception('Invalid value ' + str(value) + ' of bitfield ' + name + ' in machine code. Expected binary value.')
         self.bitValue[name] = value
 
     def setVarField(self, name, correspondence, bitDir = 'inout'):
@@ -773,11 +776,11 @@ class MachineCode:
                 found = True
                 break
         if not found:
-            raise Exception('Machine code does not have field ' + name + '; error in trying to set the correspondencce with ' + str(correspondence))
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + '. Field does not exist in machine code.')
         if self.bitCorrespondence.has_key(name):
-            raise Exception('Correspondence for field ' + name + ' already set in machine code')
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + '. Correspondence already set in machine code.')
         if self.bitValue.has_key(name):
-            raise Exception('Value for bitfield ' + name + ' already set in machine code, unable to set correspondence')
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + '. Bitfield value already set in machine code.')
         self.bitCorrespondence[name] = correspondence
         self.bitDirection[name] = bitDir.lower()
 
@@ -792,4 +795,4 @@ class VLIW:
     in a same vliw: instructions are executed according to the
     priority, lower first."""
     def __init__(self):
-        raise Exception('Description of VLIW architectures not yet supported')
+        raise Exception('Description of VLIW architectures not yet supported.')

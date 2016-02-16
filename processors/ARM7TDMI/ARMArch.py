@@ -1,39 +1,40 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+# @file     ARMArch.py
+# @brief    This file is part of the TRAP example processors.
+# @details  This is the top-level TRAP definition of the ARM7TDMI.
+# @author   Luca Fossati
+# @date     2008-2013 Luca Fossati
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
-
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 
 # Lets first of all import the necessary files for the
@@ -47,7 +48,7 @@ except ImportError:
     try:
         import trap
     except ImportError:
-        print ('Please specify in file ARMArch.py the path where the core TRAP files are located')
+        print ('Please specify location of core TRAP files in ARMArch.py.')
 
 # It is nice to keep the ISA and the architecture separated
 # so we use the import trick
@@ -145,8 +146,8 @@ LR_IRQ = PC;
 SPSR[1] = CPSR;
 //I switch the register bank (i.e. I update the
 //alias)
-REGS[13].updateAlias(RB[21]);
-REGS[14].updateAlias(RB[22]);
+REGS[13].update_alias(RB[21]);
+REGS[14].update_alias(RB[22]);
 //Create the new PSR
 CPSR = (CPSR & 0xFFFFFFD0) | 0x00000092;
 //Finally I update the PC
@@ -160,13 +161,13 @@ LR_FIQ = PC;
 SPSR[0] = CPSR;
 //I switch the register bank (i.e. I update the
 //alias)
-REGS[8].updateAlias(RB[23]);
-REGS[9].updateAlias(RB[24]);
-REGS[10].updateAlias(RB[25]);
-REGS[11].updateAlias(RB[26]);
-REGS[12].updateAlias(RB[27]);
-REGS[13].updateAlias(RB[28]);
-REGS[14].updateAlias(RB[29]);
+REGS[8].update_alias(RB[23]);
+REGS[9].update_alias(RB[24]);
+REGS[10].update_alias(RB[25]);
+REGS[11].update_alias(RB[26]);
+REGS[12].update_alias(RB[27]);
+REGS[13].update_alias(RB[28]);
+REGS[14].update_alias(RB[29]);
 //Create the new PSR
 CPSR = (CPSR & 0xFFFFFFD0) | 0x000000D1;
 //Finally I update the PC

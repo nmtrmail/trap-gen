@@ -11,10 +11,10 @@ def build(bld):
 
     bld.objects(
         target = 'profiler',
-        source = 'profInfo.cpp',
+        source = 'profiler_elements.cpp',
         includes = '. .. ' + elfInclude,
         use = 'ELF_LIB SYSTEMC BOOST',
         install_path = None
     )
 
-    bld.install_files(os.path.join(bld.env.PREFIX, 'include', 'profiler'), 'profiler.hpp profInfo.hpp')
+    bld.install_files(os.path.join(bld.env.PREFIX, 'include', 'profiler'), 'profiler.hpp profiler_elements.hpp')

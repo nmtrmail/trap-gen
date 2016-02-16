@@ -1,38 +1,42 @@
-# -*- coding: iso-8859-1 -*-
-####################################################################################
-#         ___        ___           ___           ___
-#        /  /\      /  /\         /  /\         /  /\
-#       /  /:/     /  /::\       /  /::\       /  /::\
-#      /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
-#     /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
-#    /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
-#   /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
-#   \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
-#        \  \:\   \  \:\        \  \:\        \  \:\
-#         \  \ \   \  \:\        \  \:\        \  \:\
-#          \__\/    \__\/         \__\/         \__\/
+################################################################################
 #
-#   This file is part of TRAP.
+#  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+#     _/      _/    _/        _/_/       _/    _/
+#    _/      _/    _/       _/  _/      _/    _/
+#   _/      _/_/_/        _/_/_/_/     _/_/_/
+#  _/      _/    _/     _/      _/    _/
+# _/      _/      _/  _/        _/   _/
 #
-#   TRAP is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation; either version 3 of the License, or
-#   (at your option) any later version.
+# @file     procWriter.py
+# @brief    This file is part of the TRAP processor generator module.
+# @details
+# @author   Luca Fossati
+# @author   Lillian Tadros (Technische Universitaet Dortmund)
+# @date     2008-2013 Luca Fossati
+#           2015-2016 Technische Universitaet Dortmund
+# @copyright
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU Lesser General Public License for more details.
+# This file is part of TRAP.
 #
-#   You should have received a copy of the GNU Lesser General Public License
-#   along with this TRAP; if not, write to the
-#   Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
-#   or see <http://www.gnu.org/licenses/>.
+# TRAP is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 3 of the
+# License, or (at your option) any later version.
 #
-#   (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
 #
-####################################################################################
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# or see <http://www.gnu.org/licenses/>.
+#
+# (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+#
+################################################################################
 
 # This file contains the methods used to print on file the architectural
 # elements; this includes the processor structure, the registers, the
@@ -47,7 +51,7 @@ try:
 except:
     import traceback
     traceback.print_exc()
-    raise Exception('Error occurred during the import of module networkx, required for the creation of the decoder. Please correctly install the module')
+    raise Exception('Cannot import required module networkx. Please install networkx >= 0.36.')
 
 try:
     import re
@@ -59,7 +63,7 @@ try:
 except:
     import traceback
     traceback.print_exc()
-    raise Exception('Error while determining the version of module networkx, try changing version, at least 0.36 required (newest non-development versions are usually ok)')
+    raise Exception('Cannot determine networkx version. Try changing versions >= 0.36.')
 
 # map linking the name with the type of the resource
 resourceType = {}
@@ -105,24 +109,24 @@ hash_map_include = """
 def getInstrIssueCode(self, trace, combinedTrace, instrVarName, hasCheckHazard = False, pipeStage = None, checkDestroyCode = ''):
     codeString = """try {
             #ifndef DISABLE_TOOLS
-            if (!(this->toolManager.newIssue(curPC, """ + instrVarName + """))) {
+            if (!(this->tool_manager.issue(cur_PC, """ + instrVarName + """))) {
             #endif
-            numCycles = """ + instrVarName + """->behavior();
+            num_cycles = """ + instrVarName + """->behavior();
     """
     if trace:
-        codeString += instrVarName + '->printTrace();\n'
+        codeString += instrVarName + '->print_trace();\n'
     codeString += '#ifndef DISABLE_TOOLS\n}\n'
     if trace:
         codeString += """else {
-            std::cerr << "Not executed Instruction because Tools anulled it" << std::endl << std::endl;
+            std::cerr << "Instruction anulled by tools." << std::endl << std::endl;
         }
         """
-    codeString +='#endif\n}\ncatch(annull_exception &etc) {\n'
+    codeString +='#endif\n}\ncatch(annul_exception& etc) {\n'
     if trace:
-        codeString += instrVarName + """->printTrace();
-                std::cerr << "Skipped Instruction " << """ + instrVarName + """->getInstructionName() << std::endl << std::endl;
+        codeString += instrVarName + """->print_trace();
+                std::cerr << "Skipped Instruction " << """ + instrVarName + """->get_name() << '.' << std::endl;
         """
-    codeString += """numCycles = 0;
+    codeString += """num_cycles = 0;
         }
         """
     return codeString
@@ -140,60 +144,60 @@ def getInstrIssueCodePipe(self, trace, combinedTrace, instrVarName, hasCheckHaza
     codeString += 'try {\n'
     if pipeStage == self.pipes[0]:
         codeString += """#ifndef DISABLE_TOOLS
-            if (!(this->toolManager.newIssue(""" + instrVarName + """->fetchPC, """ + instrVarName + """))) {
+            if (!(this->tool_manager.issue(""" + instrVarName + """->fetch_PC, """ + instrVarName + """))) {
             #endif
     """
-    codeString += """numCycles = """ + instrVarName + """->behavior_""" + pipeStage.name + """(BasePipeStage::unlockQueue);
+    codeString += """num_cycles = """ + instrVarName + """->behavior_""" + pipeStage.name + """(BasePipeStage::unlock_queue);
     """
-    if instrVarName != 'this->curInstruction':
-        codeString += """this->curInstruction = """ + instrVarName + """;
+    if instrVarName != 'this->cur_instr':
+        codeString += """this->cur_instr = """ + instrVarName + """;
         """
     if trace:
         if pipeStage == self.pipes[-1]:
             if combinedTrace:
-                codeString += 'if (this->curInstruction != this->NOPInstrInstance) {\n'
-            codeString += instrVarName + '->printTrace();\n'
+                codeString += 'if (this->cur_instr != this->NOP_instr) {\n'
+            codeString += instrVarName + '->print_trace();\n'
             if combinedTrace:
                 codeString += '}\n'
     if pipeStage == self.pipes[0]:
         codeString += """#ifndef DISABLE_TOOLS
                     } else {
-            if (""" + instrVarName + """->toDestroy""" + checkDestroyCode + """) {
+            if (""" + instrVarName + """->to_destroy""" + checkDestroyCode + """) {
                 delete """ + instrVarName + """;
             } else {
-                """ + instrVarName + """->inPipeline = false;
+                """ + instrVarName + """->in_pipeline = false;
             }
-            this->curInstruction = this->NOPInstrInstance;
+            this->cur_instr = this->NOP_instr;
         """
         if trace:
-            codeString += """std::cerr << "Not executed Instruction because Tools anulled it" << std::endl << std::endl;
+            codeString += """std::cerr << "Instruction anulled by tools." << std::endl << std::endl;
             """
         codeString +='}\n#endif\n'
-    codeString +='}\ncatch(annull_exception &etc) {\n'
+    codeString +='}\ncatch(annul_exception& etc) {\n'
     if trace:
-        codeString += instrVarName + """->printTrace();
-        std::cerr << "Stage: """ + pipeStage.name + """ - Skipped Instruction " << """ + instrVarName + """->getInstructionName() << std::endl << std::endl;
+        codeString += instrVarName + """->print_trace();
+        std::cerr << "Skipped Instruction " << """ + instrVarName + """->get_name() << " at stage """ + pipeStage.name + """ ." << std::endl << std::endl;
         """
     if pipeStage != self.pipes[0]:
-        codeString += 'flushAnnulled = this->curInstruction->flushPipeline;\n'
-        codeString += 'this->curInstruction->flushPipeline = false;\n'
+        codeString += 'flush_annulled = this->cur_instr->flush_pipeline;\n'
+        codeString += 'this->cur_instr->flush_pipeline = false;\n'
     if hasCheckHazard and unlockHazard:
-        codeString +=  instrVarName + '->getUnlock_' + pipeStage.name + '(BasePipeStage::unlockQueue);\n'
+        codeString +=  instrVarName + '->get_unlock_' + pipeStage.name + '(BasePipeStage::unlock_queue);\n'
     codeString += """
-            if (""" + instrVarName + """->toDestroy""" + checkDestroyCode + """) {
+            if (""" + instrVarName + """->to_destroy""" + checkDestroyCode + """) {
                 delete """ + instrVarName + """;
             } else {
-                """ + instrVarName + """->inPipeline = false;
+                """ + instrVarName + """->in_pipeline = false;
             }
-            this->curInstruction = this->NOPInstrInstance;
-            numCycles = 0;
+            this->cur_instr = this->NOP_instr;
+            num_cycles = 0;
         }
         """
     return codeString
 
 # Computes the code for the fetch address
 def computeFetchCode(self):
-    fetchCode = str(self.bitSizes[1]) + ' bitString = this->'
+    fetchCode = str(self.bitSizes[1]) + ' bitstring = this->'
     # Now I have to check what is the fetch: if there is a TLM port or
     # if I have to access local memory
     if self.memory:
@@ -204,8 +208,8 @@ def computeFetchCode(self):
             if isFetch:
                 fetchCode += name
         if fetchCode.endswith('this->'):
-            raise Exception('No TLM port was chosen for the instruction fetch and not internal memory defined')
-    fetchCode += '.read_word(curPC);\n'
+            raise Exception('Neither TLM port nor internal memory defined for instruction fetch.')
+    fetchCode += '.read_word(cur_PC);\n'
     return fetchCode
 
 # Computes current program counter, in order to fetch
@@ -239,20 +243,20 @@ def getInterruptCode(self, trace, pipeStage = None):
         # Functional: we only need to call the instruction behavior
         # Cycle accurate, we need to add the instruction to the pipeline
         if trace:
-            interruptCode += 'std::cerr << "Received interrupt " << std::hex << std::showbase << IRQ << std::endl;'
-        interruptCode += 'this->' + irqPort.name + '_irqInstr->setInterruptValue(' + irqPort.name + ');\n'
+            interruptCode += 'std::cerr << "Received interrupt " << std::hex << std::showbase << IRQ << \'.\' << std::endl;'
+        interruptCode += 'this->' + irqPort.name + '_instr->set_interrupt_value(' + irqPort.name + ');\n'
         interruptCode += 'try {\n'
         if pipeStage:
-            interruptCode += 'numCycles = this->' + irqPort.name + '_irqInstr->behavior_' + pipeStage.name + '(BasePipeStage::unlockQueue);\n'
-            interruptCode += 'this->curInstruction = this->' + irqPort.name + '_irqInstr;\n'
+            interruptCode += 'num_cycles = this->' + irqPort.name + '_instr->behavior_' + pipeStage.name + '(BasePipeStage::unlock_queue);\n'
+            interruptCode += 'this->cur_instr = this->' + irqPort.name + '_instr;\n'
         else:
-            interruptCode += 'numCycles = this->' + irqPort.name + '_irqInstr->behavior();\n'
-        interruptCode +='}\ncatch(annull_exception &etc) {\n'
+            interruptCode += 'num_cycles = this->' + irqPort.name + '_instr->behavior();\n'
+        interruptCode +='}\ncatch(annul_exception& etc) {\n'
         if trace:
-            interruptCode += 'this->' + irqPort.name + """_irqInstr->printTrace();
-                    std::cerr << "Skipped Instruction " << this->""" + irqPort.name + """_irqInstr->getInstructionName() << std::endl << std::endl;
+            interruptCode += 'this->' + irqPort.name + """_instr->print_trace();
+                    std::cerr << "Skipped Instruction " << this->""" + irqPort.name + """_instr->get_name() << '.' << std::endl;
             """
-        interruptCode += """numCycles = 0;
+        interruptCode += """num_cycles = 0;
             }
             """
         interruptCode += '\n}\n'
@@ -263,24 +267,24 @@ def getInterruptCode(self, trace, pipeStage = None):
 # Returns the code necessary for performing a standard instruction fetch: i.e.
 # read from memory and set the instruction parameters
 def standardInstrFetch(self, trace, combinedTrace, issueCodeGenerator, hasCheckHazard = False, pipeStage = None, checkDestroyCode = ''):
-    codeString = 'int instrId = this->decoder.decode(bitString);\n'
+    codeString = 'int instr_id = this->decoder.decode(bitstring);\n'
     if pipeStage:
-        codeString += 'Instruction * instr = this->INSTRUCTIONS[instrId];\n'
-        codeString += 'if (instr->inPipeline) {\n'
+        codeString += 'Instruction* instr = this->INSTRUCTIONS[instr_id];\n'
+        codeString += 'if (instr->in_pipeline) {\n'
         codeString += 'instr = instr->replicate();\n'
-        codeString += 'instr->toDestroy = true;\n'
+        codeString += 'instr->to_destroy = true;\n'
         codeString += '}\n'
-        codeString += 'instr->inPipeline = true;\n'
-        codeString += 'instr->fetchPC = curPC;\n'
+        codeString += 'instr->in_pipeline = true;\n'
+        codeString += 'instr->fetch_PC = cur_PC;\n'
     else:
-        codeString += 'Instruction * instr = this->INSTRUCTIONS[instrId];\n'
-    codeString += 'instr->setParams(bitString);\n'
+        codeString += 'Instruction* instr = this->INSTRUCTIONS[instr_id];\n'
+    codeString += 'instr->set_params(bitstring);\n'
 
     # Here we add the details about the instruction to the current history element
     codeString += """#ifdef ENABLE_HISTORY
-    if (this->historyEnabled) {
-        instrQueueElem.name = instr->getInstructionName();
-        instrQueueElem.mnemonic = instr->getMnemonic();
+    if (this->history_en) {
+        instr_queue_elem.name = instr->get_name();
+        instr_queue_elem.mnemonic = instr->get_mnemonic();
     }
     #endif
     """
@@ -291,71 +295,70 @@ def standardInstrFetch(self, trace, combinedTrace, issueCodeGenerator, hasCheckH
 def fetchWithCacheCode(self, fetchCode, trace, combinedTrace, issueCodeGenerator, hasCheckHazard = False, pipeStage = None):
     codeString = ''
     if self.fastFetch:
-        mapKey = 'curPC'
+        mapKey = 'cur_PC'
     else:
-        mapKey = 'bitString'
-    codeString += 'template_map< ' + str(self.bitSizes[1]) + ', CacheElem >::iterator cachedInstr = this->instrCache.find(' + mapKey + ');'
+        mapKey = 'bitstring'
+    codeString += 'template_map< ' + str(self.bitSizes[1]) + ', CacheElem >::iterator cached_instr = this->instr_cache.find(' + mapKey + ');'
     # I have found the instruction in the cache
     codeString += """
-    if (cachedInstr != instrCacheEnd) {
-        Instruction * curInstrPtr = cachedInstr->second.instr;
-        // I can call the instruction, I have found it
-        if (curInstrPtr != NULL) {
+    if (cached_instr != icache_end) {
+        Instruction* cur_instr_ptr = cached_instr->second.instr;
+        // Instruction found, call it.
+        if (cur_instr_ptr != NULL) {
     """
 
     # Here we add the details about the instruction to the current history element
     codeString += """#ifdef ENABLE_HISTORY
-    if (this->historyEnabled) {
-        instrQueueElem.name = curInstrPtr->getInstructionName();
-        instrQueueElem.mnemonic = curInstrPtr->getMnemonic();
+    if (this->history_en) {
+        instr_queue_elem.name = cur_instr_ptr->get_name();
+        instr_queue_elem.mnemonic = cur_instr_ptr->get_mnemonic();
     }
     #endif
     """
 
     if pipeStage:
-        codeString += 'if (curInstrPtr->inPipeline) {\n'
-        codeString += 'curInstrPtr = curInstrPtr->replicate();\n'
-        codeString += 'curInstrPtr->setParams(bitString);\n'
-        codeString += 'curInstrPtr->toDestroy = true;\n'
+        codeString += 'if (cur_instr_ptr->in_pipeline) {\n'
+        codeString += 'cur_instr_ptr = cur_instr_ptr->replicate();\n'
+        codeString += 'cur_instr_ptr->set_params(bitstring);\n'
+        codeString += 'cur_instr_ptr->to_destroy = true;\n'
         codeString += '}\n'
-        codeString += 'curInstrPtr->inPipeline = true;\n'
-        codeString += 'curInstrPtr->fetchPC = curPC;\n'
-    codeString += issueCodeGenerator(self, trace, combinedTrace, 'curInstrPtr', hasCheckHazard, pipeStage)
+        codeString += 'cur_instr_ptr->in_pipeline = true;\n'
+        codeString += 'cur_instr_ptr->fetch_PC = cur_PC;\n'
+    codeString += issueCodeGenerator(self, trace, combinedTrace, 'cur_instr_ptr', hasCheckHazard, pipeStage)
 
     # I have found the element in the cache, but not the instruction
     codeString += '} else {\n'
     if self.fastFetch:
         codeString += fetchCode
-    codeString += 'unsigned int & curCount = cachedInstr->second.count;\n'
-    codeString += standardInstrFetch(self, trace, combinedTrace, issueCodeGenerator, hasCheckHazard, pipeStage, ' && curCount < ' + str(self.cacheLimit))
-    codeString += """if (curCount < """ + str(self.cacheLimit) + """) {
-            curCount++;
+    codeString += 'unsigned& cur_count = cached_instr->second.count;\n'
+    codeString += standardInstrFetch(self, trace, combinedTrace, issueCodeGenerator, hasCheckHazard, pipeStage, ' && cur_count < ' + str(self.cacheLimit))
+    codeString += """if (cur_count < """ + str(self.cacheLimit) + """) {
+            cur_count++;
         } else {
-            // ... and then add the instruction to the cache
-            cachedInstr->second.instr = instr;
+            // Add the instruction to the i-cache.
+            cached_instr->second.instr = instr;
     """
     if pipeStage:
-        codeString += """if (instr->toDestroy) {
-                instr->toDestroy = false;
+        codeString += """if (instr->to_destroy) {
+                instr->to_destroy = false;
             } else {
             """
-        codeString += 'this->INSTRUCTIONS[instrId] = instr->replicate();\n'
+        codeString += 'this->INSTRUCTIONS[instr_id] = instr->replicate();\n'
         codeString += '}\n'
     else:
-        codeString += 'this->INSTRUCTIONS[instrId] = instr->replicate();\n'
+        codeString += 'this->INSTRUCTIONS[instr_id] = instr->replicate();\n'
     codeString += '}\n'
 
     # and now finally I have found nothing and I have to add everything
     codeString += """}
     } else {
-        // The current instruction is not present in the cache:
-        // I have to perform the normal decoding phase ...
+        // Current instruction is not present in the cache. Perform regular decoding.
     """
     if self.fastFetch:
         codeString += fetchCode
     codeString += standardInstrFetch(self, trace, combinedTrace, issueCodeGenerator, hasCheckHazard, pipeStage)
-    codeString += """this->instrCache.insert(std::pair< unsigned int, CacheElem >(bitString, CacheElem()));
-        instrCacheEnd = this->instrCache.end();
+    codeString += """this->instr_cache.insert(std::pair<unsigned, CacheElem>(bitstring, CacheElem()));
+        icache_end = this->instr_cache.end();
         }
     """
     return codeString
@@ -405,16 +408,16 @@ def createPipeStage(self, processorElements, initElements):
                 curPipeInit = [self.fetchReg[0] + '_pipe', 'this->INSTRUCTIONS', memName] + curPipeInit
             else:
                 curPipeInit = [self.fetchReg[0], 'this->INSTRUCTIONS', memName] + curPipeInit
-            curPipeInit = ['numInstructions'] + curPipeInit
-            curPipeInit = ['instrExecuting'] + curPipeInit
-            curPipeInit = ['instrEndEvent'] + curPipeInit
+            curPipeInit = ['num_instructions'] + curPipeInit
+            curPipeInit = ['inst_executing'] + curPipeInit
+            curPipeInit = ['instr_end_event'] + curPipeInit
             for irq in self.irqs:
                 curPipeInit = ['this->' + irq.name] + curPipeInit
         if pipeStage == self.pipes[0]:
-            curPipeInit = ['profTimeEnd', 'profTimeStart', 'toolManager'] + curPipeInit
+            curPipeInit = ['profiler_time_end', 'profiler_time_start', 'tool_manager'] + curPipeInit
         initElements.append('\n' + pipeStage.name + '_stage(' + ', '.join(curPipeInit)  + ')')
     NOPIntructionType = cxx_writer.Type('NOPInstruction', '#include \"instructions.hpp\"')
-    NOPinstructionsAttribute = cxx_writer.Attribute('NOPInstrInstance', NOPIntructionType.makePointer(), 'pu', True)
+    NOPinstructionsAttribute = cxx_writer.Attribute('NOP_instr', NOPIntructionType.makePointer(), 'pu', True)
     processorElements.append(NOPinstructionsAttribute)
 
 def procInitCode(self, model):
@@ -453,7 +456,7 @@ def procInitCode(self, model):
                             if model.startswith('acc'):
                                 initString += ' = '
                             else:
-                                initString += '.immediateWrite('
+                                initString += '.immediate_write('
                             try:
                                 initString += hex(defValue[0])
                             except TypeError:
@@ -475,7 +478,7 @@ def procInitCode(self, model):
                     if model.startswith('acc'):
                         initString += ' = '
                     else:
-                        initString += '.immediateWrite('
+                        initString += '.immediate_write('
                     try:
                         initString += hex(defValue)
                     except TypeError:
@@ -501,7 +504,7 @@ def procInitCode(self, model):
                     if model.startswith('acc'):
                         initString += ' = '
                     else:
-                        initString += '.immediateWrite('
+                        initString += '.immediate_write('
                     try:
                         initString += hex(elem.defValue[0])
                     except TypeError:
@@ -522,7 +525,7 @@ def procInitCode(self, model):
             if model.startswith('acc'):
                 initString += ' = '
             else:
-                initString += '.immediateWrite('
+                initString += '.immediate_write('
             try:
                 initString += hex(elem.defValue)
             except TypeError:
@@ -535,12 +538,12 @@ def procInitCode(self, model):
         for reg in self.regs:
             for pipeStage in self.pipes:
                 initString += reg.name + '_' + pipeStage.name + ' = ' + reg.name + ';\n'
-            initString += reg.name + '_pipe.hasToPropagate = false;\n'
+            initString += reg.name + '_pipe.has_to_propagate = false;\n'
         for regB in self.regBanks:
             initString += 'for (int i = 0; i < ' + str(regB.numRegs) + '; i++) {\n'
             for pipeStage in self.pipes:
                 initString += regB.name + '_' + pipeStage.name + '[i] = ' + regB.name + '[i];\n'
-            initString += regB.name + '_pipe[i].hasToPropagate = false;\n'
+            initString += regB.name + '_pipe[i].has_to_propagate = false;\n'
             initString += '}\n'
     for irqPort in self.irqs:
         initString += 'this->' + irqPort.name + ' = 0;\n'
@@ -561,17 +564,17 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
             checkToolPipeStage = pipeStage
             break
     from processor import extractRegInterval
-    bodyInits += '// Initialization of the standard registers\n'
+    bodyInits += '// Initialize the standard registers.\n'
     for reg in self.regs:
         attribute = cxx_writer.Attribute(reg.name, resourceType[reg.name], 'pu')
         processorElements.append(attribute)
         if model.startswith('acc'):
-            bodyInits += 'this->' + reg.name + '_pipe.setRegister(&' + reg.name + ');\n'
+            bodyInits += 'this->' + reg.name + '_pipe.set_register(&' + reg.name + ');\n'
             pipeCount = 0
             for pipeStage in self.pipes:
                 attribute = cxx_writer.Attribute(reg.name + '_' + pipeStage.name, resourceType[reg.name], 'pu')
                 processorElements.append(attribute)
-                bodyInits += 'this->' + reg.name + '_pipe.setRegister(&' + reg.name + '_' + pipeStage.name + ', ' + str(pipeCount) + ');\n'
+                bodyInits += 'this->' + reg.name + '_pipe.set_register(&' + reg.name + '_' + pipeStage.name + ', ' + str(pipeCount) + ');\n'
                 pipeCount += 1
             if reg.wbStageOrder:
                 # The atribute is of a special type since write back has to be performed in
@@ -586,7 +589,7 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
             if model.startswith('acc'):
                 abiIfInit += '_pipe'
             abiIfInit += ', '
-    bodyInits += '// Initialization of the register banks\n'
+    bodyInits += '// Initialize the register banks.\n'
     for regB in self.regBanks:
         if (regB.constValue and len(regB.constValue) < regB.numRegs)  or ((regB.delay and len(regB.delay) < regB.numRegs) and not model.startswith('acc')):
             attribute = cxx_writer.Attribute(regB.name, resourceType[regB.name], 'pu')
@@ -598,20 +601,20 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
                 attribute = cxx_writer.Attribute(regB.name + '_pipe[' + str(regB.numRegs) + ']',  pipeRegisterType, 'pu')
                 processorElements.append(attribute)
             # There are constant registers, so I have to declare the special register bank
-            bodyInits += 'this->' + regB.name + '.setSize(' + str(regB.numRegs) + ');\n'
+            bodyInits += 'this->' + regB.name + '.set_size(' + str(regB.numRegs) + ');\n'
             for i in range(0, regB.numRegs):
                 if regB.constValue.has_key(i) or regB.delay.has_key(i):
-                    bodyInits += 'this->' + regB.name + '.setNewRegister(' + str(i) + ', new ' + str(resourceType[regB.name + '[' + str(i) + ']']) + '());\n'
+                    bodyInits += 'this->' + regB.name + '.set_new_register(' + str(i) + ', new ' + str(resourceType[regB.name + '[' + str(i) + ']']) + '());\n'
                 else:
-                    bodyInits += 'this->' + regB.name + '.setNewRegister(' + str(i) + ', new ' + str(resourceType[regB.name + '_baseType']) + '());\n'
+                    bodyInits += 'this->' + regB.name + '.set_new_register(' + str(i) + ', new ' + str(resourceType[regB.name + '_baseType']) + '());\n'
             if model.startswith('acc'):
                 for pipeStage in self.pipes:
-                    bodyInits += 'this->' + regB.name + '_' + pipeStage.name + '.setSize(' + str(regB.numRegs) + ');\n'
+                    bodyInits += 'this->' + regB.name + '_' + pipeStage.name + '.set_size(' + str(regB.numRegs) + ');\n'
                     for i in range(0, regB.numRegs):
                         if regB.constValue.has_key(i):
-                            bodyInits += 'this->' + regB.name + '_' + pipeStage.name + '.setNewRegister(' + str(i) + ', new ' + str(resourceType[regB.name + '[' + str(i) + ']']) + '());\n'
+                            bodyInits += 'this->' + regB.name + '_' + pipeStage.name + '.set_new_register(' + str(i) + ', new ' + str(resourceType[regB.name + '[' + str(i) + ']']) + '());\n'
                         else:
-                            bodyInits += 'this->' + regB.name + '_' + pipeStage.name + '.setNewRegister(' + str(i) + ', new ' + str(resourceType[regB.name + '_baseType']) + '());\n'
+                            bodyInits += 'this->' + regB.name + '_' + pipeStage.name + '.set_new_register(' + str(i) + ', new ' + str(resourceType[regB.name + '_baseType']) + '());\n'
         else:
             attribute = cxx_writer.Attribute(regB.name + '[' + str(regB.numRegs) + ']', resourceType[regB.name].makeNormal(), 'pu')
             processorElements.append(attribute)
@@ -626,23 +629,23 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
             bodyInits += 'for (int i = 0; i < ' + str(regB.numRegs) + '; i++) {\n'
             pipeCount = 0
             for pipeStage in self.pipes:
-                bodyInits += 'this->' + regB.name + '_pipe[i].setRegister(&' + regB.name + '_' + pipeStage.name + '[i], ' + str(pipeCount) + ');\n'
+                bodyInits += 'this->' + regB.name + '_pipe[i].set_register(&' + regB.name + '_' + pipeStage.name + '[i], ' + str(pipeCount) + ');\n'
                 pipeCount += 1
-            bodyInits += 'this->' + regB.name + '_pipe[i].setRegister(&' + regB.name + '[i]);\n'
+            bodyInits += 'this->' + regB.name + '_pipe[i].set_register(&' + regB.name + '[i]);\n'
             bodyInits += '}\n'
         if self.abi:
             abiIfInit += 'this->' + regB.name
             if model.startswith('acc'):
                 abiIfInit += '_pipe'
             abiIfInit += ', '
-    bodyInits += '// Initialization of the aliases (plain and banks)\n'
+    bodyInits += '// Initialize the alias registers (plain and banks).\n'
     for alias in self.aliasRegs:
         if model.startswith('acc'):
             curPipeNum = 0
             for pipeStage in self.pipes:
                 attribute = cxx_writer.Attribute(alias.name + '_' + pipeStage.name, resourceType[alias.name], 'pu')
                 processorElements.append(attribute)
-                bodyInits += alias.name + '_' + pipeStage.name + '.setPipeId(' + str(curPipeNum) + ');\n'
+                bodyInits += alias.name + '_' + pipeStage.name + '.set_pipe_id(' + str(curPipeNum) + ');\n'
                 curPipeNum += 1
         else:
             attribute = cxx_writer.Attribute(alias.name, resourceType[alias.name], 'pu')
@@ -688,27 +691,27 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
             # we are dealing with a member of a register bank
             curIndex = index[0]
             if not model.startswith('acc'):
-                bodyAliasInit[alias.name] = 'this->' + alias.name + '.updateAlias(this->' + alias.initAlias[:alias.initAlias.find('[')] + '[' + str(curIndex) + ']'
+                bodyAliasInit[alias.name] = 'this->' + alias.name + '.update_alias(this->' + alias.initAlias[:alias.initAlias.find('[')] + '[' + str(curIndex) + ']'
                 bodyAliasInit[alias.name] += ', ' + str(alias.offset)
                 bodyAliasInit[alias.name] += ');\n'
             else:
                 bodyAliasInit[alias.name] = ''
                 for pipeStage in self.pipes:
                     if alias.initAlias[:alias.initAlias.find('[')] in regsNames:
-                        bodyAliasInit[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.updateAlias(this->' + alias.initAlias[:alias.initAlias.find('[')] + '_pipe[' + str(curIndex) + ']);\n'
+                        bodyAliasInit[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.update_alias(this->' + alias.initAlias[:alias.initAlias.find('[')] + '_pipe[' + str(curIndex) + ']);\n'
                     else:
-                        bodyAliasInit[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.updateAlias(this->' + alias.initAlias[:alias.initAlias.find('[')] + '_' + pipeStage.name + '[' + str(curIndex) + ']);\n'
+                        bodyAliasInit[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.update_alias(this->' + alias.initAlias[:alias.initAlias.find('[')] + '_' + pipeStage.name + '[' + str(curIndex) + ']);\n'
         else:
             if not model.startswith('acc'):
-                bodyAliasInit[alias.name] = 'this->' + alias.name + '.updateAlias(this->' + alias.initAlias
+                bodyAliasInit[alias.name] = 'this->' + alias.name + '.update_alias(this->' + alias.initAlias
                 bodyAliasInit[alias.name] += ', ' + str(alias.offset)
                 bodyAliasInit[alias.name] += ');\n'
             else:
                 for pipeStage in self.pipes:
                     if alias.initAlias in regsNames:
-                        bodyAliasInit[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.updateAlias(this->' + alias.initAlias + '_pipe);\n'
+                        bodyAliasInit[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.update_alias(this->' + alias.initAlias + '_pipe);\n'
                     else:
-                        bodyAliasInit[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.updateAlias(this->' + alias.initAlias + '_' + pipeStage.name + ');\n'
+                        bodyAliasInit[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.update_alias(this->' + alias.initAlias + '_' + pipeStage.name + ');\n'
         if self.abi:
             abiIfInit += 'this->' + alias.name
             if model.startswith('acc'):
@@ -722,7 +725,7 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
             for pipeStage in self.pipes:
                 attribute = cxx_writer.Attribute(aliasB.name + '_' + pipeStage.name + '[' + str(aliasB.numRegs) + ']', resourceType[aliasB.name], 'pu')
                 processorElements.append(attribute)
-                bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].setPipeId(' + str(curStageId) + ');\n'
+                bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].set_pipe_id(' + str(curStageId) + ');\n'
                 curStageId += 1
             bodyAliasInit[aliasB.name] += '}\n'
         else:
@@ -739,13 +742,13 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
                     if index[0] != 0:
                         offsetStr = ' + ' + str(index[0])
                     if aliasB.initAlias[:aliasB.initAlias.find('[')] in regsNames:
-                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].updateAlias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '_pipe[i' + offsetStr + ']);\n}\n'
+                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].update_alias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '_pipe[i' + offsetStr + ']);\n}\n'
                     else:
-                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].updateAlias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '_' + pipeStage.name + '[i' + offsetStr + ']);\n'
+                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].update_alias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '_' + pipeStage.name + '[i' + offsetStr + ']);\n'
                 bodyAliasInit[aliasB.name] += '}\n'
             else:
                 for i in range(0, aliasB.numRegs):
-                    bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '[' + str(i) + '].updateAlias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '[' + str(curIndex) + ']'
+                    bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '[' + str(i) + '].update_alias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '[' + str(curIndex) + ']'
                     if aliasB.offsets.has_key(i):
                         bodyAliasInit[aliasB.name] += ', ' + str(aliasB.offsets[i])
                     bodyAliasInit[aliasB.name] += ');\n'
@@ -765,16 +768,16 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
                         bodyAliasInit[aliasB.name] += 'for (int i = 0; i < ' + str(index[1] + 1 - index[0]) + '; i++) {\n'
                         for pipeStage in self.pipes:
                             if curAlias[:curAlias.find('[')] in regsNames:
-                                bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i' + indexStr + '].updateAlias(this->' + curAlias[:curAlias.find('[')] + '_pipe[i' + offsetStr + ']);\n'
+                                bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i' + indexStr + '].update_alias(this->' + curAlias[:curAlias.find('[')] + '_pipe[i' + offsetStr + ']);\n'
                             else:
-                                bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i' + indexStr + '].updateAlias(this->' + curAlias[:curAlias.find('[')] + '_' + pipeStage.name +'[i' + offsetStr + ']);\n'
+                                bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i' + indexStr + '].update_alias(this->' + curAlias[:curAlias.find('[')] + '_' + pipeStage.name +'[i' + offsetStr + ']);\n'
                         bodyAliasInit[aliasB.name] += '}\n'
                         curIndex += index[1] + 1 - index[0]
                     else:
                         if curAlias in regsNames:
-                            bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[' + str(curIndex) + '].updateAlias(this->' + curAlias + '_pipe);\n'
+                            bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[' + str(curIndex) + '].update_alias(this->' + curAlias + '_pipe);\n'
                         else:
-                            bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[' + str(curIndex) + '].updateAlias(this->' + curAlias + '_' + pipeStage.name + ');\n'
+                            bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[' + str(curIndex) + '].update_alias(this->' + curAlias + '_' + pipeStage.name + ');\n'
                         curIndex += 1
             else:
                 curIndex = 0
@@ -782,13 +785,13 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
                     index = extractRegInterval(curAlias)
                     if index:
                         for curRange in range(index[0], index[1] + 1):
-                            bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '[' + str(curIndex) + '].updateAlias(this->' + curAlias[:curAlias.find('[')] + '[' + str(curRange) + ']'
+                            bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '[' + str(curIndex) + '].update_alias(this->' + curAlias[:curAlias.find('[')] + '[' + str(curRange) + ']'
                             if aliasB.offsets.has_key(curIndex):
                                 bodyAliasInit[aliasB.name] += ', ' + str(aliasB.offsets[curIndex])
                             bodyAliasInit[aliasB.name] += ');\n'
                             curIndex += 1
                     else:
-                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '[' + str(curIndex) + '].updateAlias(this->' + curAlias
+                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '[' + str(curIndex) + '].update_alias(this->' + curAlias
                         if aliasB.offsets.has_key(curIndex):
                             bodyAliasInit[aliasB.name] += ', ' + str(aliasB.offsets[curIndex])
                         bodyAliasInit[aliasB.name] += ');\n'
@@ -835,7 +838,7 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
                     aliasGraph.add_edge('stop', alias)
     # now I have to check for loops, if there are then the alias assignment is not valid
     if not NX.is_directed_acyclic_graph(aliasGraph):
-        raise Exception('There is a circular dependency in the aliases initialization: a set of aliases depend on each other')
+        raise Exception('Detected circular dependence in alias initializations.')
     # I do a topological sort and take the elements in this ordes and I add them to the initialization;
     # note that the ones whose initialization depend on banks (either register or alias)
     # have to be postponned after the creation of the arrays
@@ -901,9 +904,9 @@ def createInstrInitCode(self, model, trace):
         baseInstrInitElement += tlmPorts + ', '
     for pinPort in self.pins:
         if not pinPort.inbound:
-            baseInstrInitElement += pinPort.name + ', '
+            baseInstrInitElement += pinPort.name + '_pin, '
     if trace and not self.systemc and not model.startswith('acc'):
-        baseInstrInitElement += 'totalCycles, '
+        baseInstrInitElement += 'total_cycles, '
     return baseInstrInitElement[:-2]
 
 def getCPPProc(self, model, trace, combinedTrace, namespace):
@@ -912,7 +915,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     includes = fetchWordType.getIncludes()
     if self.abi:
         interfaceType = cxx_writer.Type(self.name + '_ABIIf', '#include \"interface.hpp\"')
-    ToolsManagerType = cxx_writer.TemplateType('ToolsManager', [fetchWordType], 'ToolsIf.hpp')
+    ToolsManagerType = cxx_writer.TemplateType('ToolsManager', [fetchWordType], 'common/tools_if.hpp')
     IntructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
     CacheElemType = cxx_writer.Type('CacheElem')
     IntructionTypePtr = IntructionType.makePointer()
@@ -926,16 +929,16 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # An here I start declaring the real processor content
     if not model.startswith('acc'):
         if self.systemc:
-            codeString += 'bool startMet = false;\n'
+            codeString += 'bool start_met = false;\n'
         if self.instructionCache:
             # Declaration of the instruction buffer for speeding up decoding
-            codeString += 'template_map< ' + str(self.bitSizes[1]) + ', CacheElem >::iterator instrCacheEnd = this->instrCache.end();\n\n'
+            codeString += 'template_map<' + str(self.bitSizes[1]) + ', CacheElem >::iterator icache_end = this->instr_cache.end();\n\n'
 
         codeString += 'while(true) {\n'
-        codeString += 'unsigned int numCycles = 0;\n'
+        codeString += 'unsigned num_cycles = 0;\n'
 
         # Here is the code to notify start of the instruction execution
-        codeString += 'this->instrExecuting = true;\n'
+        codeString += 'this->inst_executing = true;\n'
 
         # Here is the code to deal with interrupts
         codeString += getInterruptCode(self, trace)
@@ -943,27 +946,27 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         fetchCode = computeFetchCode(self)
         # computes the address from which the next instruction shall be fetched
         fetchAddress = computeCurrentPC(self, model)
-        codeString += str(fetchWordType) + ' curPC = ' + fetchAddress + ';\n'
+        codeString += str(fetchWordType) + ' cur_PC = ' + fetchAddress + ';\n'
         # Lets insert the code to keep statistics
         if self.systemc:
-            codeString += """if (!startMet && curPC == this->profStartAddr) {
-                this->profTimeStart = sc_time_stamp();
+            codeString += """if (!start_met && cur_PC == this->profiler_start_addr) {
+                this->profiler_time_start = sc_time_stamp();
             }
-            if (startMet && curPC == this->profEndAddr) {
-                this->profTimeEnd = sc_time_stamp();
+            if (start_met && cur_PC == this->profiler_end_addr) {
+                this->profiler_time_end = sc_time_stamp();
             }
             """
         # Lets start with the code for the instruction queue
         codeString += """#ifdef ENABLE_HISTORY
-        HistoryInstrType instrQueueElem;
-        if (this->historyEnabled) {
+        HistoryInstrType instr_queue_elem;
+        if (this->history_en) {
         """
         if len(self.tlmPorts) > 0 and model.endswith('LT'):
-            codeString += 'instrQueueElem.cycle = (unsigned int)(this->quantKeeper.get_current_time()/this->latency);'
+            codeString += 'instr_queue_elem.cycle = (unsigned)(this->quant_keeper.get_current_time()/this->latency);'
         elif model.startswith('acc') or self.systemc or model.endswith('AT'):
-            codeString += 'instrQueueElem.cycle = (unsigned int)(sc_time_stamp()/this->latency);'
+            codeString += 'instr_queue_elem.cycle = (unsigned)(sc_time_stamp()/this->latency);'
         codeString += """
-            instrQueueElem.address = curPC;
+            instr_queue_elem.address = cur_PC;
         }
         #endif
         """
@@ -973,7 +976,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         if not (self.instructionCache and self.fastFetch):
             codeString += fetchCode
         if trace:
-            codeString += 'std::cerr << \"Current PC: \" << std::hex << std::showbase << curPC << std::endl;\n'
+            codeString += 'std::cerr << \"Current PC: \" << std::hex << std::showbase << cur_PC << \'.\' << std::endl;\n'
 
         # Finally I declare the fetch, decode, execute loop, where the instruction is actually executed;
         # Note the possibility of performing it with the instruction fetch
@@ -985,18 +988,18 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         # Lets finish with the code for the instruction queue: I just still have to
         # check if it is time to save to file the instruction queue
         codeString += """#ifdef ENABLE_HISTORY
-        if (this->historyEnabled) {
-            // First I add the new element to the queue
-            this->instHistoryQueue.push_back(instrQueueElem);
-            // Now, in case the queue dump file has been specified, I have to check if I need to save it
-            if (this->histFile) {
-                this->undumpedHistElems++;
-                if (undumpedHistElems == this->instHistoryQueue.capacity()) {
-                    boost::circular_buffer<HistoryInstrType>::const_iterator beg, end;
-                    for (beg = this->instHistoryQueue.begin(), end = this->instHistoryQueue.end(); beg != end; beg++) {
-                        this->histFile << beg->toStr() << std::endl;
+        if (this->history_en) {
+            // Add current instruction to history queue.
+            this->history_instr_queue.push_back(instr_queue_elem);
+            // In case a queue dump file has been specified, check if it needs to be saved.
+            if (this->history_file) {
+                this->history_undumped_elements++;
+                if (history_undumped_elements == this->history_instr_queue.capacity()) {
+                    boost::circular_buffer<HistoryInstrType>::const_iterator history_it, history_end;
+                    for (history_it = this->history_instr_queue.begin(), history_end = this->history_instr_queue.end(); history_it != history_end; history_it++) {
+                        this->history_file << history_it->get_mnemonic() << std::endl;
                     }
-                    this->undumpedHistElems = 0;
+                    this->history_undumped_elements = 0;
                 }
             }
         }
@@ -1006,30 +1009,30 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         if self.irqs:
             codeString += '}\n'
         if len(self.tlmPorts) > 0 and model.endswith('LT'):
-            codeString += 'this->quantKeeper.inc((numCycles + 1)*this->latency);\nif (this->quantKeeper.need_sync()) {\nthis->quantKeeper.sync();\n}\n'
+            codeString += 'this->quant_keeper.inc((num_cycles + 1)*this->latency);\nif (this->quant_keeper.need_sync()) {\nthis->quant_keeper.sync();\n}\n'
         elif model.startswith('acc') or self.systemc or model.endswith('AT'):
-            codeString += 'wait((numCycles + 1)*this->latency);\n'
+            codeString += 'wait((num_cycles + 1)*this->latency);\n'
         else:
-            codeString += 'this->totalCycles += (numCycles + 1);\n'
+            codeString += 'this->total_cycles += (num_cycles + 1);\n'
 
         # Here is the code to notify start of the instruction execution
-        codeString += 'this->instrExecuting = false;\n'
+        codeString += 'this->inst_executing = false;\n'
         if self.systemc:
-            codeString += 'this->instrEndEvent.notify();\n'
+            codeString += 'this->instr_end_event.notify();\n'
 
-        codeString += 'this->numInstructions++;\n\n'
+        codeString += 'this->num_instructions++;\n\n'
         # Now I have to call the update method for all the delayed registers
         for reg in self.regs:
             if reg.delay:
-                codeString += reg.name + '.clockCycle();\n'
+                codeString += reg.name + '.clock_cycle();\n'
         for reg in self.regBanks:
             for regNum in reg.delay.keys():
-                codeString += reg.name + '[' + str(regNum) + '].clockCycle();\n'
+                codeString += reg.name + '[' + str(regNum) + '].clock_cycle();\n'
         codeString += '}'
         mainLoopCode = cxx_writer.Code(codeString)
         mainLoopCode.addInclude(includes)
-        mainLoopCode.addInclude('utils/customExceptions.hpp')
-        mainLoopMethod = cxx_writer.Method('mainLoop', mainLoopCode, cxx_writer.voidType, 'pu')
+        mainLoopCode.addInclude('common/report.hpp')
+        mainLoopMethod = cxx_writer.Method('main_loop', mainLoopCode, cxx_writer.voidType, 'pu')
         processorElements.append(mainLoopMethod)
     ################################################
     # End declaration of the main processor loop
@@ -1041,29 +1044,29 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # Start declaration of begin, end, and reset operations (to be performed
     # at begin or end of simulation or to reset it)
     ##########################################################################
-    resetCalledAttribute = cxx_writer.Attribute('resetCalled', cxx_writer.boolType, 'pri')
+    resetCalledAttribute = cxx_writer.Attribute('reset_called', cxx_writer.boolType, 'pri')
     processorElements.append(resetCalledAttribute)
-    if self.beginOp:
-        beginOpMethod = cxx_writer.Method('beginOp', cxx_writer.Code(self.beginOp), cxx_writer.voidType, 'pri')
+    if self.startup:
+        beginOpMethod = cxx_writer.Method('startup', cxx_writer.Code(self.startup), cxx_writer.voidType, 'pri')
         processorElements.append(beginOpMethod)
-    if self.endOp:
-        endOpMethod = cxx_writer.Method('endOp', cxx_writer.Code(self.endOp), cxx_writer.voidType, 'pri')
+    if self.shutdown:
+        endOpMethod = cxx_writer.Method('shutdown', cxx_writer.Code(self.shutdown), cxx_writer.voidType, 'pri')
         processorElements.append(endOpMethod)
-    if not self.resetOp:
+    if not self.reset:
         resetOpTemp = cxx_writer.Code('')
     else:
         import copy
-        resetOpTemp = cxx_writer.Code(copy.deepcopy(self.resetOp))
+        resetOpTemp = cxx_writer.Code(copy.deepcopy(self.reset))
     initString = procInitCode(self, model)
     resetOpTemp.prependCode(initString + '\n')
-    if self.beginOp:
-        resetOpTemp.appendCode('// user-defined initialization\nthis->beginOp();\n')
-    resetOpTemp.appendCode('this->resetCalled = true;')
-    resetOpMethod = cxx_writer.Method('resetOp', resetOpTemp, cxx_writer.voidType, 'pu')
+    if self.startup:
+        resetOpTemp.appendCode('// User-defined initialization.\nthis->startup();\n')
+    resetOpTemp.appendCode('this->reset_called = true;')
+    resetOpMethod = cxx_writer.Method('reset', resetOpTemp, cxx_writer.voidType, 'pu')
     processorElements.append(resetOpMethod)
 
     # Now I declare the end of elaboration method, called by systemc just before starting the simulation
-    endElabCode = cxx_writer.Code('if (!this->resetCalled) {\nthis->resetOp();\n}\nthis->resetCalled = false;')
+    endElabCode = cxx_writer.Code('if (!this->reset_called) {\nthis->reset();\n}\nthis->reset_called = false;')
     endElabMethod = cxx_writer.Method('end_of_elaboration', endElabCode, cxx_writer.voidType, 'pu')
     processorElements.append(endElabMethod)
     ##########################################################################
@@ -1075,18 +1078,18 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # Method for external instruction decoding
     ##########################################################################
     if model.startswith('acc'):
-        decodeBody = 'int instrId = this->' + self.pipes[0].name + '_stage.decoder.decode(bitString);\n'
+        decodeBody = 'int instr_id = this->' + self.pipes[0].name + '_stage.decoder.decode(bitstring);\n'
     else:
-        decodeBody = 'int instrId = this->decoder.decode(bitString);\n'
-    decodeBody += """if (instrId >= 0) {
-                Instruction * instr = this->INSTRUCTIONS[instrId];
-                instr->setParams(bitString);
+        decodeBody = 'int instr_id = this->decoder.decode(bitstring);\n'
+    decodeBody += """if (instr_id >= 0) {
+                Instruction* instr = this->INSTRUCTIONS[instr_id];
+                instr->set_params(bitstring);
                 return instr;
             }
             return NULL;
     """
     decodeCode = cxx_writer.Code(decodeBody)
-    decodeParams = [cxx_writer.Parameter('bitString', fetchWordType)]
+    decodeParams = [cxx_writer.Parameter('bitstring', fetchWordType)]
     decodeMethod = cxx_writer.Method('decode', decodeCode, IntructionTypePtr, 'pu', decodeParams)
     processorElements.append(decodeMethod)
     if not model.startswith('acc'):
@@ -1098,12 +1101,12 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # from the outside world
     ####################################################################################
     if self.abi:
-        interfaceAttribute = cxx_writer.Attribute('abiIf', interfaceType.makePointer(), 'pu')
+        interfaceAttribute = cxx_writer.Attribute('ABIIf', interfaceType.makePointer(), 'pu')
         processorElements.append(interfaceAttribute)
-        interfaceMethodCode = cxx_writer.Code('return *this->abiIf;')
-        interfaceMethod = cxx_writer.Method('getInterface', interfaceMethodCode, interfaceType.makeRef(), 'pu')
+        interfaceMethodCode = cxx_writer.Code('return *this->ABIIf;')
+        interfaceMethod = cxx_writer.Method('get_interface', interfaceMethodCode, interfaceType.makeRef(), 'pu')
         processorElements.append(interfaceMethod)
-    toolManagerAttribute = cxx_writer.Attribute('toolManager', ToolsManagerType, 'pu')
+    toolManagerAttribute = cxx_writer.Attribute('tool_manager', ToolsManagerType, 'pu')
     processorElements.append(toolManagerAttribute)
 
     #############################################################################
@@ -1119,9 +1122,9 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     abiIfInit = ''
     if model.endswith('LT') and len(self.tlmPorts) > 0 and not model.startswith('acc'):
         quantumKeeperType = cxx_writer.Type('tlm_utils::tlm_quantumkeeper', 'tlm_utils/tlm_quantumkeeper.h')
-        quantumKeeperAttribute = cxx_writer.Attribute('quantKeeper', quantumKeeperType, 'pri')
+        quantumKeeperAttribute = cxx_writer.Attribute('quant_keeper', quantumKeeperType, 'pri')
         processorElements.append(quantumKeeperAttribute)
-        bodyInits += 'this->quantKeeper.set_global_quantum(this->latency*100);\nthis->quantKeeper.reset();\n'
+        bodyInits += 'this->quant_keeper.set_global_quantum(this->latency*100);\nthis->quant_keeper.reset();\n'
 
     # Lets now add the registers, the reg banks, the aliases, etc.
     (bodyInits, bodyDestructor, abiIfInit) = createRegsAttributes(self, model, processorElements, initElements, bodyAliasInit, aliasInit, bodyInits)
@@ -1131,7 +1134,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         attribute = cxx_writer.Attribute(self.memory[0], cxx_writer.Type('LocalMemory', '#include \"memory.hpp\"'), 'pu')
         initMemCode = self.memory[0] + '(' + str(self.memory[1])
         if self.memory[2] and not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
-            initMemCode += ', totalCycles'
+            initMemCode += ', total_cycles'
         for memAl in self.memAlias:
             initMemCode += ', ' + memAl.alias
         if self.memory[2] and self.memory[3]:
@@ -1145,7 +1148,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         attribute = cxx_writer.Attribute(tlmPortName, cxx_writer.Type('TLMMemory', '#include \"externalPorts.hpp\"'), 'pu')
         initPortCode = tlmPortName + '(\"' + tlmPortName + '\"'
         if self.systemc and model.endswith('LT') and not model.startswith('acc'):
-            initPortCode += ', this->quantKeeper'
+            initPortCode += ', this->quant_keeper'
         for memAl in self.memAlias:
             initPortCode += ', ' + memAl.alias
         initPortCode += ')'
@@ -1157,9 +1160,9 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         latencyAttribute = cxx_writer.Attribute('latency', cxx_writer.sc_timeType, 'pu')
         processorElements.append(latencyAttribute)
     else:
-        totCyclesAttribute = cxx_writer.Attribute('totalCycles', cxx_writer.uintType, 'pu')
+        totCyclesAttribute = cxx_writer.Attribute('total_cycles', cxx_writer.uintType, 'pu')
         processorElements.append(totCyclesAttribute)
-        bodyInits += 'this->totalCycles = 0;\n'
+        bodyInits += 'this->total_cycles = 0;\n'
 
     for par in self.parameters:
         attribute = cxx_writer.Attribute(par.name, par.type, 'pri')
@@ -1168,39 +1171,39 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # Some variables for profiling: they enable measuring the number of cycles spent among two program portions
     # (they actually count SystemC time and then divide it by the processor frequency)
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
-        profilingTimeStartAttribute = cxx_writer.Attribute('profTimeStart', cxx_writer.sc_timeType, 'pu')
+        profilingTimeStartAttribute = cxx_writer.Attribute('profiler_time_start', cxx_writer.sc_timeType, 'pu')
         processorElements.append(profilingTimeStartAttribute)
-        bodyInits += 'this->profTimeStart = SC_ZERO_TIME;\n'
-        profilingTimeEndAttribute = cxx_writer.Attribute('profTimeEnd', cxx_writer.sc_timeType, 'pu')
+        bodyInits += 'this->profiler_time_start = SC_ZERO_TIME;\n'
+        profilingTimeEndAttribute = cxx_writer.Attribute('profiler_time_end', cxx_writer.sc_timeType, 'pu')
         processorElements.append(profilingTimeEndAttribute)
-        bodyInits += 'this->profTimeEnd = SC_ZERO_TIME;\n'
+        bodyInits += 'this->profiler_time_end = SC_ZERO_TIME;\n'
     if self.systemc and model.startswith('func'):
-        profilingAddrStartAttribute = cxx_writer.Attribute('profStartAddr', fetchWordType, 'pri')
+        profilingAddrStartAttribute = cxx_writer.Attribute('profiler_start_addr', fetchWordType, 'pri')
         processorElements.append(profilingAddrStartAttribute)
-        bodyInits += 'this->profStartAddr = (' + str(fetchWordType) + ')-1;\n'
-        profilingAddrEndAttribute = cxx_writer.Attribute('profEndAddr', fetchWordType, 'pri')
-        bodyInits += 'this->profEndAddr = (' + str(fetchWordType) + ')-1;\n'
+        bodyInits += 'this->profiler_start_addr = (' + str(fetchWordType) + ')-1;\n'
+        profilingAddrEndAttribute = cxx_writer.Attribute('profiler_end_addr', fetchWordType, 'pri')
+        bodyInits += 'this->profiler_end_addr = (' + str(fetchWordType) + ')-1;\n'
         processorElements.append(profilingAddrEndAttribute)
 
     # Here are the variables used to manage the instruction history queue
     if model.startswith('func'):
-        instrQueueFileAttribute = cxx_writer.Attribute('histFile', cxx_writer.ofstreamType, 'pri')
+        instrQueueFileAttribute = cxx_writer.Attribute('history_file', cxx_writer.ofstreamType, 'pri')
         processorElements.append(instrQueueFileAttribute)
-        historyEnabledAttribute = cxx_writer.Attribute('historyEnabled', cxx_writer.boolType, 'pri')
+        historyEnabledAttribute = cxx_writer.Attribute('history_en', cxx_writer.boolType, 'pri')
         processorElements.append(historyEnabledAttribute)
-        bodyInits += 'this->historyEnabled = false;\n'
-        instrHistType = cxx_writer.Type('HistoryInstrType', 'instructionBase.hpp')
+        bodyInits += 'this->history_en = false;\n'
+        instrHistType = cxx_writer.Type('HistoryInstrType', 'modules/instruction.hpp')
         histQueueType = cxx_writer.TemplateType('boost::circular_buffer', [instrHistType], 'boost/circular_buffer.hpp')
-        instHistoryQueueAttribute = cxx_writer.Attribute('instHistoryQueue', histQueueType, 'pu')
+        instHistoryQueueAttribute = cxx_writer.Attribute('history_instr_queue', histQueueType, 'pu')
         processorElements.append(instHistoryQueueAttribute)
-        bodyInits += 'this->instHistoryQueue.set_capacity(1000);\n'
-        undumpedHistElemsAttribute = cxx_writer.Attribute('undumpedHistElems', cxx_writer.uintType, 'pu')
+        bodyInits += 'this->history_instr_queue.set_capacity(1000);\n'
+        undumpedHistElemsAttribute = cxx_writer.Attribute('history_undumped_elements', cxx_writer.uintType, 'pu')
         processorElements.append(undumpedHistElemsAttribute)
-        bodyInits += 'this->undumpedHistElems = 0;\n'
+        bodyInits += 'this->history_undumped_elements = 0;\n'
 
-    numInstructions = cxx_writer.Attribute('numInstructions', cxx_writer.uintType, 'pu')
-    processorElements.append(numInstructions)
-    bodyInits += 'this->numInstructions = 0;\n'
+    num_instructions = cxx_writer.Attribute('num_instructions', cxx_writer.uintType, 'pu')
+    processorElements.append(num_instructions)
+    bodyInits += 'this->num_instructions = 0;\n'
     # Now I have to declare some special constants used to keep track of the loaded executable file
     entryPointAttr = cxx_writer.Attribute('ENTRY_POINT', fetchWordType, 'pu')
     processorElements.append(entryPointAttr)
@@ -1217,89 +1220,88 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     processorElements.append(progStarttAttr)
     bodyInits += 'this->PROGRAM_START = 0;\n'
     # Here are the variables used to keep track of the end of each instruction execution
-    attribute = cxx_writer.Attribute('instrExecuting', cxx_writer.boolType, 'pri')
+    attribute = cxx_writer.Attribute('inst_executing', cxx_writer.boolType, 'pri')
     processorElements.append(attribute)
     if self.abi:
-        abiIfInit += ', this->instrExecuting'
+        abiIfInit += ', this->inst_executing'
     if self.systemc:
-        attribute = cxx_writer.Attribute('instrEndEvent', cxx_writer.sc_eventType, 'pri')
+        attribute = cxx_writer.Attribute('instr_end_event', cxx_writer.sc_eventType, 'pri')
         processorElements.append(attribute)
         if self.abi:
-            abiIfInit += ', this->instrEndEvent'
+            abiIfInit += ', this->instr_end_event'
     if model.startswith('func'):
-        abiIfInit += ', this->instHistoryQueue'
+        abiIfInit += ', this->history_instr_queue'
     else:
-        abiIfInit += ', this->' + self.pipes[0].name + '_stage.instHistoryQueue'
+        abiIfInit += ', this->' + self.pipes[0].name + '_stage.history_instr_queue'
     if self.abi:
-        bodyInits += 'this->abiIf = new ' + str(interfaceType) + '(' + abiIfInit + ');\n'
+        bodyInits += 'this->ABIIf = new ' + str(interfaceType) + '(' + abiIfInit + ');\n'
 
     instructionsAttribute = cxx_writer.Attribute('INSTRUCTIONS',
                             IntructionTypePtr.makePointer(), 'pri')
     processorElements.append(instructionsAttribute)
     if self.instructionCache:
-        cacheAttribute = cxx_writer.Attribute('instrCache',
+        cacheAttribute = cxx_writer.Attribute('instr_cache',
                         cxx_writer.TemplateType('template_map',
                             [fetchWordType, CacheElemType], hash_map_include), 'pri')
         processorElements.append(cacheAttribute)
-    numProcAttribute = cxx_writer.Attribute('numInstances',
+    numProcAttribute = cxx_writer.Attribute('num_instances',
                             cxx_writer.intType, 'pri', True, '0')
     processorElements.append(numProcAttribute)
 
     # Iterrupt ports
     for irqPort in self.irqs:
         if irqPort.tlm:
-            irqPortType = cxx_writer.Type('IntrTLMPort_' + str(irqPort.portWidth), '#include \"irqPorts.hpp\"')
+            irqPortType = cxx_writer.Type('TLMIntrPort_' + str(irqPort.portWidth), '#include \"irqPorts.hpp\"')
         else:
-            irqPortType = cxx_writer.Type('IntrSysCPort_' + str(irqPort.portWidth), '#include \"irqPorts.hpp\"')
+            irqPortType = cxx_writer.Type('SCIntrPort_' + str(irqPort.portWidth), '#include \"irqPorts.hpp\"')
         from isa import resolveBitType
         irqWidthType = resolveBitType('BIT<' + str(irqPort.portWidth) + '>')
         irqSignalAttr = cxx_writer.Attribute(irqPort.name, irqWidthType, 'pri')
         irqPortAttr = cxx_writer.Attribute(irqPort.name + '_port', irqPortType, 'pu')
         processorElements.append(irqSignalAttr)
         processorElements.append(irqPortAttr)
-        initElements.append(irqPort.name + '_port(\"' + irqPort.name + '_IRQ\", ' + irqPort.name + ')')
+        initElements.append(irqPort.name + '_port(\"' + irqPort.name + '_port\", ' + irqPort.name + ')')
     # Generic PIN ports
     for pinPort in self.pins:
-        pinPortName = 'Pin'
         if pinPort.systemc:
-            pinPortName += 'SysC_'
+            pinPortTypeName = 'SC'
         else:
-            pinPortName += 'TLM_'
+            pinPortTypeName = 'TLM'
         if pinPort.inbound:
-            pinPortName += 'in_'
+            pinPortTypeName += 'InPin_'
         else:
-            pinPortName += 'out_'
-        pinPortType = cxx_writer.Type(pinPortName + str(pinPort.portWidth), '#include \"externalPins.hpp\"')
-        pinPortAttr = cxx_writer.Attribute(pinPort.name, pinPortType, 'pu')
+            pinPortTypeName += 'OutPin_'
+        pinPortType = cxx_writer.Type(pinPortTypeName + str(pinPort.portWidth), '#include \"externalPins.hpp\"')
+        pinPortAttr = cxx_writer.Attribute(pinPort.name + '_pin', pinPortType, 'pu')
         processorElements.append(pinPortAttr)
-        initElements.append(pinPort.name + '(\"' + pinPort.name + '_PIN\")')
+        initElements.append(pinPort.name + '_pin(\"' + pinPort.name + '_pin\")')
 
     ####################################################################
     # Method for initializing the profiling start and end addresses
     ####################################################################
     if self.systemc and model.startswith('func'):
-        setProfilingRangeCode = cxx_writer.Code('this->profStartAddr = startAddr;\nthis->profEndAddr = endAddr;')
-        parameters = [cxx_writer.Parameter('startAddr', fetchWordType), cxx_writer.Parameter('endAddr', fetchWordType)]
-        setProfilingRangeFunction = cxx_writer.Method('setProfilingRange', setProfilingRangeCode, cxx_writer.voidType, 'pu', parameters)
+        setProfilingRangeCode = cxx_writer.Code('this->profiler_start_addr = start_addr;\nthis->profiler_end_addr = end_addr;')
+        parameters = [cxx_writer.Parameter('start_addr', fetchWordType), cxx_writer.Parameter('end_addr', fetchWordType)]
+        setProfilingRangeFunction = cxx_writer.Method('set_profiling_range', setProfilingRangeCode, cxx_writer.voidType, 'pu', parameters)
         processorElements.append(setProfilingRangeFunction)
     elif model.startswith('acc'):
-        setProfilingRangeCode = cxx_writer.Code('this->' + self.pipes[0].name + '_stage.profStartAddr = startAddr;\nthis->' + self.pipes[0].name + '_stage.profEndAddr = endAddr;')
-        parameters = [cxx_writer.Parameter('startAddr', fetchWordType), cxx_writer.Parameter('endAddr', fetchWordType)]
-        setProfilingRangeFunction = cxx_writer.Method('setProfilingRange', setProfilingRangeCode, cxx_writer.voidType, 'pu', parameters)
+        setProfilingRangeCode = cxx_writer.Code('this->' + self.pipes[0].name + '_stage.profiler_start_addr = start_addr;\nthis->' + self.pipes[0].name + '_stage.profiler_end_addr = end_addr;')
+        parameters = [cxx_writer.Parameter('start_addr', fetchWordType), cxx_writer.Parameter('end_addr', fetchWordType)]
+        setProfilingRangeFunction = cxx_writer.Method('set_profiling_range', setProfilingRangeCode, cxx_writer.voidType, 'pu', parameters)
         processorElements.append(setProfilingRangeFunction)
 
     ####################################################################
     # Method for initializing history management
     ####################################################################
     if model.startswith('acc'):
-        enableHistoryCode = cxx_writer.Code('this->' + self.pipes[0].name + '_stage.historyEnabled = true;\nthis->' + self.pipes[0].name + '_stage.histFile.open(fileName.c_str(), ios::out | ios::ate);')
-        parameters = [cxx_writer.Parameter('fileName', cxx_writer.stringType, initValue = '""')]
-        enableHistoryMethod = cxx_writer.Method('enableHistory', enableHistoryCode, cxx_writer.voidType, 'pu', parameters)
+        enableHistoryCode = cxx_writer.Code('this->' + self.pipes[0].name + '_stage.history_en = true;\nthis->' + self.pipes[0].name + '_stage.history_file.open(file_name.c_str(), ios::out | ios::ate);')
+        parameters = [cxx_writer.Parameter('file_name', cxx_writer.stringType, initValue = '""')]
+        enableHistoryMethod = cxx_writer.Method('enable_history', enableHistoryCode, cxx_writer.voidType, 'pu', parameters)
         processorElements.append(enableHistoryMethod)
     else:
-        enableHistoryCode = cxx_writer.Code('this->historyEnabled = true;\nthis->histFile.open(fileName.c_str(), ios::out | ios::ate);')
-        parameters = [cxx_writer.Parameter('fileName', cxx_writer.stringType, initValue = '""')]
-        enableHistoryMethod = cxx_writer.Method('enableHistory', enableHistoryCode, cxx_writer.voidType, 'pu', parameters)
+        enableHistoryCode = cxx_writer.Code('this->history_en = true;\nthis->history_file.open(file_name.c_str(), ios::out | ios::ate);')
+        parameters = [cxx_writer.Parameter('file_name', cxx_writer.stringType, initValue = '""')]
+        enableHistoryMethod = cxx_writer.Method('enable_history', enableHistoryCode, cxx_writer.voidType, 'pu', parameters)
         processorElements.append(enableHistoryMethod)
 
     ####################################################################
@@ -1312,8 +1314,8 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
 
     # Lets declare the interrupt instructions in case we have any
     for irq in self.irqs:
-        IRQIntructionType = cxx_writer.Type('IRQ_' + irq.name + '_Instruction', '#include \"instructions.hpp\"')
-        IRQinstructionAttribute = cxx_writer.Attribute(irq.name + '_irqInstr', IRQIntructionType.makePointer(), 'pu')
+        IRQIntructionType = cxx_writer.Type(irq.name + 'IntrInstruction', '#include \"instructions.hpp\"')
+        IRQinstructionAttribute = cxx_writer.Attribute(irq.name + '_instr', IRQIntructionType.makePointer(), 'pu')
         processorElements.append(IRQinstructionAttribute)
 
     ########################################################################
@@ -1324,29 +1326,29 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     global baseInstrInitElement
     baseInstrInitElement = createInstrInitCode(self, model, trace)
 
-    constrCode = 'this->resetCalled = false;\n' + processor_name + '::numInstances++;\n'
-    constrCode += '// Initialization of the array holding the initial instance of the instructions\n'
+    constrCode = 'this->reset_called = false;\n' + processor_name + '::num_instances++;\n'
+    constrCode += '// Initialize the array containing the initial instance of the instructions.\n'
     maxInstrId = max([instr.id for instr in self.isa.instructions.values()]) + 1
-    constrCode += 'this->INSTRUCTIONS = new Instruction *[' + str(maxInstrId + 1) + '];\n'
+    constrCode += 'this->INSTRUCTIONS = new Instruction*[' + str(maxInstrId + 1) + '];\n'
     for name, instr in self.isa.instructions.items():
         constrCode += 'this->INSTRUCTIONS[' + str(instr.id) + '] = new ' + name + '(' + baseInstrInitElement +');\n'
     constrCode += 'this->INSTRUCTIONS[' + str(maxInstrId) + '] = new InvalidInstr(' + baseInstrInitElement + ');\n'
     if model.startswith('acc'):
-        constrCode += 'if (' + processor_name + '::numInstances == 1) {\n'
-        constrCode += processor_name + '::NOPInstrInstance = new NOPInstruction(' + baseInstrInitElement + ');\n'
+        constrCode += 'if (' + processor_name + '::num_instances == 1) {\n'
+        constrCode += processor_name + '::NOP_instr = new NOPInstruction(' + baseInstrInitElement + ');\n'
         for pipeStage in self.pipes:
-            constrCode += pipeStage.name + '_stage.NOPInstrInstance = ' + processor_name + '::NOPInstrInstance;\n'
+            constrCode += pipeStage.name + '_stage.NOP_instr = ' + processor_name + '::NOP_instr;\n'
         constrCode += '}\n'
     for irq in self.irqs:
-        constrCode += 'this->' + irq.name + '_irqInstr = new IRQ_' + irq.name + '_Instruction(' + baseInstrInitElement + ', this->' + irq.name + ');\n'
+        constrCode += 'this->' + irq.name + '_instr = new ' + irq.name + 'IntrInstruction(' + baseInstrInitElement + ', this->' + irq.name + ');\n'
         if model.startswith('acc'):
             for pipeStage in self.pipes:
-                constrCode += 'this->' + pipeStage.name + '_stage.' + irq.name + '_irqInstr = this->' + irq.name + '_irqInstr;\n'
+                constrCode += 'this->' + pipeStage.name + '_stage.' + irq.name + '_instr = this->' + irq.name + '_instr;\n'
     constrCode += bodyInits
     if not model.startswith('acc'):
-        constrCode += 'SC_THREAD(mainLoop);\n'
+        constrCode += 'SC_THREAD(main_loop);\n'
     if not self.systemc and not model.startswith('acc'):
-        constrCode += 'this->totalCycles = 0;\n'
+        constrCode += 'this->total_cycles = 0;\n'
     constrCode += 'end_module();'
     constructorBody = cxx_writer.Code(constrCode)
     constructorParams = [cxx_writer.Parameter('name', cxx_writer.sc_module_nameType)]
@@ -1361,46 +1363,46 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         constructorParams.append(par)
 
     publicConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams, constructorInit + initElements)
-    destrCode = processor_name + """::numInstances--;
+    destrCode = processor_name + """::num_instances--;
     for (int i = 0; i < """ + str(maxInstrId + 1) + """; i++) {
         delete this->INSTRUCTIONS[i];
     }
     delete [] this->INSTRUCTIONS;
     """
     if model.startswith('acc'):
-        destrCode += 'if (' + processor_name + '::numInstances == 0) {\n'
-        destrCode += 'delete ' + processor_name + '::NOPInstrInstance;\n'
+        destrCode += 'if (' + processor_name + '::num_instances == 0) {\n'
+        destrCode += 'delete ' + processor_name + '::NOP_instr;\n'
         destrCode += '}\n'
     if self.instructionCache and not model.startswith('acc'):
-        destrCode += """template_map< """ + str(fetchWordType) + """, CacheElem >::const_iterator cacheIter, cacheEnd;
-        for (cacheIter = this->instrCache.begin(), cacheEnd = this->instrCache.end(); cacheIter != cacheEnd; cacheIter++) {
-            delete cacheIter->second.instr;
+        destrCode += """template_map<""" + str(fetchWordType) + """, CacheElem>::const_iterator cache_it, cache_end;
+        for (cache_it = this->instr_cache.begin(), cache_end = this->instr_cache.end(); cache_it != cache_end; cache_it++) {
+            delete cache_it->second.instr;
         }
         """
     if self.abi:
-        destrCode += 'delete this->abiIf;\n'
+        destrCode += 'delete this->ABIIf;\n'
     for irq in self.irqs:
-        destrCode += 'delete this->' + irq.name + '_irqInstr;\n'
+        destrCode += 'delete this->' + irq.name + '_instr;\n'
     # Now, before the processor elements is destructed I have to make sure that the history dump file is correctly closed
     if model.startswith('func'):
         destrCode += """#ifdef ENABLE_HISTORY
-        if (this->historyEnabled) {
-            // Now, in case the queue dump file has been specified, I have to check if I need to save the yet undumped elements
-            if (this->histFile) {
-                if (this->undumpedHistElems > 0) {
-                    std::vector<std::string> histVec;
-                    boost::circular_buffer<HistoryInstrType>::const_reverse_iterator beg, end;
-                    unsigned int histRead = 0;
-                    for (histRead = 0, beg = this->instHistoryQueue.rbegin(), end = this->instHistoryQueue.rend(); beg != end && histRead < this->undumpedHistElems; beg++, histRead++) {
-                        histVec.push_back(beg->toStr());
+        if (this->history_en) {
+            // In case a queue dump file has been specified, check if it needs to be saved.
+            if (this->history_file) {
+                if (this->history_undumped_elements > 0) {
+                    std::vector<std::string> history_vector;
+                    boost::circular_buffer<HistoryInstrType>::const_reverse_iterator history_it, history_end;
+                    unsigned history_read = 0;
+                    for (history_read = 0, history_it = this->history_instr_queue.rbegin(), history_end = this->history_instr_queue.rend(); history_it != history_end && history_read < this->history_undumped_elements; history_it++, history_read++) {
+                        history_vector.push_back(history_it->get_mnemonic());
                     }
-                    std::vector<std::string>::const_reverse_iterator histVecBeg, histVecEnd;
-                    for (histVecBeg = histVec.rbegin(), histVecEnd = histVec.rend(); histVecBeg != histVecEnd; histVecBeg++) {
-                        this->histFile <<  *histVecBeg << std::endl;
+                    std::vector<std::string>::const_reverse_iterator history_vector_it, history_vector_end;
+                    for (history_vector_it = history_vector.rbegin(), history_vector_end = history_vector.rend(); history_vector_it != history_vector_end; history_vector_it++) {
+                        this->history_file <<  *history_vector_it << std::endl;
                     }
                 }
-                this->histFile.flush();
-                this->histFile.close();
+                this->history_file.flush();
+                this->history_file.close();
             }
         }
         #endif
@@ -1495,33 +1497,33 @@ def getMainCode(self, model, namespace):
     try {
         boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
     }
-    catch(boost::program_options::invalid_command_line_syntax &e) {
-        std::cerr << "ERROR in parsing the command line parametrs" << std::endl << std::endl;
+    catch(boost::program_options::invalid_command_line_syntax& e) {
+        std::cerr << "Cannot parse command line parameters." << std::endl << std::endl;
         std::cerr << e.what() << std::endl << std::endl;
         std::cerr << desc << std::endl;
         return -1;
     }
-    catch(boost::program_options::validation_error &e) {
-        std::cerr << "ERROR in parsing the command line parametrs" << std::endl << std::endl;
+    catch(boost::program_options::validation_error& e) {
+        std::cerr << "Cannot parse command line parameters." << std::endl << std::endl;
         std::cerr << e.what() << std::endl << std::endl;
         std::cerr << desc << std::endl;
         return -1;
     }
-    catch(boost::program_options::error &e) {
-        std::cerr << "ERROR in parsing the command line parametrs" << std::endl << std::endl;
+    catch(boost::program_options::error& e) {
+        std::cerr << "Cannot parse command line parameters." << std::endl << std::endl;
         std::cerr << e.what() << std::endl << std::endl;
         std::cerr << desc << std::endl;
         return -1;
     }
     boost::program_options::notify(vm);
 
-    // Checking that the parameters are correctly specified
+    // Check that the parameters are specified correctly.
     if (vm.count("help") != 0) {
         std::cout << desc << std::endl;
         return 0;
     }
     if (vm.count("application") == 0) {
-        std::cerr << "It is necessary to specify the application which has to be simulated" << " using the --application command line option" << std::endl << std::endl;
+        std::cerr << "Use the --application command line option to specify the application to be simulated." << std::endl << std::endl;
         std::cerr << desc << std::endl;
         return -1;
     }
@@ -1531,18 +1533,18 @@ def getMainCode(self, model, namespace):
         if (vm.count("frequency") != 0) {
             latency = 1/(vm["frequency"].as<double>());
         }
-        // Now we can procede with the actual instantiation of the processor
-        """ + processor_name + """ procInst(\"""" + self.name + """\", sc_time(latency, SC_US));
+        // Proceed with the actual instantiation of the processor.
+        """ + processor_name + """ processor(\"""" + self.name + """\", sc_time(latency, SC_US));
         """
     else:
         code += """
-        // Now we can procede with the actual instantiation of the processor
-        """ + processor_name + """ procInst(\"""" + self.name + """\");
+        // Proceed with the actual instantiation of the processor.
+        """ + processor_name + """ processor(\"""" + self.name + """\");
         """
     instrMemName = ''
     instrDissassName = ''
     if len(self.tlmPorts) > 0:
-        code += """// Here we instantiate the memory and connect it with the processor"""
+        code += """// Instantiate the memory and connect it to the processor."""
         if self.tlmFakeMemProperties and self.tlmFakeMemProperties[2]:
             code += 'SparseMemory'
         else:
@@ -1559,95 +1561,92 @@ def getMainCode(self, model, namespace):
             """
         numPort = 0
         for tlmPortName, fetch in self.tlmPorts.items():
-            code += 'procInst.' + tlmPortName + '.initSocket.bind(*(mem.socket[' + str(numPort) + ']));\n'
+            code += 'processor.' + tlmPortName + '.init_socket.bind(*(mem.target_socket[' + str(numPort) + ']));\n'
             numPort += 1
             if fetch:
                 instrMemName = 'mem'
-                instrDissassName = 'procInst.' + tlmPortName
+                instrDissassName = 'processor.' + tlmPortName
     if instrMemName == '' and self.memory:
-        instrMemName = 'procInst.' + self.memory[0]
+        instrMemName = 'processor.' + self.memory[0]
         instrDissassName = instrMemName
 
     code += """
     std::cout << std::endl << "Loading the application and initializing the tools ..." << std::endl;
-    // And with the loading of the executable code
-    boost::filesystem::path applicationPath = boost::filesystem::system_complete(boost::filesystem::path(vm["application"].as<std::string>()));
-    if (!boost::filesystem::exists(applicationPath)) {
-        std::cerr << "ERROR: specified application " << vm["application"].as<std::string>() << " does not exist" << std::endl;
+    // Load the executable code.
+    boost::filesystem::path application_path = boost::filesystem::system_complete(boost::filesystem::path(vm["application"].as<std::string>()));
+    if (!boost::filesystem::exists(application_path)) {
+        std::cerr << "Application " << vm["application"].as<std::string>() << " does not exist." << std::endl;
         return -1;
     }
     ExecLoader loader(vm["application"].as<std::string>());
-    // Lets copy the binary code into memory
-    unsigned char * programData = loader.getProgData();
-    unsigned int programDim = loader.getProgDim();
-    unsigned int progDataStart = loader.getDataStart();
-    for (unsigned int i = 0; i < programDim; i++) {
-        """ + instrMemName + """.write_byte_dbg(progDataStart + i, programData[i]);
+    // Copy the binary code into memory.
+    unsigned char* program_data = loader.get_program_data();
+    unsigned program_dim = loader.get_program_dim();
+    unsigned program_data_start = loader.get_data_start();
+    for (unsigned i = 0; i < program_dim; i++) {
+        """ + instrMemName + """.write_byte_dbg(program_data_start + i, program_data[i]);
     }
     if (vm.count("disassembler") != 0) {
-        std:cout << "Entry Point: " << std::hex << std::showbase << loader.getProgStart() << std::endl << std::endl;
-        for (unsigned int i = 0; i < programDim; i+= """ + str(self.wordSize) + """) {
-            Instruction * curInstr = procInst.decode(""" + instrDissassName + """.read_word_dbg(loader.getDataStart() + i));
-            std::cout << std::hex << std::noshowbase << std::setw(8) << std::setfill(' ') << progDataStart + i << ":   " << std::setw(8) << std::setfill('0') << """ + instrDissassName + """.read_word_dbg(progDataStart + i);
-            if (curInstr != NULL) {
-                 std::cout << "    " << curInstr->getMnemonic();
+        std::cout << "Entry Point: " << std::hex << std::showbase << loader.get_program_start() << std::endl << std::endl;
+        for (unsigned i = 0; i < program_dim; i+= """ + str(self.wordSize) + """) {
+            Instruction* cur_instr = processor.decode(""" + instrDissassName + """.read_word_dbg(loader.get_data_start() + i));
+            std::cout << std::hex << std::noshowbase << std::setw(8) << std::setfill(' ') << program_data_start + i << ":   " << std::setw(8) << std::setfill('0') << """ + instrDissassName + """.read_word_dbg(program_data_start + i);
+            if (cur_instr != NULL) {
+                 std::cout << "    " << cur_instr->get_mnemonic();
             }
             std::cout << std::endl;
         }
         return 0;
     }
 
-    // Finally I can set the processor variables
-    procInst.ENTRY_POINT = loader.getProgStart();
-    procInst.PROGRAM_LIMIT = programDim + progDataStart;
-    procInst.PROGRAM_START = progDataStart;
+    // Set the processor variables.
+    processor.ENTRY_POINT = loader.get_program_start();
+    processor.PROGRAM_LIMIT = program_dim + program_data_start;
+    processor.PROGRAM_START = program_data_start;
     """
 
     for irq in self.irqs:
-      code += 'initiator_' + str(irq.portWidth) + ' ' + irq.name.lower() + '_initiator(\"' + irq.name.lower() + '_initiator\");\n' + irq.name.lower() + '_initiator.init_socket.bind(procInst.' + irq.name.upper() + '_port.socket);\n'
+      code += 'TLMIntrInitiator_' + str(irq.portWidth) + ' ' + irq.name + '_initiator(\"' + irq.name + '_initiator\");\n' + irq.name + '_initiator.init_socket.bind(processor.' + irq.name + '_port.target_socket);\n'
 
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
-        code += """// Now I check if the count of the cycles among two locations (addresses or symbols) is required
-        std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decodedRange((""" + str(wordType) + """)-1, (""" + str(wordType) + """)-1);
+        code += """// Check if counting the cycles between two locations (addresses or symbols) is required.
+        std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decoded_range((""" + str(wordType) + """)-1, (""" + str(wordType) + """)-1);
         if (vm.count("cycles_range") != 0) {
-            // Now, the range is in the form start-end, where start and end can be both integer numbers
-            // (both normal and hex) or symbols of the binary file
+            // The range is in the form start-end, where start and end can be both integers (both normal and hex) or symbols of the binary file.
             std::string cycles_range = vm["cycles_range"].as<std::string>();
-            decodedRange = getCycleRange(cycles_range, vm["application"].as<std::string>());
-            // Finally now I can initialize the processor with the given address range values
-            procInst.setProfilingRange(decodedRange.first, decodedRange.second);
+            decoded_range = get_cycle_range(cycles_range, vm["application"].as<std::string>());
+            // Initialize the processor with the given address range values.
+            processor.set_profiling_range(decoded_range.first, decoded_range.second);
         }
         """
     code += """
-    // Initialization of the instruction history management; note that I need to enable both if the debugger is being used
-    // and/or if history needs to be dumped on an output file
+    // Initialize the instruction history management. Note that both need to be enabled if the debugger is being used and/or if history needs to be dumped to an output file.
     if (vm.count("debugger") > 0) {
-        procInst.enableHistory();
+        processor.enable_history();
     }
     if (vm.count("history") > 0) {
         #ifndef ENABLE_HISTORY
-        std::cout << std::endl << "Unable to initialize instruction history as it has " << "been disabled at compilation time" << std::endl << std::endl;
+        std::cout << std::endl << "Unable to initialize instruction history as it has " << "been disabled at compilation time." << std::endl << std::endl;
         #endif
-        procInst.enableHistory(vm["history"].as<std::string>());
+        processor.enable_history(vm["history"].as<std::string>());
     }
     """
     if self.abi:
         code += """
-        // Now I initialize the tools (i.e. debugger, os emulator, ...)
+        // Initialize the tools (e.g. debugger, os emulator, etc).
         """
         #if model.startswith('acc'):
-            #code += 'OSEmulatorCA< ' + str(wordType) + ', -' + str(execOffset*self.wordSize) + ' > osEmu(*(procInst.abiIf), Processor::NOPInstrInstance, ' + str(self.abi.emulOffset) + ');\n'
+            #code += 'OSEmulatorCA<' + str(wordType) + ', -' + str(execOffset*self.wordSize) + '> os_emulator(processor.ABIIf, Processor::NOP_instr, ' + str(self.abi.emulOffset) + ');\n'
         #else:
-        code += 'OSEmulator< ' + str(wordType) + '> osEmu(*(procInst.abiIf));\n'
-        code += """GDBStub< """ + str(wordType) + """ > gdbStub(*(procInst.abiIf));
-        Profiler< """ + str(wordType) + """ > profiler(*(procInst.abiIf), vm["application"].as<std::string>(), vm.count("disable_fun_prof") > 0);
+        code += 'OSEmulator<' + str(wordType) + '> os_emulator(processor.ABIIf);\n'
+        code += """GDBStub<""" + str(wordType) + """> gdb_stub(processor.ABIIf);
+        Profiler<""" + str(wordType) + """> profiler(processor.ABIIf, vm["application"].as<std::string>(), vm.count("disable_fun_prof") > 0);
 
-        osEmu.initSysCalls(vm["application"].as<std::string>());
+        os_emulator.init_sys_calls(vm["application"].as<std::string>());
         std::vector<std::string> options;
         options.push_back(vm["application"].as<std::string>());
         if (vm.count("arguments") > 0) {
-            // Here we have to parse the command line program arguments; they are
-            // in the form option,option,option ...
+            // Parse the environment. The options are in the form 'option,option,...'
             std::string packedOpts = vm["arguments"].as<std::string>();
             while(packedOpts.size() > 0) {
                 std::size_t foundComma = packedOpts.find(',');
@@ -1660,10 +1659,9 @@ def getMainCode(self, model, namespace):
                 }
             }
         }
-        osEmu.set_program_args(options);
+        os_emulator.set_program_args(options);
         if (vm.count("environment") > 0) {
-            // Here we have to parse the environment; they are
-            // in the form option=value,option=value .....
+            // Parse the environment. The options are in the form 'option=value,option=value,...'
             std::string packedEnv = vm["environment"].as<std::string>();
             while(packedEnv.size() > 0) {
                 std::size_t foundComma = packedEnv.find(',');
@@ -1675,19 +1673,17 @@ def getMainCode(self, model, namespace):
                     curEnv = packedEnv;
                     packedEnv = "";
                 }
-                // Now I have to split the current environment
+                // Split the current environment.
                 std::size_t equalPos = curEnv.find('=');
                 if (equalPos == std::string::npos) {
-                    std::cerr << "Error in the command line environmental options: " << \\
-                        "'=' not found in option " << curEnv << std::endl;
+                    std::cerr << "Invalid command line environment option: Expected 'var=value', got " << curEnv << '.' << std::endl;
                     return -1;
                 }
-                osEmu.set_environ(curEnv.substr(0, equalPos), curEnv.substr(equalPos + 1));
+                os_emulator.set_env(curEnv.substr(0, equalPos), curEnv.substr(equalPos + 1));
             }
         }
         if (vm.count("sysconf") > 0) {
-            // Here we have to parse the environment; they are
-            // in the form option=value,option=value .....
+            // Parse the environment. The options are in the form 'option=value,option=value,...'
             std::string packedEnv = vm["sysconf"].as<std::string>();
             while(packedEnv.size() > 0) {
                 std::size_t foundComma = packedEnv.find(',');
@@ -1699,82 +1695,78 @@ def getMainCode(self, model, namespace):
                     curEnv = packedEnv;
                     packedEnv = "";
                 }
-                // Now I have to split the current environment
+                // Split the current environment.
                 std::size_t equalPos = curEnv.find('=');
                 if (equalPos == std::string::npos) {
-                    std::cerr << "Error in the command line sysconf options: " << \\
-                        "'=' not found in option " << curEnv << std::endl;
+                    std::cerr << "Invalid command line sysconf option: Expected 'var=value', got " << curEnv << '.' << std::endl;
                     return -1;
                 }
                 try {
-                    osEmu.set_sysconf(curEnv.substr(0, equalPos), boost::lexical_cast<int>(curEnv.substr(equalPos + 1)));
+                    os_emulator.set_sysconf(curEnv.substr(0, equalPos), boost::lexical_cast<int>(curEnv.substr(equalPos + 1)));
                 }
                 catch(...) {
-                    std::cerr << "Error in the command line sysconf options: " << \\
-                        "error in option " << curEnv << std::endl;
+                    std::cerr << "Invalid command line sysconf option: Expected 'var=value', got " << curEnv << '.' << std::endl;
                     return -1;
                 }
             }
         }
-        procInst.toolManager.addTool(osEmu);
+        processor.tool_manager.add_tool(os_emulator);
         if (vm.count("debugger") != 0) {
-            procInst.toolManager.addTool(gdbStub);
-            gdbStub.initialize();
+            processor.tool_manager.add_tool(gdb_stub);
+            gdb_stub.initialize();
     """
         for tlmPortName in self.tlmPorts.keys():
-            code += 'procInst.' + tlmPortName + '.setDebugger(&gdbStub);\n'
+            code += 'processor.' + tlmPortName + '.set_debugger(&gdb_stub);\n'
         if self.memory:
-            code += 'procInst.' + self.memory[0] + '.setDebugger(&gdbStub);\n'
-        code += 'gdbStub_ref = &gdbStub;\n}\n'
+            code += 'processor.' + self.memory[0] + '.set_debugger(&gdb_stub);\n'
+        code += 'gdb_stub_ref = &gdb_stub;\n}\n'
     code += """if (vm.count("profiler") != 0) {
-                std::set<std::string> toIgnoreFuns = osEmu.getRegisteredFunctions();
+                std::set<std::string> toIgnoreFuns = os_emulator.get_registered_functions();
                 toIgnoreFuns.erase("main");
-                profiler.addIgnoredFunctions(toIgnoreFuns);
-                // Now I check if there is the need to restrict the use of the profiler in a specific
-                // cycles range
+                profiler.add_ignored_functions(toIgnoreFuns);
+                // Check if the profiler needs to be restricted to a specific cycle range.
                 if (vm.count("prof_range") != 0) {
-                    std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decodedProfRange = getCycleRange(vm["prof_range"].as<std::string>(), vm["application"].as<std::string>());
-                    // Now, the range is in the form start-end, where start and end can be both integer numbers
-                    // (both normal and hex) or symbols of the binary file
-                    profiler.setProfilingRange(decodedProfRange.first, decodedProfRange.second);
+                    std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decodedProfRange = get_cycle_range(vm["prof_range"].as<std::string>(), vm["application"].as<std::string>());
+                    // The range is in the form start-end, where start and end can be both integers (both normal and hex) or symbols of the binary file.
+                    profiler.set_profiling_range(decodedProfRange.first, decodedProfRange.second);
                 }
-                procInst.toolManager.addTool(profiler);
+                processor.tool_manager.add_tool(profiler);
             }
 
-    // Lets register the signal handlers for the CTRL^C key combination
-    (void) signal(SIGINT, stopSimFunction);
-    (void) signal(SIGTERM, stopSimFunction);
-    (void) signal(10, stopSimFunction);
+    // Register the signal handlers for the CTRL^C key combination.
+    (void) signal(SIGINT, stop_simulation);
+    (void) signal(SIGTERM, stop_simulation);
+    (void) signal(10, stop_simulation);
 
-    std::cout << "... tools initialized" << std::endl << std::endl;
+    std::cout << "Initialized tools." << std::endl;
 
-    // Now we can start the execution
+    // Start execution.
     boost::timer t;
     sc_start();
-    double elapsedSec = t.elapsed();
+    double elapsed_sec = t.elapsed();
     if (vm.count("profiler") != 0) {
-        profiler.printCsvStats(vm["profiler"].as<std::string>());
+        profiler.print_csv_stats(vm["profiler"].as<std::string>());
     }
-    std::cout << std::endl << "Elapsed " << elapsedSec << " sec. (real time)" << std::endl;
-    std::cout << "Executed " << procInst.numInstructions << " instructions" << std::endl;
-    std::cout << "Execution Speed: " << (double)procInst.numInstructions/(elapsedSec*1e6) << " MIPS" << std::endl;
+    std::cout << std::endl << "Elapsed real time:" << elapsed_sec << 's' << std::endl;
+    std::cout << "Executed Instructions: " << processor.num_instructions << std::endl;
+    std::cout << "Execution speed: " << (double)processor.num_instructions/(elapsed_sec*1e6) << "MIPS" << std::endl;
     """
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
-        code += 'std::cout << \"Simulated time: \" << ((sc_time_stamp().to_default_time_units())/(sc_time(1, SC_US).to_default_time_units())) << " us" << std::endl;\n'
-        code += 'std::cout << \"Elapsed \" << std::dec << (unsigned int)(sc_time_stamp()/sc_time(latency, SC_US)) << \" cycles\" << std::endl;\n'
-        code += """if (decodedRange.first != (""" + str(wordType) + """)-1 || decodedRange.second != (""" + str(wordType) + """)-1) {
-                    if (procInst.profTimeEnd == SC_ZERO_TIME) {
-                        procInst.profTimeEnd = sc_time_stamp();
-                        std::cout << "End address " << std::hex << std::showbase << decodedRange.second << " not found, counting until the end" << std::endl;
-                    }
-                    std::cout << "Cycles between addresses " << std::hex << std::showbase << decodedRange.first << " - " << decodedRange.second << ": " << std::dec << (unsigned int)((procInst.profTimeEnd - procInst.profTimeStart)/sc_time(latency, SC_US)) << std::endl;
-                }
+        code +="""std::cout << "Simulated time: " << ((sc_time_stamp().to_default_time_units())/(sc_time(1, SC_US).to_default_time_units())) << "us" << std::endl;
+        std::cout << "Elapsed time: " << std::dec << (unsigned)(sc_time_stamp()/sc_time(latency, SC_US)) << " cycles" << std::endl;
+        if (decoded_range.first != (""" + str(wordType) + """)-1 || decoded_range.second != (""" + str(wordType) + """)-1) {
+            if (processor.profiler_time_end == SC_ZERO_TIME) {
+                processor.profiler_time_end = sc_time_stamp();
+                std::cout << "End address: " << std::hex << std::showbase << decoded_range.second << " not found, counting until the end." << std::endl;
+            }
+            std::cout << "Cycles between addresses " << std::hex << std::showbase << decoded_range.first << " - " << decoded_range.second << ": " << std::dec << (unsigned)((processor.profiler_time_end - processor.profiler_time_start)/sc_time(latency, SC_US)) << std::endl;
+        }
                 """
     else:
-        code += 'std::cout << \"Elapsed \" << std::dec << procInst.totalCycles << \" cycles\" << std::endl;\n'
+        code += 'std::cout << "Elapsed time: " << std::dec << processor.total_cycles << " cycles" << std::endl;\n'
     code += 'std::cout << std::endl;\n'
-    if self.endOp:
-        code += '// Ok, simulation has ended: lets call cleanup methods\nprocInst.endOp();\n'
+    if self.shutdown:
+        code += '// Simulation ended. Call cleanup methods.\nprocInst.shutdown();\n'
     code += """
     return 0;
     """
@@ -1798,139 +1790,93 @@ def getMainCode(self, model, namespace):
 
     if model.endswith('LT'):
         if self.tlmFakeMemProperties and self.tlmFakeMemProperties[2]:
-            mainCode.addInclude('misc/SparseMemoryLT.hpp')
+            mainCode.addInclude('modules/sparse_memory_lt.hpp')
         else:
-            mainCode.addInclude('misc/MemoryLT.hpp')
+            mainCode.addInclude('modules/memory_lt.hpp')
     else:
         if self.tlmFakeMemProperties and self.tlmFakeMemProperties[2]:
-            mainCode.addInclude('misc/SparseMemoryAT.hpp')
+            mainCode.addInclude('modules/sparse_memory_at.hpp')
         else:
-            mainCode.addInclude('misc/MemoryAT.hpp')
+            mainCode.addInclude('modules/memory_at.hpp')
     mainCode.addInclude('#include \"processor.hpp\"')
     mainCode.addInclude('#include \"instructions.hpp\"')
-    mainCode.addInclude('utils/trap_utils.hpp')
+    mainCode.addInclude('common/report.hpp')
     mainCode.addInclude('systemc.h')
-    mainCode.addInclude('elfloader/elfFrontend.hpp')
-    mainCode.addInclude('elfloader/execLoader.hpp')
+    mainCode.addInclude('elfloader/elf_frontend.hpp')
+    mainCode.addInclude('elfloader/exec_loader.hpp')
     mainCode.addInclude('stdexcept')
     if self.abi:
-        mainCode.addInclude('debugger/GDBStub.hpp')
+        mainCode.addInclude('debugger/gdb_stub.hpp')
         mainCode.addInclude('profiler/profiler.hpp')
         #if model.startswith('acc'):
-            #mainCode.addInclude('osEmulatorCA.hpp')
+            #mainCode.addInclude('osemu_ca.hpp')
         #else:
-        mainCode.addInclude('osEmulator/osEmulator.hpp')
+        mainCode.addInclude('osemu/osemu.hpp')
     parameters = [cxx_writer.Parameter('argc', cxx_writer.intType), cxx_writer.Parameter('argv', cxx_writer.charPtrType.makePointer())]
     mainFunction = cxx_writer.Function('sc_main', mainCode, cxx_writer.intType, parameters)
     mainFunction.addDocString(brief = 'Main Processor Testbench', detail = 'Instantiates a processor and performs basic connections where required. TRAP-Gen debugging and profiling tools as instantiated as chosen by the command-line options.')
 
-    stopSimFunction = cxx_writer.Code("""if (gdbStub_ref != NULL && gdbStub_ref->simulationPaused) {
-        std::cerr << std::endl << "Simulation is already paused; ";
-        std::cerr << "please use the connected GDB debugger to controll it" << std::endl << std::endl;
+    stop_simulation = cxx_writer.Code("""if (gdb_stub_ref != NULL && gdb_stub_ref->simulation_paused) {
+        std::cerr << std::endl << "Cannot pause simulation, simulation already paused. Use the connected GDB debugger to control it." << std::endl << std::endl;
     } else {
-        std::cerr << std::endl << "Interrupted the simulation" << std::endl << std::endl;
+        std::cerr << std::endl << "Interrupted the simulation." << std::endl << std::endl;
         sc_stop();
         wait(SC_ZERO_TIME);
     }""")
     parameters = [cxx_writer.Parameter('sig', cxx_writer.intType)]
-    signalFunction = cxx_writer.Function('stopSimFunction', stopSimFunction, cxx_writer.voidType, parameters)
+    signalFunction = cxx_writer.Function('stop_simulation', stop_simulation, cxx_writer.voidType, parameters)
 
-    hexToIntCode = cxx_writer.Code("""std::map<char, unsigned int> hexMap;
-    hexMap['0'] = 0;
-    hexMap['1'] = 1;
-    hexMap['2'] = 2;
-    hexMap['3'] = 3;
-    hexMap['4'] = 4;
-    hexMap['5'] = 5;
-    hexMap['6'] = 6;
-    hexMap['7'] = 7;
-    hexMap['8'] = 8;
-    hexMap['9'] = 9;
-    hexMap['A'] = 10;
-    hexMap['B'] = 11;
-    hexMap['C'] = 12;
-    hexMap['D'] = 13;
-    hexMap['E'] = 14;
-    hexMap['F'] = 15;
-    hexMap['a'] = 10;
-    hexMap['b'] = 11;
-    hexMap['c'] = 12;
-    hexMap['d'] = 13;
-    hexMap['e'] = 14;
-    hexMap['f'] = 15;
-
-    std::string toConvTemp = toConvert;
-    if (toConvTemp.size() >= 2 && toConvTemp[0] == '0' && (toConvTemp[1] == 'X' || toConvTemp[1] == 'x'))
-        toConvTemp = toConvTemp.substr(2);
-
-    """ + str(wordType) + """ result = 0;
-    unsigned int pos = 0;
-    std::string::reverse_iterator hexIter, hexIterEnd;
-    for (hexIter = toConvTemp.rbegin(), hexIterEnd = toConvTemp.rend();
-                    hexIter != hexIterEnd; hexIter++) {
-        std::map<char, unsigned int>::iterator mapIter = hexMap.find(*hexIter);
-        if (mapIter == hexMap.end()) {
-            throw std::runtime_error(toConvert + ": wrong hex number");
-        }
-        result |= (mapIter->second << pos);
-        pos += 4;
-    }
-    return result;""")
-    parameters = [cxx_writer.Parameter('toConvert', cxx_writer.stringRefType)]
-    hexToIntFunction = cxx_writer.Function('toIntNum', hexToIntCode, wordType, parameters)
-
-    getCycleRangeCode = cxx_writer.Code("""std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decodedRange;
+    getCycleRangeCode = cxx_writer.Code("""std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decoded_range;
         std::size_t foundSep = cycles_range.find('-');
         if (foundSep == std::string::npos) {
-            THROW_EXCEPTION("ERROR: specified address range " << cycles_range << " is not valid, it has to be in the form start-end");
+            THROW_EXCEPTION("Invalid address range " << cycles_range << ", expected address range in the format start-end.");
         }
         std::string start = cycles_range.substr(0, foundSep);
         std::string end = cycles_range.substr(foundSep + 1);
-        // I first try standard numbers, then hex, then, if none of them, I check if a corresponding
-        // symbol exists; if none I return an error.
+        // First try decimal numbers, then hex, then check if a corresponding symbol exists. If neither works return an error.
         try {
-            decodedRange.first = boost::lexical_cast<""" + str(wordType) + """>(start);
+            decoded_range.first = boost::lexical_cast<""" + str(wordType) + """>(start);
         }
         catch(...) {
             try {
-                decodedRange.first = toIntNum(start);
+                decoded_range.first = (unsigned)std::strtoul(start.c_str(), NULL, 0);
             }
             catch(...) {
-                trap::ELFFrontend &elfFE = trap::ELFFrontend::getInstance(application);
+                trap::ELFFrontend& elf_frontend = trap::ELFFrontend::get_instance(application);
                 bool valid = true;
-                decodedRange.first = elfFE.getSymAddr(start, valid);
+                decoded_range.first = elf_frontend.get_sym_addr(start, valid);
                 if (!valid) {
-                    THROW_EXCEPTION("ERROR: start address range " << start << " does not specify a valid address or a valid symbol");
+                    THROW_EXCEPTION("Start address range " << start << " does not specify a valid address or a valid symbol.");
                 }
             }
         }
         try {
-            decodedRange.second = boost::lexical_cast<""" + str(wordType) + """>(end);
+            decoded_range.second = boost::lexical_cast<""" + str(wordType) + """>(end);
         }
         catch(...) {
             try {
-                decodedRange.second = toIntNum(end);
+                decoded_range.second = (unsigned)std::strtoul(end.c_str(), NULL, 0);
             }
             catch(...) {
-                trap::ELFFrontend &elfFE = trap::ELFFrontend::getInstance(application);
+                trap::ELFFrontend& elf_frontend = trap::ELFFrontend::get_instance(application);
                 bool valid = true;
-                decodedRange.second = elfFE.getSymAddr(end, valid);
+                decoded_range.second = elf_frontend.get_sym_addr(end, valid);
                 if (!valid) {
-                    THROW_EXCEPTION("ERROR: end address range " << end << " does not specify a valid address or a valid symbol");
+                    THROW_EXCEPTION("End address range " << end << " does not specify a valid address or a valid symbol.");
                 }
             }
         }
 
-        return decodedRange;
+        return decoded_range;
     """)
     parameters = [cxx_writer.Parameter('cycles_range', cxx_writer.stringRefType.makeConst()),
             cxx_writer.Parameter('application', cxx_writer.stringRefType.makeConst())]
     wordPairType = cxx_writer.TemplateType('std::pair', [wordType, wordType])
-    cycleRangeFunction = cxx_writer.Function('getCycleRange', getCycleRangeCode, wordPairType, parameters)
+    cycleRangeFunction = cxx_writer.Function('get_cycle_range', getCycleRangeCode, wordPairType, parameters)
 
     # Finally here lets declare the variable holding the global reference to the debugger
     debuggerType = cxx_writer.TemplateType('GDBStub', [wordType])
-    debuggerVariable = cxx_writer.Variable('gdbStub_ref', debuggerType.makePointer(), initValue = 'NULL')
+    debuggerVariable = cxx_writer.Variable('gdb_stub_ref', debuggerType.makePointer(), initValue = 'NULL')
 
     # and here the variable holding the printable banner
     bannerInit = 'std::string("\\n\\\n'
@@ -1951,7 +1897,7 @@ def getMainCode(self, model, namespace):
     # Create socket classes for each unique port width.
     for portWidth in list(set([irq.portWidth for irq in self.irqs])):
         # multi_passthrough_initiator_socket init_socket;
-        tlmInitiatorSocketMember = cxx_writer.Attribute('init_socket', cxx_writer.Type('tlm_utils::multi_passthrough_initiator_socket<initiator_' + str(portWidth) + ', ' + str(portWidth) + ', tlm::tlm_base_protocol_types>'), visibility = 'pu', initValue = '\"init_socket\"')
+        tlmInitiatorSocketMember = cxx_writer.Attribute('init_socket', cxx_writer.Type('tlm_utils::multi_passthrough_initiator_socket<TLMIntrInitiator_' + str(portWidth) + ', ' + str(portWidth) + ', tlm::tlm_base_protocol_types>'), visibility = 'pu', initValue = '\"init_socket\"')
         # nb_transport_bw() {}
         code = """return tlm::TLM_COMPLETED;"""
         tlmInitiatorCode = cxx_writer.Code(code)
@@ -1961,15 +1907,15 @@ def getMainCode(self, model, namespace):
         tlmInitiatorCode = cxx_writer.Code('')
         parameters = [cxx_writer.Parameter('tag', cxx_writer.intType), cxx_writer.Parameter('start_range', cxx_writer.Type('sc_dt::uint64')), cxx_writer.Parameter('end_range', cxx_writer.Type('sc_dt::uint64'))]
         tlmInitiatorDMMethod = cxx_writer.Method('invalidate_direct_mem_ptr', tlmInitiatorCode, cxx_writer.voidType, 'pu', parameters)
-        # initiator_<portWidth>::initiator_<portWidth>() {}
-        code = 'init_socket.register_nb_transport_bw(this, &initiator_' + str(portWidth) + '::nb_transport_bw);\ninit_socket.register_invalidate_direct_mem_ptr(this, &initiator_' + str(portWidth) + '::invalidate_direct_mem_ptr);'
+        # initiator_<portWidth>() {}
+        code = 'init_socket.register_nb_transport_bw(this, &TLMIntrInitiator_' + str(portWidth) + '::nb_transport_bw);\ninit_socket.register_invalidate_direct_mem_ptr(this, &TLMIntrInitiator_' + str(portWidth) + '::invalidate_direct_mem_ptr);'
         tlmInitiatorCode = cxx_writer.Code(code)
         tlmInitiatorCtor = cxx_writer.Constructor(tlmInitiatorCode, visibility = 'pu', parameters = [cxx_writer.Parameter('_name', cxx_writer.Type('sc_core::sc_module_name'))], initList = ['sc_module(_name)', 'init_socket(\"init_socket\")'])
         # class initiator_<portWidth> {};
-        tlmInitiatorClass = cxx_writer.ClassDeclaration('initiator_'+ str(portWidth), [tlmInitiatorSocketMember, tlmInitiatorNBMethod, tlmInitiatorDMMethod], [cxx_writer.Type('sc_core::sc_module')])
+        tlmInitiatorClass = cxx_writer.ClassDeclaration('TLMIntrInitiator_'+ str(portWidth), [tlmInitiatorSocketMember, tlmInitiatorNBMethod, tlmInitiatorDMMethod], [cxx_writer.Type('sc_core::sc_module')])
         tlmInitiatorClass.addConstructor(tlmInitiatorCtor)
 
     if self.irqs:
-        return [bannerVariable, debuggerVariable, signalFunction, hexToIntFunction, cycleRangeFunction, tlmInitiatorClass, mainFunction]
+        return [bannerVariable, debuggerVariable, signalFunction, cycleRangeFunction, tlmInitiatorClass, mainFunction]
     else:
-        return [bannerVariable, debuggerVariable, signalFunction, hexToIntFunction, cycleRangeFunction, mainFunction]
+        return [bannerVariable, debuggerVariable, signalFunction, cycleRangeFunction, mainFunction]

@@ -1,44 +1,40 @@
-/***************************************************************************\
- *
- *
- *            ___        ___           ___           ___
- *           /  /\      /  /\         /  /\         /  /\
- *          /  /:/     /  /::\       /  /::\       /  /::\
- *         /  /:/     /  /:/\:\     /  /:/\:\     /  /:/\:\
- *        /  /:/     /  /:/~/:/    /  /:/~/::\   /  /:/~/:/
- *       /  /::\    /__/:/ /:/___ /__/:/ /:/\:\ /__/:/ /:/
- *      /__/:/\:\   \  \:\/:::::/ \  \:\/:/__\/ \  \:\/:/
- *      \__\/  \:\   \  \::/~~~~   \  \::/       \  \::/
- *           \  \:\   \  \:\        \  \:\        \  \:\
- *            \  \ \   \  \:\        \  \:\        \  \:\
- *             \__\/    \__\/         \__\/         \__\/
- *
- *
- *
- *
- *   This file is part of TRAP.
- *
- *   TRAP is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU Lesser General Public License as published by
- *   the Free Software Foundation; either version 3 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU Lesser General Public License for more details.
- *
- *   You should have received a copy of the GNU Lesser General Public License
- *   along with this program; if not, write to the
- *   Free Software Foundation, Inc.,
- *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *   or see <http://www.gnu.org/licenses/>.
- *
- *
- *
- *   (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
- *
-\***************************************************************************/
+/***************************************************************************//**
+*
+*  _/_/_/_/_/  _/_/_/           _/        _/_/_/
+*     _/      _/    _/        _/_/       _/    _/
+*    _/      _/    _/       _/  _/      _/    _/
+*   _/      _/_/_/        _/_/_/_/     _/_/_/
+*  _/      _/    _/     _/      _/    _/
+* _/      _/      _/  _/        _/   _/
+*
+* @file     irqGenerator.hpp
+* @brief    This file is part of the TRAP example processors.
+* @details
+* @author   Luca Fossati
+* @date     2008-2013 Luca Fossati
+* @copyright
+*
+* This file is part of TRAP.
+*
+* TRAP is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as
+* published by the Free Software Foundation; either version 3 of the
+* License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public
+* License along with this program; if not, write to the
+* Free Software Foundation, Inc.,
+* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+* or see <http://www.gnu.org/licenses/>.
+*
+* (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
+*
+*******************************************************************************/
 
 #ifndef IRQGENERATOR_HPP
 #define IRQGENERATOR_HPP
@@ -73,13 +69,13 @@ class IrqGenerator : public sc_module{
     public:
         //The initiator socket is used for sending out, raising interrupts;
         //the target socket for receiving the acknowledgement
-        tlm_utils::simple_initiator_socket< IrqGenerator, 32 > initSocket;
+        tlm_utils::simple_initiator_socket< IrqGenerator, 32 > init_socket;
         tlm_utils::simple_target_socket< IrqGenerator, 32 > targSocket;
 
         SC_HAS_PROCESS( IrqGenerator );
         IrqGenerator( sc_module_name generatorName, sc_time latency ) : sc_module(generatorName),
                             targSocket(("irq_target_" + boost::lexical_cast<std::string>(generatorName)).c_str()),
-                                        latency(latency), generator(static_cast<unsigned int>(std::time(NULL))){
+                                        latency(latency), generator(static_cast<unsigned>(std::time(NULL))){
             this->targSocket.register_b_transport(this, &IrqGenerator::b_transport);
             this->lastIrq = -1;
             SC_THREAD(generateIrq);
@@ -89,7 +85,7 @@ class IrqGenerator : public sc_module{
         //Method used for receiving acknowledgements of interrupts; the ack consists of
         //uninteresting data and the address corresponds to the interrupt signal to
         //be lowered
-        //As a response, I lower the interrupt by sending a NULL pointer on the initSocket
+        //As a response, I lower the interrupt by sending a NULL pointer on the init_socket
         void b_transport(tlm::tlm_generic_payload& trans, sc_time& delay){
             if(this->lastIrq < 0){
                 THROW_EXCEPTION("Error, lowering an interrupt which hasn't been raised yet!!");
@@ -102,7 +98,7 @@ class IrqGenerator : public sc_module{
             }
             else if(cmd == tlm::TLM_WRITE_COMMAND){
                 if(this->lastIrq != adr){
-                    THROW_EXCEPTION("Error, lowering interrupt " << std::hex << std::showbase << (unsigned int)adr << " while " << std::hex << std::showbase << this->lastIrq << " was raised");
+                    THROW_EXCEPTION("Error, lowering interrupt " << std::hex << std::showbase << (unsigned)adr << " while " << std::hex << std::showbase << this->lastIrq << " was raised");
                 }
                 else{
                     //finally I can really lower the interrupt: I send 0 on
@@ -112,7 +108,7 @@ class IrqGenerator : public sc_module{
                     trans.set_dmi_allowed(false);
                     trans.set_response_status( tlm::TLM_INCOMPLETE_RESPONSE );
                     sc_time delay;
-                    this->initSocket->b_transport(trans, delay);
+                    this->init_socket->b_transport(trans, delay);
                     if(trans.is_response_error()){
                         std::string errorStr("Error in b_transport of PIN, response status = " + trans.get_response_string());
                         SC_REPORT_ERROR("TLM-2", errorStr.c_str());
@@ -148,7 +144,7 @@ class IrqGenerator : public sc_module{
                     trans.set_dmi_allowed(false);
                     trans.set_response_status( tlm::TLM_INCOMPLETE_RESPONSE );
                     sc_time delay;
-                    this->initSocket->b_transport(trans, delay);
+                    this->init_socket->b_transport(trans, delay);
 
                     if(trans.is_response_error()){
                         std::string errorStr("Error in generateIrq, response status = " + trans.get_response_string());
