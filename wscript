@@ -25,11 +25,15 @@ def check_dyn_library(ctx, libfile, libpaths):
     if struct.calcsize("P") > 4:
         # are we actually processing a static library?
         if os.path.splitext(libfile)[1] == ctx.env['cxxstlib_PATTERN'].split('%s')[1]:
+            if type(ctx.env.OBJDUMP) == type([]):
+                objdump = ctx.env.OBJDUMP[0]
+            else:
+                objdump = ctx.env.OBJDUMP
             # Now lets check for the presence of symbols of type R_X86_64_32S:
             # in case we have an error.
             for libpath in libpaths:
                 if os.path.exists(os.path.join(libpath, libfile)):
-                    libDump = os.popen(ctx.env.OBJDUMP + ' -r ' + os.path.join(libpath, libfile)).readlines()
+                    libDump = os.popen(objdump + ' -r ' + os.path.join(libpath, libfile)).readlines()
                     for line in libDump:
                         if 'R_X86_64_32S' in line:
                             return False

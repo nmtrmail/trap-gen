@@ -329,17 +329,21 @@ class Folder:
         if configure:
             printOnFile('def check_trap_linking(ctx, libName, libPaths, symbol):', wscriptFile)
             printOnFile("""
+    if type(ctx.env.NM) == type([]):
+        nm = ctx.env.NM[0]
+    else:
+        nm = ctx.env.NM
     for libpath in libPaths:
         libFile = os.path.join(libpath, ctx.env['cxxshlib_PATTERN'].split('%s')[0] + libName + ctx.env['cxxshlib_PATTERN'].split('%s')[1])
         if os.path.exists(libFile):
-            libDump = os.popen(ctx.env.NM + ' -r ' + libFile).readlines()
+            libDump = os.popen(nm + ' -r ' + libFile).readlines()
             for line in libDump:
                 if symbol in line:
                     return True
             break
         libFile = os.path.join(libpath, ctx.env['cxxstlib_PATTERN'].split('%s')[0] + libName + ctx.env['cxxstlib_PATTERN'].split('%s')[1])
         if os.path.exists(libFile):
-            libDump = os.popen(ctx.env.NM + ' -r ' + libFile).readlines()
+            libDump = os.popen(nm + ' -r ' + libFile).readlines()
             for line in libDump:
                 if symbol in line:
                     return True
