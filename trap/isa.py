@@ -42,6 +42,10 @@ import re
 import cxx_writer
 import isaWriter
 
+import sys
+if sys.version_info >= (2,7):
+    from collections import OrderedDict
+
 def resolveBitType(typeString):
     """Given a string representing a bit type it returns the more appropriate C++ type
     for the representation of such a type"""
@@ -89,7 +93,10 @@ class ISA:
     transforming the instructions into the C++ code which
     implements them"""
     def __init__(self):
-        self.instructions = {}
+        if sys.version_info >= (2,7):
+            self.instructions = OrderedDict()
+        else:
+            self.instructions = {}
         self.helperOps = []
         self.methods = []
         self.startup = None
