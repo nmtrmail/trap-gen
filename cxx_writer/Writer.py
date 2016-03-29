@@ -182,14 +182,18 @@ class CodeWriter:
         if (found == -1):
             return line
 
+        # Special case: Cannot split within strings.
+        if ((line.count('"', 0, found) % 2) == 1):
+            return line
+
         # This line's postfix
         if postfix == '':
             # Special case: Add line continuation chars if splitting preprocessing code.
             if line.startswith('#'):
                 postfix = ' \\'
             # Special case: Add line continuation chars if splitting strings.
-            elif ((line.count('"', 0, found) % 2) == 1):
-                postfix = '\\'
+            #elif ((line.count('"', 0, found) % 2) == 1):
+                #postfix = '\\'
         curPostfix = postfix
         # If the split char is not whitespace, make sure we don't delete it!
         if (line[found] != ' '): curPostfix = line[found] + curPostfix
