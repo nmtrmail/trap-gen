@@ -51,7 +51,7 @@ def resolveBitType(typeString):
     for the representation of such a type"""
     if isinstance(typeString, cxx_writer.Type):
       return typeString
-    if not isinstance(typeString, type('')):
+    if not isinstance(typeString, str):
         raise Exception('Invalid variable type ' + str(typeString) + '.')
     validBitType = '^( )*BIT( )*<( )*[0-9]+( )*>( )*$'
     if not re.match(validBitType, typeString):
@@ -223,7 +223,7 @@ class ISA:
             # check the machine code: the var fields must be existing registers
             for reg in i.machineCode.bitCorrespondence.values():
                 if not reg in toCheck:
-                    if isinstance(reg, type('')):
+                    if isinstance(reg, str):
                         toCheck.append(reg)
                     else:
                         toCheck.append(reg[0] + '[' + str(reg[1]) + ']')
@@ -378,7 +378,7 @@ class Instruction:
         for i in machineCode.bitFields:
             bitFieldNames.append(i[0])
         for i in mnemonic:
-            if type(i) == type(''):
+            if type(i) == str:
                 if i.startswith('%'):
                     if not i[1:] in bitFieldNames:
                         raise Exception('Field ' + i[1:] + ' in mnemonic of instruction ' + self.name + ' does not exist in the machine code.')
@@ -388,7 +388,7 @@ class Instruction:
                         raise Exception('Field ' + i[0][1:] + ' in mnemonic of instruction ' + self.name + ' does not exist in the machine code.')
                 elif i[0].startswith('$'):
                     for j in i[1:]:
-                        if type(j) == type(''):
+                        if type(j) == str:
                             if j.startswith('%'):
                                 if not j[1:] in bitFieldNames:
                                     raise Exception('Field ' + j[1:] + ' in mnemonic of instruction ' + self.name + ' does not exist in the machine code.')
@@ -629,11 +629,11 @@ class HelperOperation:
         """returns the cpp code implementing the current method"""
         return isaWriter.getCppOperation(self, parameters)
 
-    def getCppOpClass(self, namespace):
+    def getCppOpClass(self, processor, namespace):
         """Relturn a CPP class, deriving from Instruction,
         implementing a method which defines the current
         oepration"""
-        return isaWriter.getCppOpClass(self, namespace)
+        return isaWriter.getCppOpClass(self, processor, namespace)
 
     def __repr__(self):
         return self.name
@@ -674,7 +674,7 @@ class HelperMethod:
         """sets the signature for the method; the return type has to be an instance of
         cxx_writer.Type or a string representing a bit type, while the parameters
          can either be cxx_writer.Parameter or a string representing a bit type"""
-        if isinstance(retType, type('')):
+        if isinstance(retType, str):
             self.retType = resolveBitType(retType)
         else:
             self.retType = retType

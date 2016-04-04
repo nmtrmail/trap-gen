@@ -2891,7 +2891,7 @@ if(exceptionEnabled || !supervisor || invalidWin || notAligned){
     flush();
 }
 else{
-    PSR.immediate_write((PSR & 0xFFFFFF40) | (newCwp | 0x20 | (PSR[key_PS] << 7)));
+    PSR.write_force((PSR & 0xFFFFFF40) | (newCwp | 0x20 | (PSR[key_PS] << 7)));
     stall(1);
 }
 """)

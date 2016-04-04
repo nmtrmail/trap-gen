@@ -121,7 +121,7 @@ class Register:
         self.wbStageOrder = order
 
     def getCPPClass(self, model, regType, namespace):
-        return registerWriter.getCPPRegClass(self, model, regType, namespace)
+        return registerWriter.getCPPRegister(self, model, regType, namespace)
 
 class RegisterBank:
     """Same thing of a register, it also specifies the
@@ -218,9 +218,6 @@ class RegisterBank:
             pass
         self.defValues[position] = value
 
-    def getCPPClass(self, model, regType, namespace):
-        return registerWriter.getCPPRegBankClass(self, model, regType, namespace)
-
 class AliasRegister:
     """Alias for a register of the processor;
     actually this is a pointer to a register; this pointer
@@ -231,6 +228,7 @@ class AliasRegister:
     # TODO: it might be a good idea to introduce 0 offset aliases: they are aliases
     # for which it is not possible to use any offset by which are much faster than
     # normal aliases at runtime
+    # Update: @see runtime/modules/register/register_alias.hpp
     def __init__(self, name, initAlias, offset = 0):
         self.name = name
         # I make sure that there is just one registers specified for
@@ -269,14 +267,17 @@ class AliasRegBank:
         self.numRegs = numRegs
         # Now I have to make sure that the registers specified for the
         # alias have the same lenght of the alias width
-        if isinstance(initAlias, type('')):
+        if isinstance(initAlias, str):
             index = extractRegInterval(initAlias)
+            # Part of a register bank or alias register bank.
             if index:
                 if index[1] - index[0] + 1 != numRegs:
                     raise Exception('Alias register bank ' + str(initAlias) + ' contains ' + str(index[1]-index[0]+1) + ' registers but the aliased register bank contains ' + str(numRegs) + ' registers.')
+            # Single register or alias register.
             else:
                 if numRegs > 1:
                     raise Exception('Alias register bank ' + str(initAlias) + ' contains one register but the aliased register bank contains ' + str(numRegs) + ' registers.')
+        # List of registers, alias registers, register banks or alias register banks.
         else:
             totalRegs = 0
             for i in initAlias:
@@ -733,7 +734,7 @@ class Processor:
             # I have to check that the registers alised by
             # this register bank actually exists and that
             # intervals, if used, are correct
-            if isinstance(alias.initAlias, type('')):
+            if isinstance(alias.initAlias, str):
                 index = extractRegInterval(alias.initAlias)
                 # I'm aliasing part of a register bank or another alias:
                 # I check that it exists and that I am still within
@@ -901,7 +902,7 @@ class Processor:
             toCheck.append(self.abi.SP)
         for reg in self.abi.stateIgnoreRegs:
             toCheck.append(reg)
-        if isinstance(self.abi.args, type('')):
+        if isinstance(self.abi.args, str):
             toCheck.append(self.abi.args)
         else:
             for i in self.abi.args:
@@ -939,6 +940,9 @@ class Processor:
                 if not stage in stageNames:
                     raise Exception('Pipeline stage ' + stage + ' specified for interrupt ' + irq.name + ' does not exist.')
 
+    def getCPPRegisterFields(self):
+        return registerWriter.getCPPRegisterFields(self)
+
     def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         """This method creates all the classes necessary for declaring
         the registers: in particular the register base class
@@ -947,17 +951,6 @@ class Processor:
 
     def getCPPPipelineReg(self, trace, combinedTrace, namespace):
         return registerWriter.getCPPPipelineReg(self, trace, combinedTrace, namespace)
-
-    def getRegistersBitfields(self):
-        return registerWriter.getRegistersBitfields(self)
-
-    def getCPPAlias(self, model, namespace):
-        """This method creates the class describing a register
-        alias"""
-        if model.startswith('acc'):
-            return registerWriter.getCPPPipelineAlias(self, namespace)
-        else:
-            return registerWriter.getCPPAlias(self, namespace)
 
     def getCPPProc(self, model, trace, combinedTrace, namespace):
         """creates the class describing the processor"""
@@ -1103,7 +1096,7 @@ class Processor:
             defString = '#define ' + model[:-2].upper() + '_MODEL\n'
             defString += '#define ' + model[-2:].upper() + '_IF\n'
             defCode = cxx_writer.Define(defString)
-            cxx_writer.FileDumper.def_prefix = self.name.upper() + '_CORE_' +  model[:-2].upper() + '_' + model[-2:].upper() + '_'
+            cxx_writer.FileDumper.def_prefix = 'CORE_' + self.name.upper() + '_' +  model[:-2].upper() + '_' + model[-2:].upper() + '_'
 
             # Now I also set the processor class name: note that even if each model has a
             # separate namespace, some buggy dynamic linkers complain, so we must also
@@ -1127,7 +1120,6 @@ class Processor:
                 headFileDec.addMember(i)
             implFileDec.addInclude('#include \"decoder.hpp\"')
             RegClasses = self.getCPPRegisters(trace, combinedTrace, model, namespace)
-            AliasClass = self.getCPPAlias(model, namespace)
             ProcClass = self.getCPPProc(model, trace, combinedTrace, namespace)
             if self.abi:
                 IfClass = self.getCPPIf(model, namespace)
@@ -1152,19 +1144,10 @@ class Processor:
             headFileRegs = cxx_writer.FileDumper('registers.hpp', True)
             headFileRegs.addMember(defCode)
             headFileRegs.addMember(self.defines)
-            headFileRegs.addMember(self.getRegistersBitfields())
+            headFileRegs.addMember(self.getCPPRegisterFields())
             implFileRegs.addMember(namespaceUse)
-            for i in RegClasses:
-                implFileRegs.addMember(i)
-                headFileRegs.addMember(i)
-            implFileAlias = cxx_writer.FileDumper('alias.cpp', False)
-            implFileAlias.addInclude('#include \"alias.hpp\"')
-            headFileAlias = cxx_writer.FileDumper('alias.hpp', True)
-            headFileAlias.addMember(defCode)
-            implFileAlias.addMember(namespaceUse)
-            for i in AliasClass:
-                implFileAlias.addMember(i)
-                headFileAlias.addMember(i)
+            implFileRegs.addMember(RegClasses)
+            headFileRegs.addMember(RegClasses)
             implFileProc = cxx_writer.FileDumper('processor.cpp', False)
             headFileProc = cxx_writer.FileDumper('processor.hpp', True)
             implFileProc.addMember(namespaceUse)
@@ -1317,8 +1300,6 @@ class Processor:
             curFolder.addCode(implFileInstr)
             curFolder.addHeader(headFileRegs)
             curFolder.addCode(implFileRegs)
-            curFolder.addHeader(headFileAlias)
-            curFolder.addCode(implFileAlias)
             curFolder.addHeader(headFileProc)
             curFolder.addCode(implFileProc)
             if model.startswith('acc'):
@@ -1532,7 +1513,7 @@ class ABI:
         self.FP = FP
         # A list of the registers for the I argument, II arg etc.
         self.args = []
-        if isinstance(args, type('')):
+        if isinstance(args, str):
             index = extractRegInterval(args)
             if index:
                 # I'm aliasing part of a register bank or another alias:

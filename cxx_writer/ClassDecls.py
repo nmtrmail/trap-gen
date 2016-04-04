@@ -184,13 +184,13 @@ class Constructor(ClassMember, Function):
             writer.write(' :\n', indent = indent, split = ',')
             indent = writer.curIndent+1
         else: indent = -1
-        split = False
-        if (len(self.initList) > 1):
-            if (len(self.initList) < 10):
-                split = True
-        else: writer.write(' ')
+        #split = False
+        #if (len(self.initList) > 1):
+            #if (len(self.initList) < 10):
+        split = True
+        #else: writer.write(' ')
         for i in self.initList:
-            writer.write(i)
+            writer.write(i, indent = indent)
             if i != self.initList[-1]:
                 if (split == True):
                     writer.write(',\n', indent = indent)

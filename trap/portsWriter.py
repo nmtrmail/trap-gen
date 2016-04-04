@@ -50,8 +50,6 @@ def getCPPExternalPorts(self, model, namespace):
     archHWordType = self.bitSizes[2]
     archByteType = self.bitSizes[3]
 
-    from procWriter import resourceType
-
     if self.isBigEndian:
         swapDEndianessCode = '#ifdef LITTLE_ENDIAN_BO\n'
     else:
@@ -60,7 +58,7 @@ def getCPPExternalPorts(self, model, namespace):
     swapDEndianessCode += str(archWordType) + ' datum2 = (' + str(archWordType) + ')(datum >> ' + str(self.wordSize*self.byteSize) + ');\nthis->swap_endianess(datum2);\n'
     swapDEndianessCode += 'datum = datum1 | (((' + str(archDWordType) + ')datum2) << ' + str(self.wordSize*self.byteSize) + ');\n#endif\n'
 
-    swapEndianessCode = '// Endianess conversion: The processor is always modeled with the host endianess. In case they are different, the endianess is swapped.'
+    swapEndianessCode = '// Endianess conversion: The processor is always modeled with the host endianess. In case they are different, the endianess is swapped.\n'
     if self.isBigEndian:
         swapEndianessDefine = '#ifdef LITTLE_ENDIAN_BO\n'
     else:
@@ -73,9 +71,10 @@ def getCPPExternalPorts(self, model, namespace):
     aliasAttrs = []
     aliasParams = []
     aliasInit = []
+    from registerWriter import aliasType
     for alias in self.memAlias:
-        aliasAttrs.append(cxx_writer.Attribute(alias.alias, resourceType[alias.alias].makeRef(), 'pri'))
-        aliasParams.append(cxx_writer.Parameter(alias.alias, resourceType[alias.alias].makeRef()))
+        aliasAttrs.append(cxx_writer.Attribute(alias.alias, aliasType.makeRef(), 'pri'))
+        aliasParams.append(cxx_writer.Parameter(alias.alias, registerContainerType.makeRef()))
         aliasInit.append(alias.alias + '(' + alias.alias + ')')
 
     MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
@@ -742,31 +741,30 @@ def getGetPINPorts(self, namespace):
 def getIRQTests(self, trace, combinedTrace, namespace):
     """Returns the code implementing the tests for the interrupts"""
     from processor import extractRegInterval
+    from registerWriter import registerType
     testFuns = []
     global testNames
     from procWriter import testNames
 
-    from procWriter import resourceType
-
     archElemsDeclStr = ''
     destrDecls = ''
     for reg in self.regs:
-        archElemsDeclStr += str(resourceType[reg.name]) + ' ' + reg.name + ';\n'
+        archElemsDeclStr += registerType.name + ' ' + reg.name + ';\n'
     for regB in self.regBanks:
         if (regB.constValue and len(regB.constValue) < regB.numRegs)  or (regB.delay and len(regB.delay) < regB.numRegs):
-            archElemsDeclStr += str(resourceType[regB.name]) + ' ' + regB.name + '(' + str(regB.numRegs) + ');\n'
+            archElemsDeclStr += registerType.name + ' ' + regB.name + '(' + str(regB.numRegs) + ');\n'
             for i in range(0, regB.numRegs):
                 if regB.constValue.has_key(i) or regB.delay.has_key(i):
-                    archElemsDeclStr += regB.name + '.set_new_register(' + str(i) + ', new ' + str(resourceType[regB.name + '[' + str(i) + ']']) + '());\n'
+                    archElemsDeclStr += regB.name + '.set_new_register(' + str(i) + ', new ' + registerType.name + '());\n'
                 else:
-                    archElemsDeclStr += regB.name + '.set_new_register(' + str(i) + ', new ' + str(resourceType[regB.name + '_baseType']) + '());\n'
+                    archElemsDeclStr += regB.name + '.set_new_register(' + str(i) + ', new ' + registerType.name + '());\n'
         else:
-            archElemsDeclStr += str(resourceType[regB.name]) + ' ' + regB.name + ' = new ' + str(resourceType[regB.name].makeNormal()) + '[' + str(regB.numRegs) + '];\n'
+            archElemsDeclStr += registerType.name + ' ' + regB.name + ' = new ' + registerType.name + '[' + str(regB.numRegs) + '];\n'
             destrDecls += 'delete [] ' + regB.name + ';\n'
     for alias in self.aliasRegs:
-        archElemsDeclStr += str(resourceType[alias.name]) + ' ' + alias.name + ';\n'
+        archElemsDeclStr += registerType.name + ' ' + alias.name + ';\n'
     for aliasB in self.aliasRegBanks:
-        archElemsDeclStr += str(resourceType[aliasB.name].makePointer()) + ' ' + aliasB.name + ' = new ' + str(resourceType[aliasB.name]) + '[' + str(aliasB.numRegs) + '];\n'
+        archElemsDeclStr += str(registerType.makePointer()) + ' ' + aliasB.name + ' = new ' + registerType.name + '[' + str(aliasB.numRegs) + '];\n'
         destrDecls += 'delete [] ' + aliasB.name + ';\n'
     memAliasInit = ''
     for alias in self.memAlias:
@@ -805,11 +803,8 @@ def getIRQTests(self, trace, combinedTrace, namespace):
     # (there might be dependences among the aliases)
     aliasInit = ''
     import networkx as NX
-    from procWriter import aliasGraph
-    orderedNodes = NX.topological_sort(aliasGraph)
-    for alias in orderedNodes:
-        if alias == 'stop':
-            continue
+    from registerWriter import aliasGraph
+    for alias in aliasGraph:
         if isinstance(alias.initAlias, type('')):
             index = extractRegInterval(alias.initAlias)
             if index:
@@ -860,7 +855,7 @@ def getIRQTests(self, trace, combinedTrace, namespace):
                 elif resource == irq.name:
                     code += resource + ' = ' + hex(value) + ';\n'
                 else:
-                    code += resource + '.immediate_write(' + hex(value) + ');\n'
+                    code += resource + '.write_force(' + hex(value) + ');\n'
 
             # Now I declare the actual interrupt code
             code += 'if ('
@@ -901,14 +896,14 @@ def getIRQTests(self, trace, combinedTrace, namespace):
                     except ValueError:
                         code += resource[:brackIndex] + '_target.read_pin(' + hex(int(resource[brackIndex + 1:-1], 16)) + ')'
                 else:
-                    code += resource + '.read_new_value()'
+                    code += resource + '.read_force()'
                 code += ', (' + str(self.bitSizes[1]) + ')' + hex(value) + ');\n\n'
             code += destrDecls
             curTest = cxx_writer.Code(code)
             curTest.addInclude('#include \"instructions.hpp\"')
             wariningDisableCode = '#ifdef _WIN32\n#pragma warning(disable : 4101)\n#endif\n'
             includeUnprotectedCode = '#define private public\n#define protected public\n#include \"registers.hpp\"\n#include \"memory.hpp\"\n#undef private\n#undef protected\n'
-            curTest.addInclude(['boost/test/test_tools.hpp', 'common/report.hpp', wariningDisableCode, includeUnprotectedCode, '#include \"alias.hpp\"'])
+            curTest.addInclude(['boost/test/test_tools.hpp', 'common/report.hpp', wariningDisableCode, includeUnprotectedCode])
             curTestFunction = cxx_writer.Function(testName, curTest, cxx_writer.voidType)
             curTestFunction.addDocString(brief = 'IRQ Test Function', detail = 'Called by test/main.cpp::main() via the boost::test framework. Instantiates the required modules and tests correct IRQ handling.')
             testFuns.append(curTestFunction)

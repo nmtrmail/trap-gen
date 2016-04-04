@@ -62,6 +62,7 @@ def configure(ctx):
     for flag in ctx.env['CPPFLAGS']:
         if flag.startswith('-D'):
             ctx.env.append_unique('DEFINES', flag[2:])
+    ctx.env.append_unique('CXXFLAGS', '-std=c++11')
 
     ctx.check_waf_version(mini='1.6.6')
     

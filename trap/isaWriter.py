@@ -49,6 +49,7 @@ archWordType = None
 alreadyDeclared = []
 baseInstrConstrParams = []
 
+
 def getToUnlockRegs(self, processor, pipeStage, getAll, delayedUnlock):
     code = ''
     regsToUnlock = []
@@ -285,28 +286,28 @@ def getCppMethod(self, model, processor):
 
 def getCppOperation(self, parameters = False):
     """Returns the code implementing a helper operation"""
-    aliasType = cxx_writer.Type('Alias', '#include \"alias.hpp\"')
+    from registerWriter import aliasType
     for var in self.localvars:
         self.code.addVariable(var)
     self.code.addInclude('common/report.hpp')
-    metodParams = []
+    methodParams = []
     if parameters:
         for elem in self.archElems:
-            metodParams.append(cxx_writer.Parameter(elem, aliasType.makeRef()))
-            metodParams.append(cxx_writer.Parameter(elem + '_bit', cxx_writer.uintRefType))
+            methodParams.append(cxx_writer.Parameter(elem, aliasType.makeRef()))
+            methodParams.append(cxx_writer.Parameter(elem + '_bit', cxx_writer.uintRefType))
         for elem in self.archVars:
-            metodParams.append(cxx_writer.Parameter(elem, cxx_writer.uintRefType))
+            methodParams.append(cxx_writer.Parameter(elem, cxx_writer.uintRefType))
         for var in self.instrvars:
-            metodParams.append(cxx_writer.Parameter(var.name, var.type.makeRef()))
-    methodDecl = cxx_writer.Method(self.name, self.code, cxx_writer.voidType, 'pro', metodParams, inline = True, noException = not self.exception)
+            methodParams.append(cxx_writer.Parameter(var.name, var.type.makeRef()))
+    methodDecl = cxx_writer.Method(self.name, self.code, cxx_writer.voidType, 'pro', methodParams, inline = True, noException = not self.exception)
     return methodDecl
 
-def getCppOpClass(self, namespace):
+def getCppOpClass(self, processor, namespace):
     """Returns a class (directly deriving from instruction) implementing the
     method corresponding to the current operation"""
     global baseInstrConstrParams
+    from registerWriter import aliasType
     from procWriter import baseInstrInitElement
-    aliasType = cxx_writer.Type('Alias', '#include \"alias.hpp\"')
     instructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
     emptyBody = cxx_writer.Code('')
     for var in self.localvars:
@@ -314,15 +315,15 @@ def getCppOpClass(self, namespace):
     self.code.addInclude('common/report.hpp')
     classElements = []
     # Now I also need to declare the instruction variables and referenced architectural elements
-    metodParams = []
+    methodParams = []
     for elem in self.archElems:
-        metodParams.append(cxx_writer.Parameter(elem, aliasType.makeRef()))
-        metodParams.append(cxx_writer.Parameter(elem + '_bit', cxx_writer.uintRefType))
+        methodParams.append(cxx_writer.Parameter(elem,aliasType.makeRef()))
+        methodParams.append(cxx_writer.Parameter(elem + '_bit', cxx_writer.uintRefType))
     for elem in self.archVars:
-        metodParams.append(cxx_writer.Parameter(elem, cxx_writer.uintRefType))
+        methodParams.append(cxx_writer.Parameter(elem, cxx_writer.uintRefType))
     for var in self.instrvars:
-        metodParams.append(cxx_writer.Parameter(var.name, var.varType.makeRef()))
-    methodDecl = cxx_writer.Method(self.name, self.code, cxx_writer.voidType, 'pro', metodParams, inline = True, noException = not self.exception)
+        methodParams.append(cxx_writer.Parameter(var.name, var.varType.makeRef()))
+    methodDecl = cxx_writer.Method(self.name, self.code, cxx_writer.voidType, 'pro', methodParams, inline = True, noException = not self.exception)
     classElements.append(methodDecl)
     opConstr = cxx_writer.Constructor(emptyBody, 'pu', baseInstrConstrParams, ['Instruction(' + baseInstrInitElement + ')'])
     opDecl = cxx_writer.ClassDeclaration(self.name + 'Operation', classElements, virtual_superclasses = [instructionType], namespaces = [namespace])
@@ -332,7 +333,7 @@ def getCppOpClass(self, namespace):
     return opDecl
 
 def getCPPInstrSwitch(obj, i):
-    if type(i) == type(''):
+    if type(i) == str:
         if i.startswith('%'):
             getMnemonicCode = 'oss << '
             if i[1:] in obj.machineCode.bitCorrespondence.keys() + obj.bitCorrespondence.keys():
@@ -353,7 +354,7 @@ def getCPPInstrSwitch(obj, i):
                 if code != 'default':
                     getMnemonicCode += 'case '
                 getMnemonicCode += str(code) + ': {\n'
-                if type(mnemValue) == type(''):
+                if type(mnemValue) == str:
                     getMnemonicCode += 'oss << "' + mnemValue + '";\n'
                 else:
                     getMnemonicCode += getCPPInstrSwitch(obj, mnemValue)
@@ -378,9 +379,9 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     """Returns the code implementing the current instruction: we have to provide the
     implementation of all the abstract methods and call from the behavior method
     all the different behaviors contained in the type hierarchy of this class"""
+    from registerWriter import registerType, aliasType
     pipeline = processor.pipes
     externalClock = processor.externalClock
-    aliasType = cxx_writer.Type('Alias', '#include \"alias.hpp\"')
     instructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
     emptyBody = cxx_writer.Code('')
     classElements = []
@@ -516,7 +517,6 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
                     behaviorCode += '#undef ' + instrFieldName + '\n'
 
             behaviorCode += 'return this->stage_cycles;\n\n'
-            registerType = cxx_writer.Type('Register')
             unlockQueueType = cxx_writer.TemplateType('std::map', ['unsigned', cxx_writer.TemplateType('std::vector', [registerType.makePointer()], 'vector')], 'map')
             unlockQueueParam = cxx_writer.Parameter('unlock_queue', unlockQueueType.makeRef())
             behaviorBody = cxx_writer.Code(behaviorCode)
@@ -706,20 +706,20 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
         #if processor.instructionCache:
             #updateMetodName = 'update_alias'
         #else:
-            #updateMetodName = 'direct_set_alias'
-        updateMetodName = 'direct_set_alias'
+            #updateMetodName = 'set_alias'
+        updateMethodName = 'set_alias'
         if correspondence[1]:
             if model.startswith('acc'):
                 for pipeStage in pipeline:
-                    setParamsCode += 'this->' + name + '_' + pipeStage.name + '.' + updateMetodName + '(this->' + correspondence[0] + '_' + pipeStage.name + '[' + str(correspondence[1]) + ' + this->' + name + '_bit]);\n'
+                    setParamsCode += 'this->' + name + '_' + pipeStage.name + '.' + updateMethodName +  '(this->R.' + correspondence[0] + '_' + pipeStage.name + '[' + str(correspondence[1]) + ' + this->' + name + '_bit]);\n'
             else:
-                setParamsCode += 'this->' + name + '.' + updateMetodName + '(this->' + correspondence[0] + '[' + str(correspondence[1]) + ' + this->' + name + '_bit]);\n'
+                setParamsCode += 'this->' + name + '.' + updateMethodName +  '(this->R.' + correspondence[0] + '[' + str(correspondence[1]) + ' + this->' + name + '_bit]);\n'
         else:
             if model.startswith('acc'):
                 for pipeStage in pipeline:
-                    setParamsCode += 'this->' + name + '_' + pipeStage.name + '.' + updateMetodName + '(this->' + correspondence[0] + '_' + pipeStage.name + '[this->' + name + '_bit]);\n'
+                    setParamsCode += 'this->' + name + '_' + pipeStage.name + '.' + updateMethodName +  '(this->R.' + correspondence[0] + '_' + pipeStage.name + '[this->' + name + '_bit]);\n'
             else:
-                setParamsCode += 'this->' + name + '.' + updateMetodName + '(this->' + correspondence[0] + '[this->' + name + '_bit]);\n'
+                setParamsCode += 'this->' + name + '.' + updateMethodName +  '(this->R.' + correspondence[0] + '[this->' + name + '_bit]);\n'
     # now I need to declare the fields for the variable parts of the
     # instruction
     archVars = []
@@ -842,32 +842,40 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
     archElemsDeclStr = ''
     baseInitElement = '('
     destrDecls = ''
-    from procWriter import resourceType
-    for reg in processor.regs:
-        archElemsDeclStr += namespace + '::' + str(resourceType[reg.name]) + ' ' + reg.name + ';\n'
-        baseInitElement += reg.name + ', '
-    for regB in processor.regBanks:
-        if (regB.constValue and len(regB.constValue) < regB.numRegs)  or (regB.delay and len(regB.delay) < regB.numRegs):
-            archElemsDeclStr += str(resourceType[regB.name]) + ' ' + regB.name + '(' + str(regB.numRegs) + ');\n'
-            for i in range(0, regB.numRegs):
-                if regB.constValue.has_key(i) or regB.delay.has_key(i):
-                    archElemsDeclStr += regB.name + '.set_new_register(' + str(i) + ', new ' + str(resourceType[regB.name + '[' + str(i) + ']']) + '());\n'
-                else:
-                    archElemsDeclStr += regB.name + '.set_new_register(' + str(i) + ', new ' + str(resourceType[regB.name + '_baseType']) + '());\n'
+
+    if processor.regs or processor.regBanks:
+        from registerWriter import registerContainerType
+        archElemsDeclStr += registerContainerType.name + ' R('
+        # Register const or reset values could be processor variables.
+        # Since we do not have the values for those (probably program-dependent),
+        # we pass on zeros to the Registers ctor.
+        initRegCode = ''
+        for reg in processor.regs:
+            if isinstance(reg.constValue, str):
+                initRegCode += '0, '
+            if isinstance(reg.defValue, str):
+                initRegCode += '0, '
+
+        for regBank in processor.regBanks:
+            for regConstValue in regBank.constValue.values():
+                if isinstance(regConstValue, str):
+                    initRegCode += '0, '
+            for regDefaultValue in regBank.defValues:
+                if isinstance(regDefaultValue, str):
+                    initRegCode += '0, '
+        if initRegCode:
+            archElemsDeclStr += initRegCode[:-2] + ');\n'
         else:
-            archElemsDeclStr += str(resourceType[regB.name]) + ' ' + regB.name + ' = new ' + str(resourceType[regB.name].makeNormal()) + '[' + str(regB.numRegs) + '];\n'
-            destrDecls += 'delete [] ' + regB.name + ';\n'
-        baseInitElement += regB.name + ', '
-    for alias in processor.aliasRegs:
-        archElemsDeclStr += namespace + '::' + str(resourceType[alias.name]) + ' ' + alias.name + ';\n'
-        baseInitElement += alias.name + ', '
-    for aliasB in processor.aliasRegBanks:
-        archElemsDeclStr += namespace + '::' + str(resourceType[aliasB.name].makePointer()) + ' ' + aliasB.name + ' = new ' + namespace + '::' + str(resourceType[aliasB.name]) + '[' + str(aliasB.numRegs) + '];\n'
-        baseInitElement += aliasB.name + ', '
-        destrDecls += 'delete [] ' + aliasB.name + ';\n'
-    memAliasInit = ''
-    for alias in processor.memAlias:
-        memAliasInit += ', ' + alias.alias
+            archElemsDeclStr += ');\n'
+        # We also explicitly reset all regs to zero, instead of the reset value.
+        # Test writers tend to mask status registers apart from teh bits they
+        # are interested in, which is perhaps not quite correct but intuitive.
+        archElemsDeclStr += 'R.write_force(0);\n'
+        baseInitElement += 'R, '
+
+    #memAliasInit = ''
+    #for alias in processor.memAlias:
+        #memAliasInit += ', ' + alias.alias
 
     if (trace or (processor.memory and processor.memory[2])) and not processor.systemc:
         archElemsDeclStr += 'unsigned total_cycles;\n'
@@ -878,11 +886,11 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
             memCyclesInit += ', total_cycles'
         if processor.memory[3]:
             memDebugInit += ', ' + processor.memory[3]
-        archElemsDeclStr += namespace + '::LocalMemory ' + processor.memory[0] + '(' + str(processor.memory[1]) + memCyclesInit + memAliasInit + memDebugInit + ');\n'
+        archElemsDeclStr += namespace + '::LocalMemory ' + processor.memory[0] + '(' + str(processor.memory[1]) + memCyclesInit + memDebugInit + ');\n'
         baseInitElement += processor.memory[0] + ', '
     # Note how I declare local memories even for TLM ports. I use 1MB as default dimension
     for tlmPorts in processor.tlmPorts.keys():
-        archElemsDeclStr += namespace + '::LocalMemory ' + tlmPorts + '(' + str(1024*1024) + memAliasInit + ');\n'
+        archElemsDeclStr += namespace + '::LocalMemory ' + tlmPorts + '(' + str(1024*1024) + ');\n'
         baseInitElement += tlmPorts + ', '
     # Now I declare the PIN stubs for the outgoing PIN ports
     # and alts themselves
@@ -907,44 +915,11 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
     if trace and not processor.systemc:
         baseInitElement += 'total_cycles, '
     baseInitElement = baseInitElement[:-2] + ')'
-    # Now we perform the alias initialization; note that they need to be initialized according to the initialization graph
-    # (there might be dependences among the aliases)
-    aliasInit = ''
-    import networkx as NX
-    from procWriter import aliasGraph
-    from processor import extractRegInterval
-    orderedNodes = NX.topological_sort(aliasGraph)
-    for alias in orderedNodes:
-        if alias == 'stop':
-            continue
-        if isinstance(alias.initAlias, type('')):
-            index = extractRegInterval(alias.initAlias)
-            if index:
-                curIndex = index[0]
-                try:
-                    for i in range(0, alias.numRegs):
-                        aliasInit += alias.name + '[' + str(i) + '].update_alias(' + alias.initAlias[:alias.initAlias.find('[')] + '[' + str(curIndex) + ']);\n'
-                        curIndex += 1
-                except AttributeError:
-                    aliasInit += alias.name + '.update_alias(' + alias.initAlias[:alias.initAlias.find('[')] + '[' + str(curIndex) + '], ' + str(alias.offset) + ');\n'
-            else:
-                aliasInit += alias.name + '.update_alias(' + alias.initAlias + ', ' + str(alias.offset) + ');\n'
-        else:
-            curIndex = 0
-            for curAlias in alias.initAlias:
-                index = extractRegInterval(curAlias)
-                if index:
-                    for curRange in range(index[0], index[1] + 1):
-                        aliasInit += alias.name + '[' + str(curIndex) + '].update_alias(' + curAlias[:curAlias.find('[')] + '[' + str(curRange) + ']);\n'
-                        curIndex += 1
-                else:
-                    aliasInit += alias.name + '[' + str(curIndex) + '].update_alias(' + curAlias + ');\n'
-                    curIndex += 1
     tests = []
     for test in self.tests:
         # First of all I create the instance of the instruction and of all the
         # processor elements
-        code = archElemsDeclStr + '\n' + aliasInit + '\n'
+        code = archElemsDeclStr + '\n'
         code += self.name + ' test_instruction' + baseInitElement + ';\n'
         # Now I set the value of the instruction fields
         instrCode = ['0' for i in range(0, self.machineCode.instrLen)]
@@ -970,7 +945,7 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
                 except ValueError:
                     code += resource[:brackIndex] + '.write_word_dbg(' + hex(int(resource[brackIndex + 1:-1], 16)) + ', ' + hex(value) + ');\n'
             else:
-                code += resource + '.immediate_write(' + hex(value) + ');\n'
+                code += 'R.' + resource + '.write_force(' + hex(value) + ');\n'
         code += 'test_instruction.set_params(' + hex(int(''.join(instrCode), 2)) + ');\n'
         code += 'try {\n'
         code += 'test_instruction.behavior();'
@@ -994,13 +969,13 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
                 except ValueError:
                     code += resource[:brackIndex] + '_target_pin.read_pin(' + hex(int(resource[brackIndex + 1:-1], 16)) + ')'
             else:
-                code += resource + '.read_new_value()'
+                code += 'R.' + resource + '.read_force()'
             code += ', (' + str(processor.bitSizes[1]) + ')' + hex(value) + ');\n\n'
         code += destrDecls
         curTest = cxx_writer.Code(code)
         wariningDisableCode = '#ifdef _WIN32\n#pragma warning(disable : 4101\n#endif\n'
         includeUnprotectedCode = '#define private public\n#define protected public\n#include \"instructions.hpp\"\n#include \"registers.hpp\"\n#include \"memory.hpp\"\n#undef private\n#undef protected\n'
-        curTest.addInclude(['boost/test/test_tools.hpp', 'common/report.hpp', wariningDisableCode, includeUnprotectedCode, '#include \"alias.hpp\"'])
+        curTest.addInclude(['boost/test/test_tools.hpp', 'common/report.hpp', wariningDisableCode, includeUnprotectedCode])
         curTestFunction = cxx_writer.Function(self.name + '_' + str(len(tests)), curTest, cxx_writer.voidType)
         from procWriter import testNames
         testNames.append(self.name + '_' + str(len(tests)))
@@ -1009,8 +984,8 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
 
 def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
     """I go over each instruction and print the class representing it"""
+    from registerWriter import registerType, registerContainerType
     memoryType = cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"')
-    registerType = cxx_writer.Type('Register')
     unlockQueueType = cxx_writer.TemplateType('std::map', ['unsigned', cxx_writer.TemplateType('std::vector', [registerType.makePointer()], 'vector')], 'map')
 
     classes = []
@@ -1111,15 +1086,15 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
             for reg in self.traceRegs:
                 if reg.name in bankNames:
                     printTraceCode += 'for (int reg_i = 0; reg_i < ' + str(reg.numRegs) + '; reg_i++) {\n'
-                    printTraceCode += 'std::cerr << \"' + reg.name + '[\" << std::dec << reg_i << \"] = \" << std::hex << std::showbase << this->' + reg.name + '[reg_i] << std::endl;\n}\n'
+                    printTraceCode += 'std::cerr << \"' + reg.name + '[\" << std::dec << reg_i << \"] = \" << std::hex << std::showbase << this->R.' + reg.name + '[reg_i] << std::endl;\n}\n'
                 else:
-                    printTraceCode += 'std::cerr << \"' + reg.name + ' = \" << std::hex << std::showbase << this->' + reg.name + ' << std::endl;\n'
+                    printTraceCode += 'std::cerr << \"' + reg.name + ' = \" << std::hex << std::showbase << this->R.' + reg.name + ' << std::endl;\n'
         else:
             for reg in processor.regs:
-                printTraceCode += 'std::cerr << \"' + reg.name + ' = \" << std::hex << std::showbase << this->' + reg.name + ' << std::endl;\n'
+                printTraceCode += 'std::cerr << \"' + reg.name + ' = \" << std::hex << std::showbase << this->R.' + reg.name + ' << std::endl;\n'
             for regB in processor.regBanks:
                 printTraceCode += 'for (int reg_i = 0; reg_i < ' + str(regB.numRegs) + '; reg_i++) {\n'
-                printTraceCode += 'std::cerr << \"' + regB.name + '[\" << std::dec << reg_i << \"] = \" << std::hex << std::showbase << this->' + regB.name + '[reg_i] << std::endl;\n}\n'
+                printTraceCode += 'std::cerr << \"' + regB.name + '[\" << std::dec << reg_i << \"] = \" << std::hex << std::showbase << this->R.' + regB.name + '[reg_i] << std::endl;\n}\n'
         printTraceCode += 'std::cerr << std::endl;\n'
         if model.startswith('acc'):
             # now I have to take all the resources and create a define which
@@ -1200,36 +1175,13 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
     global baseInstrConstrParams
     baseInstrConstrParams = []
     baseInitElement = 'Instruction('
-    from procWriter import resourceType
     if not model.startswith('acc'):
-        for reg in processor.regs:
-            attribute = cxx_writer.Attribute(reg.name, resourceType[reg.name].makeRef(), 'pro')
-            baseInstrConstrParams.append(cxx_writer.Parameter(reg.name, resourceType[reg.name].makeRef()))
-            initElements.append(reg.name + '(' + reg.name + ')')
-            baseInitElement += reg.name + ', '
-            instructionElements.append(attribute)
-        for regB in processor.regBanks:
-            if (regB.constValue and len(regB.constValue) < regB.numRegs)  or (regB.delay and len(regB.delay) < regB.numRegs):
-                curRegBType = resourceType[regB.name].makeRef()
-            else:
-                curRegBType = resourceType[regB.name]
-            attribute = cxx_writer.Attribute(regB.name, curRegBType, 'pro')
-            baseInstrConstrParams.append(cxx_writer.Parameter(regB.name, curRegBType))
-            initElements.append(regB.name + '(' + regB.name + ')')
-            baseInitElement += regB.name + ', '
-            instructionElements.append(attribute)
-        for alias in processor.aliasRegs:
-            attribute = cxx_writer.Attribute(alias.name, resourceType[alias.name].makeRef(), 'pro')
-            baseInstrConstrParams.append(cxx_writer.Parameter(alias.name, resourceType[alias.name].makeRef()))
-            initElements.append(alias.name + '(' + alias.name + ')')
-            baseInitElement += alias.name + ', '
-            instructionElements.append(attribute)
-        for aliasB in processor.aliasRegBanks:
-            attribute = cxx_writer.Attribute(aliasB.name, resourceType[aliasB.name].makePointer(), 'pro')
-            baseInstrConstrParams.append(cxx_writer.Parameter(aliasB.name, resourceType[aliasB.name].makePointer()))
-            initElements.append(aliasB.name + '(' + aliasB.name + ')')
-            baseInitElement += aliasB.name + ', '
-            instructionElements.append(attribute)
+        if (processor.regs or processor.regBanks):
+            instructionElements.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'pro'))
+            baseInstrConstrParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
+            initElements.append('R(R)')
+            baseInitElement += 'R, '
+    # TODO:
     else:
         pipeRegisterType = cxx_writer.Type('PipelineRegister', '#include \"registers.hpp\"')
         for reg in processor.regs:
@@ -1246,30 +1198,30 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
             instructionElements.append(attribute)
         for pipeStage in processor.pipes:
             for reg in processor.regs:
-                attribute = cxx_writer.Attribute(reg.name + '_' + pipeStage.name, resourceType[reg.name].makeRef(), 'pu')
-                baseInstrConstrParams.append(cxx_writer.Parameter(reg.name + '_' + pipeStage.name, resourceType[reg.name].makeRef()))
+                attribute = cxx_writer.Attribute(reg.name + '_' + pipeStage.name, registerType.makeRef(), 'pu')
+                baseInstrConstrParams.append(cxx_writer.Parameter(reg.name + '_' + pipeStage.name, registerType.makeRef()))
                 initElements.append(reg.name + '_' + pipeStage.name + '(' + reg.name + '_' + pipeStage.name + ')')
                 baseInitElement += reg.name + '_' + pipeStage.name + ', '
                 instructionElements.append(attribute)
             for regB in processor.regBanks:
                 if (regB.constValue and len(regB.constValue) < regB.numRegs):
-                    curRegBType = resourceType[regB.name].makeRef()
+                    curRegBType = registerType.makeRef()
                 else:
-                    curRegBType = resourceType[regB.name]
+                    curRegBType = registerType
                 attribute = cxx_writer.Attribute(regB.name + '_' + pipeStage.name, curRegBType, 'pu')
                 baseInstrConstrParams.append(cxx_writer.Parameter(regB.name + '_' + pipeStage.name, curRegBType))
                 initElements.append(regB.name + '_' + pipeStage.name + '(' + regB.name + '_' + pipeStage.name + ')')
                 baseInitElement += regB.name + '_' + pipeStage.name + ', '
                 instructionElements.append(attribute)
             for alias in processor.aliasRegs:
-                attribute = cxx_writer.Attribute(alias.name + '_' + pipeStage.name, resourceType[alias.name].makeRef(), 'pu')
-                baseInstrConstrParams.append(cxx_writer.Parameter(alias.name + '_' + pipeStage.name, resourceType[alias.name].makeRef()))
+                attribute = cxx_writer.Attribute(alias.name + '_' + pipeStage.name, registerType.makeRef(), 'pu')
+                baseInstrConstrParams.append(cxx_writer.Parameter(alias.name + '_' + pipeStage.name, registerType.makeRef()))
                 initElements.append(alias.name + '_' + pipeStage.name + '(' + alias.name + '_' + pipeStage.name + ')')
                 baseInitElement += alias.name + '_' + pipeStage.name + ', '
                 instructionElements.append(attribute)
             for aliasB in processor.aliasRegBanks:
-                attribute = cxx_writer.Attribute(aliasB.name + '_' + pipeStage.name, resourceType[aliasB.name].makePointer(), 'pu')
-                baseInstrConstrParams.append(cxx_writer.Parameter(aliasB.name + '_' + pipeStage.name, resourceType[aliasB.name].makePointer()))
+                attribute = cxx_writer.Attribute(aliasB.name + '_' + pipeStage.name, registerType.makePointer(), 'pu')
+                baseInstrConstrParams.append(cxx_writer.Parameter(aliasB.name + '_' + pipeStage.name, registerType.makePointer()))
                 initElements.append(aliasB.name + '_' + pipeStage.name + '(' + aliasB.name + '_' + pipeStage.name + ')')
                 baseInitElement += aliasB.name + '_' + pipeStage.name + ', '
                 instructionElements.append(attribute)
@@ -1339,7 +1291,7 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
             for behaviors in instr.postbehaviors.values() + instr.prebehaviors.values():
                 for beh in behaviors:
                     if not behClass.has_key(beh.name) and beh.inline and beh.numUsed > 1 and not beh.name in alreadyDeclared:
-                        behClass[beh.name] = beh.getCppOpClass(namespace)
+                        behClass[beh.name] = beh.getCppOpClass(processor, namespace)
                         classes.append(behClass[beh.name])
 
     #########################################################################

@@ -97,8 +97,8 @@ processor.setPreProcMacro('tsim-comp', 'TSIM_COMPATIBILITY')
 # compatibility mode is used, as this is not done by software (i.e. not done by
 # the BSP contained in the BCC compiler)
 processor.setBeginOperation("""#ifdef TSIM_COMPATIBILITY
-PSR.immediate_write(0xf30000E0L);
-WIM.immediate_write(2);
+PSR.write_force(0xf30000E0L);
+WIM.write_force(2);
 #endif""")
 
 # Ok, now we move to the description of more complicated processor
@@ -295,12 +295,12 @@ abi.addVarRegsCorrespondence({'REGS[0-31]': (0, 31), 'Y': 64, 'PSR': 65, 'WIM': 
 # systemcalls ?????
 pre_code = """
 unsigned newCwp = ((unsigned)(PSR[key_CWP] - 1)) % """ + str(numRegWindows) + """;
-PSR.immediate_write((PSR & 0xFFFFFFE0) | newCwp);
+PSR.write_force((PSR & 0xFFFFFFE0) | newCwp);
 """
 pre_code += updateAliasCode_abi()
 post_code = """
 unsigned newCwp = ((unsigned)(PSR[key_CWP] + 1)) % """ + str(numRegWindows) + """;
-PSR.immediate_write((PSR & 0xFFFFFFE0) | newCwp);
+PSR.write_force((PSR & 0xFFFFFFE0) | newCwp);
 """
 post_code += updateAliasCode_abi()
 abi.processorID('(ASR[17] & 0xF0000000) >> 28')

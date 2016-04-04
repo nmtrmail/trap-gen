@@ -41,6 +41,10 @@
 import copy
 import CustomCode, Writer
 
+import sys
+if sys.version_info >= (2,7):
+    from collections import OrderedDict
+
 class DumpElement:
     """Base element of all the elements which have to be dumped. All printable elements like
     classes, attributes, methods .... derive from this class"""
@@ -517,12 +521,16 @@ class Operator(Function):
 class Enum(DumpElement):
     """Represents the declaration of an enumeration type"""
 
-    def __init__(self, name, values, namespaces = []):
+    def __init__(self, name, values, superclass = '', namespaces = []):
         DumpElement.__init__(self, name)
-        self.values = values
+        if sys.version_info >= (2,7):
+            self.values = OrderedDict(values)
+        else:
+            self.values = values
+        self.superclass = superclass
         self.namespaces = namespaces
 
-    def addValue(self, name, value):
+    def addValue(self, name, value = ''):
         self.values[name] = value
 
     def writeDeclaration(self, writer):
@@ -532,10 +540,18 @@ class Enum(DumpElement):
             self.printDocString(writer)
         if not self.values:
             raise Exception('Cannot print empty enum.')
-        code = 'enum ' + self.name + ' {\n'
+        code = 'enum ' + self.name
+        if isinstance(self.superclass, Type):
+          writer.write(code + ': ')
+          self.superclass.writeDeclaration(writer)
+          code = ''
+        code += ' {\n'
         for key, val in self.values.items():
-            code += key + ' = ' + str(val) + ' \n,'
-        writer.write(code[:-1] + '};\n')
+            code += key
+            if val:
+                code += ' = ' + str(val)
+            code += ',\n'
+        writer.write(code[:-2] + '\n}; // enum ' + self.name + '\n')
         for namespace in self.namespaces:
             writer.write('} // namespace ' + namespace + '\n')
 

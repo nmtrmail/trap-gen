@@ -75,8 +75,7 @@ def getCPPMemoryIf(self, model, namespace):
     """Creates the necessary structures for communicating with the memory; an
     array in case of an internal memory, the TLM port for the use with TLM
     etc."""
-    from procWriter import resourceType
-
+    from registerWriter import registerType, aliasType
     archDWordType = self.bitSizes[0]
     archWordType = self.bitSizes[1]
     archHWordType = self.bitSizes[2]
@@ -142,9 +141,8 @@ def getCPPMemoryIf(self, model, namespace):
     aliasInit = []
     MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
     for alias in self.memAlias:
-        aliasAttrs.append(cxx_writer.Attribute(alias.alias, resourceType[alias.alias].makeRef(), 'pri'))
-        aliasParams.append(cxx_writer.Parameter(alias.alias, resourceType[alias.alias].makeRef()))
-        aliasInit.append(alias.alias + '(' + alias.alias + ')')
+        aliasAttrs.append(cxx_writer.Attribute(alias.alias, aliasType, 'pri'))
+        aliasInit.append(alias.alias + '("' + alias.alias.name + '")')
 
     checkAddressCode = 'if (address >= this->size) {\nTHROW_ERROR("Address " << std::hex << std::showbase << address << " out of memory.");\n}\n'
     checkAddressCodeException = 'if (address >= this->size) {\nTHROW_EXCEPTION("Address " << std::hex << std::showbase << address << " out of memory.");\n}\n'
@@ -270,7 +268,7 @@ def getCPPMemoryIf(self, model, namespace):
         localMemDecl = cxx_writer.ClassDeclaration('LocalMemory', memoryElements, [memoryIfDecl.getType()], namespaces = [namespace])
         constructorBody = cxx_writer.Code('this->memory = new char[size];\nthis->debugger = NULL;')
         constructorParams = [cxx_writer.Parameter('size', cxx_writer.uintType)]
-        publicMemConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams + aliasParams, ['size(size)'] + aliasInit)
+        publicMemConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams, ['size(size)'] + aliasInit)
         localMemDecl.addConstructor(publicMemConstr)
         destructorBody = cxx_writer.Code('delete [] this->memory;')
         publicMemDestr = cxx_writer.Destructor(destructorBody, 'pu', True)
@@ -347,8 +345,18 @@ def getCPPMemoryIf(self, model, namespace):
         memoryElements.append(dumpFileAttribute)
         memoryElements += aliasAttrs
         if self.memory[3]:
-            memoryElements.append(cxx_writer.Attribute(self.memory[3], resourceType[self.memory[3]].makeRef(), 'pri'))
-            pcRegParam = [cxx_writer.Parameter(self.memory[3], resourceType[self.memory[3]].makeRef())]
+            # Find out type of fetch register.
+            from processor import extractRegInterval
+            fetchReg = self.memory[3]
+            fetchIndex = extractRegInterval(fetchReg)
+            if fetchIndex: fetchReg = fetchReg[0:fetchReg.index('[')]
+            fetchType = None
+            if fetchReg in [i.name for i in self.regs + self.regBanks]:
+                fetchType = registerType
+            if fetchType == None and fetchReg in [i.name for i in self.aliasRegs + self.aliasRegBanks]:
+                fetchType = aliasType
+            memoryElements.append(cxx_writer.Attribute(self.memory[3], fetchType.makeRef(), 'pri'))
+            pcRegParam = [cxx_writer.Parameter(self.memory[3], fetchType.makeRef())]
             pcRegInit = [self.memory[3] + '(' + self.memory[3] + ')']
         localMemDecl = cxx_writer.ClassDeclaration('LocalMemory', memoryElements, [memoryIfDecl.getType()], namespaces = [namespace])
         localMemDecl.addDocString(brief = 'Memory Interface Class', detail = 'Interface used by the core to communicate with memory. Defines the required TLM ports.')

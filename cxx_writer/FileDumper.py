@@ -54,13 +54,14 @@ class FileDumper:
     banner = ''
     def_prefix = ''
 
-    def __init__(self, name, isHeader, indentSize = 2, lineWidth = 80):
+    def __init__(self, name, isHeader, indentSize = 2, lineWidth = 80, projectFiles = []):
         self.name = name
         self.members = []
         self.isHeader = isHeader
         self.includes = []
         self.indentSize = indentSize
         self.lineWidth = lineWidth
+        self.projectFiles = projectFiles
 
     def addMember(self, member):
         try:
@@ -130,30 +131,7 @@ class FileDumper:
         # This is to choose between the #include <xxx> and #include "xxx" syntax.
         # By sorting the includes in three different lists we can group them logically.
         defines = []
-        trapfiles = [
-          'common/report.hpp',
-          'common/tools_if.hpp',
-          'debugger/breakpoint_manager.hpp',
-          'debugger/gdb_connection_manager.hpp',
-          'debugger/gdb_stub.hpp',
-          'debugger/watchpoint_manager.hpp',
-          'elfloader/elf_frontend.hpp',
-          'elfloader/exec_loader.hpp',
-          'modules/abi_if.hpp',
-          'modules/instruction.hpp',
-          'modules/memory_at.hpp',
-          'modules/memory_lt.hpp',
-          'modules/pin_target.hpp',
-          'modules/scireg.h',
-          'modules/sparse_memory_at.hpp',
-          'modules/sparse_memory_lt.hpp',
-          'osemu/osemu_base.hpp',
-          'osemu/osemu.hpp',
-          'osemu/syscall.hpp',
-          'profiler/profiler_elements.hpp',
-          'profiler/profiler.hpp',
-          'trap.hpp']
-        trapincludes = []
+        prjincludes = []
         sysincludes = []
         for include in self.includes:
             include = include.lstrip()
@@ -162,12 +140,12 @@ class FileDumper:
             elif include.startswith('#'):
                 defines.append(include)
             elif include != self.name:
-                if include in trapfiles:
-                    trapincludes.append(include)
+                if include in self.projectFiles:
+                    prjincludes.append(include)
                 else:
                     sysincludes.append(include)
         writer.write('\n')
-        for include in trapincludes:
+        for include in prjincludes:
             writer.write('#include <' + include + '>\n')
         writer.write('\n')
         for include in sysincludes:
@@ -183,7 +161,7 @@ class FileDumper:
                     member.writeDeclaration(writer)
                     if isinstance(member, ClassDeclaration) or isinstance(member, SCModule):
                         writer.writeFill('*')
-                        printOnFile('', fileHnd)
+                    printOnFile('', fileHnd)
                 except AttributeError:
                     pass
             else:
@@ -191,7 +169,7 @@ class FileDumper:
                     member.writeImplementation(writer)
                     if isinstance(member, Function) or isinstance(member, Operator) or isinstance(member, ClassDeclaration) or isinstance(member, SCModule):
                         writer.writeFill('*')
-                        printOnFile('', fileHnd)
+                    printOnFile('', fileHnd)
                 except AttributeError:
                     pass
         if self.isHeader:
@@ -211,6 +189,7 @@ class Folder:
         self.subfolders = []
         self.mainFile = ''
         self.uselib_local = []
+        self.includes = []
 
     def addHeader(self, header):
         self.headers.append(header)

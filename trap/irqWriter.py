@@ -42,6 +42,7 @@ import cxx_writer
 
 def getGetIRQInstr(self, model, trace, namespace):
     from pipelineWriter import hasCheckHazard
+    from registerWriter import registerType
     instructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
     emptyBody = cxx_writer.Code('')
 

@@ -50,10 +50,8 @@ def getCPPIf(self, model, namespace):
         regWriteCode = '.write_all'
         regReadCode = ''
     else:
-        regWriteCode = '.immediate_write'
-        regReadCode = '.read_new_value()'
-
-    from procWriter import resourceType
+        regWriteCode = '.write_force'
+        regReadCode = '.read_force()'
 
     wordType = self.bitSizes[1]
     includes = wordType.getIncludes()
@@ -80,40 +78,45 @@ def getCPPIf(self, model, namespace):
         ifClassElements.append(cxx_writer.Attribute(mem_name, memIfType.makeRef(), 'pri'))
         baseInstrConstrParams.append(cxx_writer.Parameter(mem_name, memIfType.makeRef()))
         initElements.append(mem_name + '(' + mem_name + ')')
-    for reg in self.regs:
-        if model.startswith('acc'):
-            curRegBType = pipeRegisterType
-        else:
-            curRegBType = resourceType[reg.name]
-        attribute = cxx_writer.Attribute(reg.name, curRegBType.makeRef(), 'pri')
-        baseInstrConstrParams.append(cxx_writer.Parameter(reg.name, curRegBType.makeRef()))
-        initElements.append(reg.name + '(' + reg.name + ')')
-        ifClassElements.append(attribute)
-    for regB in self.regBanks:
-        if (regB.constValue and len(regB.constValue) < regB.numRegs)  or ((regB.delay and len(regB.delay) < regB.numRegs) and not model.startswith('acc')):
-            if model.startswith('acc'):
-                curRegBType = pipeRegisterType.makePointer()
+    if (self.regs or self.regBanks):
+        from registerWriter import registerContainerType
+        ifClassElements.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'pri'))
+        baseInstrConstrParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
+        initElements.append('R(R)')
+    # TODO
+    '''
+    if model.startswith('acc'):
+        curRegBType = pipeRegisterType
+        for reg in self.regs:
+            attribute = cxx_writer.Attribute(reg.name, curRegBType.makeRef(), 'pri')
+            baseInstrConstrParams.append(cxx_writer.Parameter(reg.name, curRegBType.makeRef()))
+            initElements.append(reg.name + '(' + reg.name + ')')
+            ifClassElements.append(attribute)
+        for regB in self.regBanks:
+            if (regB.constValue and len(regB.constValue) < regB.numRegs)  or ((regB.delay and len(regB.delay) < regB.numRegs) and not model.startswith('acc')):
+                if model.startswith('acc'):
+                    curRegBType = pipeRegisterType.makePointer()
+                else:
+                    curRegBType = resourceType[regB.name].makeRef()
             else:
-                curRegBType = resourceType[regB.name].makeRef()
-        else:
-            if model.startswith('acc'):
-                curRegBType = pipeRegisterType.makePointer()
-            else:
-                curRegBType = resourceType[regB.name]
-        attribute = cxx_writer.Attribute(regB.name, curRegBType, 'pri')
-        baseInstrConstrParams.append(cxx_writer.Parameter(regB.name, curRegBType))
-        initElements.append(regB.name + '(' + regB.name + ')')
-        ifClassElements.append(attribute)
-    for alias in self.aliasRegs:
-        attribute = cxx_writer.Attribute(alias.name, resourceType[alias.name].makeRef(), 'pri')
-        baseInstrConstrParams.append(cxx_writer.Parameter(alias.name, resourceType[alias.name].makeRef()))
-        initElements.append(alias.name + '(' + alias.name + ')')
-        ifClassElements.append(attribute)
-    for aliasB in self.aliasRegBanks:
-        attribute = cxx_writer.Attribute(aliasB.name, resourceType[aliasB.name].makePointer(), 'pri')
-        baseInstrConstrParams.append(cxx_writer.Parameter(aliasB.name, resourceType[aliasB.name].makePointer()))
-        initElements.append(aliasB.name + '(' + aliasB.name + ')')
-        ifClassElements.append(attribute)
+                if model.startswith('acc'):
+                    curRegBType = pipeRegisterType.makePointer()
+                else:
+                    curRegBType = resourceType[regB.name]
+            attribute = cxx_writer.Attribute(regB.name, curRegBType, 'pri')
+            baseInstrConstrParams.append(cxx_writer.Parameter(regB.name, curRegBType))
+            initElements.append(regB.name + '(' + regB.name + ')')
+            ifClassElements.append(attribute)
+        for alias in self.aliasRegs:
+            attribute = cxx_writer.Attribute(alias.name, resourceType[alias.name].makeRef(), 'pri')
+            baseInstrConstrParams.append(cxx_writer.Parameter(alias.name, resourceType[alias.name].makeRef()))
+            initElements.append(alias.name + '(' + alias.name + ')')
+            ifClassElements.append(attribute)
+        for aliasB in self.aliasRegBanks:
+            attribute = cxx_writer.Attribute(aliasB.name, resourceType[aliasB.name].makePointer(), 'pri')
+            baseInstrConstrParams.append(cxx_writer.Parameter(aliasB.name, resourceType[aliasB.name].makePointer()))
+            initElements.append(aliasB.name + '(' + aliasB.name + ')')
+            ifClassElements.append(attribute)'''
     attribute = cxx_writer.Attribute('instr_executing', cxx_writer.boolType.makeRef(), 'pri')
     baseInstrConstrParams.append(cxx_writer.Parameter('instr_executing', cxx_writer.boolType.makeRef()))
     initElements.append('instr_executing(instr_executing)')
@@ -141,7 +144,7 @@ def getCPPIf(self, model, namespace):
 
     # Here are the methods used to discriminate when an instruction is executing or not
     if self.abi.procIdCode:
-        processorIDCode = cxx_writer.Code('return (' + self.abi.procIdCode + ');\n')
+        processorIDCode = cxx_writer.Code('return (R.' + self.abi.procIdCode + ');\n')
         processorIDMethod = cxx_writer.Method('get_id', processorIDCode, cxx_writer.intType, 'pu', noException = True, const = True)
         ifClassElements.append(processorIDMethod)
     instrExecutingCode = cxx_writer.Code('return this->instr_executing;')
@@ -274,16 +277,16 @@ def getCPPIf(self, model, namespace):
     for reg in self.regs:
         if not reg.name in stateIgnoreRegs.keys():
             regWType = resolveBitType('BIT<' + str(reg.bitWidth) + '>')
-            getStateBody += '*((' + str(regWType.makePointer()) + ')cur_state_temp) = this->' + reg.name + regReadCode + ';\ncur_state_temp += ' + str(reg.bitWidth/self.byteSize) + ';\n'
+            getStateBody += '*((' + str(regWType.makePointer()) + ')cur_state_temp) = this->R.' + reg.name + regReadCode + ';\ncur_state_temp += ' + str(reg.bitWidth/self.byteSize) + ';\n'
     for regB in self.regBanks:
         regWType = resolveBitType('BIT<' + str(regB.bitWidth) + '>')
         if not regB.name in stateIgnoreRegs.keys():
             for i in range(0, regB.numRegs):
-                getStateBody += '*((' + str(regWType.makePointer()) + ')cur_state_temp) = this->' + regB.name + '[' + str(i) + ']' + regReadCode + ';\ncur_state_temp += ' + str(regB.bitWidth/self.byteSize) + ';\n'
+                getStateBody += '*((' + str(regWType.makePointer()) + ')cur_state_temp) = this->R.' + regB.name + '[' + str(i) + ']' + regReadCode + ';\ncur_state_temp += ' + str(regB.bitWidth/self.byteSize) + ';\n'
         else:
             for i in range(0, regB.numRegs):
                 if i not in stateIgnoreRegs[regB.name]:
-                    getStateBody += '*((' + str(regWType.makePointer()) + ')cur_state_temp) = this->' + regB.name + '[' + str(i) + ']' + regReadCode + ';\ncur_state_temp += ' + str(regB.bitWidth/self.byteSize) + ';\n'
+                    getStateBody += '*((' + str(regWType.makePointer()) + ')cur_state_temp) = this->R.' + regB.name + '[' + str(i) + ']' + regReadCode + ';\ncur_state_temp += ' + str(regB.bitWidth/self.byteSize) + ';\n'
     getStateBody += 'return cur_state;'
     getStateCode = cxx_writer.Code(getStateBody)
     getStateMethod = cxx_writer.Method('get_state', getStateCode, cxx_writer.ucharPtrType, 'pu', noException = True, const = True)
@@ -292,16 +295,16 @@ def getCPPIf(self, model, namespace):
     for reg in self.regs:
         if not reg.name in self.abi.stateIgnoreRegs:
             regWType = resolveBitType('BIT<' + str(reg.bitWidth) + '>')
-            setStateBody += 'this->' + reg.name + regWriteCode + '(*((' + str(regWType.makePointer()) + ')cur_state_temp));\ncur_state_temp += ' + str(reg.bitWidth/self.byteSize) + ';\n'
+            setStateBody += 'this->R.' + reg.name + regWriteCode + '(*((' + str(regWType.makePointer()) + ')cur_state_temp));\ncur_state_temp += ' + str(reg.bitWidth/self.byteSize) + ';\n'
     for regB in self.regBanks:
         regWType = resolveBitType('BIT<' + str(regB.bitWidth) + '>')
         if not regB.name in stateIgnoreRegs.keys():
             for i in range(0, regB.numRegs):
-                setStateBody += 'this->' + regB.name + '[' + str(i) + ']' + regWriteCode + '(*((' + str(regWType.makePointer()) + ')cur_state_temp));\ncur_state_temp += ' + str(regB.bitWidth/self.byteSize) + ';\n'
+                setStateBody += 'this->R.' + regB.name + '[' + str(i) + ']' + regWriteCode + '(*((' + str(regWType.makePointer()) + ')cur_state_temp));\ncur_state_temp += ' + str(regB.bitWidth/self.byteSize) + ';\n'
         else:
             for i in range(0, regB.numRegs):
                 if i not in stateIgnoreRegs[regB.name]:
-                    setStateBody += 'this->' + regB.name + '[' + str(i) + ']' + regWriteCode + '(*((' + str(regWType.makePointer()) + ')cur_state_temp));\ncur_state_temp += ' + str(regB.bitWidth/self.byteSize) + ';\n'
+                    setStateBody += 'this->R.' + regB.name + '[' + str(i) + ']' + regWriteCode + '(*((' + str(regWType.makePointer()) + ')cur_state_temp));\ncur_state_temp += ' + str(regB.bitWidth/self.byteSize) + ';\n'
     setStateCode = cxx_writer.Code(setStateBody)
     stateParam = cxx_writer.Parameter('state', cxx_writer.ucharPtrType)
     setStateMethod = cxx_writer.Method('set_state', setStateCode, cxx_writer.voidType, 'pu', [stateParam], noException = True)
@@ -322,7 +325,7 @@ def getCPPIf(self, model, namespace):
     for elem in [self.abi.LR, self.abi.PC, self.abi.SP, self.abi.FP, self.abi.RetVal]:
         if not elem:
             continue
-        readElemBody = 'return this->' + elem
+        readElemBody = 'return this->R.' + elem
         if self.abi.offset.has_key(elem):
             readElemBody += ' + ' + str(self.abi.offset[elem])
         readElemBody += ';'
@@ -330,7 +333,7 @@ def getCPPIf(self, model, namespace):
         readElemCode.addInclude(includes)
         readElemMethod = cxx_writer.Method('read_' + self.abi.name[elem], readElemCode, wordType, 'pu', noException = True, const = True)
         ifClassElements.append(readElemMethod)
-        setElemBody = 'this->' + elem + regWriteCode + '(new_value);'
+        setElemBody = 'this->R.' + elem + regWriteCode + '(new_value);'
         setElemCode = cxx_writer.Code(setElemBody)
         setElemCode.addInclude(includes)
         setElemParam = cxx_writer.Parameter('new_value', wordType.makeRef().makeConst())
@@ -339,7 +342,7 @@ def getCPPIf(self, model, namespace):
     vectorType = cxx_writer.TemplateType('std::vector', [wordType], 'vector')
     readArgsBody = str(vectorType) + ' args;\n'
     for arg in self.abi.args:
-        readArgsBody += 'args.push_back(this->' + arg
+        readArgsBody += 'args.push_back(this->R.' + arg
         if self.abi.offset.has_key(arg) and not model.startswith('acc'):
             readArgsBody += ' + ' + str(self.abi.offset[arg])
         readArgsBody += ');\n'
@@ -352,7 +355,7 @@ def getCPPIf(self, model, namespace):
     setArgsBody += str(vectorType) + '::const_iterator arg_it = args.begin(), arg_end = args.end();\n'
     for arg in self.abi.args:
         setArgsBody += 'if (arg_it != arg_end) {\n'
-        setArgsBody += 'this->' + arg + regWriteCode + '(*arg_it'
+        setArgsBody += 'this->R.' + arg + regWriteCode + '(*arg_it'
         if self.abi.offset.has_key(arg) and not model.startswith('acc'):
             setArgsBody += ' - ' + str(self.abi.offset[arg])
         setArgsBody += ');\narg_it++;\n}\n'
@@ -367,7 +370,7 @@ def getCPPIf(self, model, namespace):
         if gdbId > maxGDBId:
             maxGDBId = gdbId
         readGDBRegBody += 'case ' + str(gdbId) + ': {\n'
-        readGDBRegBody += 'return ' + reg
+        readGDBRegBody += 'return R.' + reg
         if self.abi.offset.has_key(reg) and not model.startswith('acc'):
             readGDBRegBody += ' + ' + str(self.abi.offset[reg])
         readGDBRegBody += ';\nbreak;}\n'
@@ -383,7 +386,7 @@ def getCPPIf(self, model, namespace):
     setGDBRegBody = 'switch(gdb_id) {\n'
     for reg, gdbId in sortedGDBRegs:
         setGDBRegBody += 'case ' + str(gdbId) + ': {\n'
-        setGDBRegBody += reg + regWriteCode + '(new_value'
+        setGDBRegBody += 'R.' + reg + regWriteCode + '(new_value'
         setGDBRegBody += ');\nbreak;}\n'
     setGDBRegBody += 'default: {\nTHROW_EXCEPTION(\"Register corresponding to GDB id \" << gdb_id << \" not found.\");\n}\n}\n'
     setGDBRegCode = cxx_writer.Code(setGDBRegBody)
@@ -463,7 +466,7 @@ def getCPPIf(self, model, namespace):
     ifClassElements.append(getInstructionHistoryMethod)
 
     ABIIfType = cxx_writer.TemplateType('ABIIf', [wordType], 'modules/abi_if.hpp')
-    ifClassDecl = cxx_writer.ClassDeclaration(self.name + '_ABIIf', ifClassElements, [ABIIfType], namespaces = [namespace])
+    ifClassDecl = cxx_writer.ClassDeclaration('Interface', ifClassElements, [ABIIfType], namespaces = [namespace])
     ifClassDecl.addDocString(brief = 'Interface Class', detail = 'Creates the interface used by TRAP-Gen tools to access the processor core.')
     publicIfConstr = cxx_writer.Constructor(cxx_writer.Code(routineStatesInit), 'pu', baseInstrConstrParams, initElements)
     emptyBody = cxx_writer.Code('')

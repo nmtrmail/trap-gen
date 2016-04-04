@@ -52,7 +52,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
     global hasCheckHazard
     global wbStage
     global chStage
-    from procWriter import resourceType
+    from registerWriter import registerType, aliasType
     # Returns the code implementing the class representing a pipeline stage
     pipeCodeElements = []
     pipelineElements = []
@@ -62,7 +62,6 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
     baseConstructorInit = ''
     pipeType = cxx_writer.Type('BasePipeStage')
     IntructionType = cxx_writer.Type('Instruction', includes = ['#include \"instructions.hpp\"'])
-    registerType = cxx_writer.Type('Register', includes = ['#include \"registers.hpp\"'])
 
     stageEndedFlag = cxx_writer.Attribute('stage_ended', cxx_writer.boolType, 'pu')
     pipelineElements.append(stageEndedFlag)
@@ -639,7 +638,6 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                 constructorParams = [cxx_writer.Parameter(regB.name, pipeRegisterType.makePointer())] + constructorParams
                 constructorInit.append(regB.name + '(' + regB.name + ')')
                 curPipeElements.append(attribute)
-            aliasType = cxx_writer.Type('Alias', '#include \"alias.hpp\"')
             for pipeStageInner in self.pipes:
                 for alias in self.aliasRegs:
                     attribute = cxx_writer.Attribute(alias.name + '_' + pipeStageInner.name, aliasType.makeRef(), 'pri')
@@ -674,17 +672,26 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             constructorParams = [cxx_writer.Parameter('INSTRUCTIONS', IntructionTypePtr.makePointer().makeRef())] + constructorParams
             constructorInit.append('INSTRUCTIONS(INSTRUCTIONS)')
             # fetch register;
-            regsNames = [i.name for i in self.regBanks + self.regs]
             from processor import extractRegInterval
-            fetchRegBank = extractRegInterval(self.fetchReg[0])
-            if fetchRegBank:
-                fetchRegType = resourceType[self.fetchReg[0][0:self.fetchReg[0].index('[')]]
-            else:
-                fetchRegType = resourceType[self.fetchReg[0]]
-            if self.fetchReg[0] in regsNames:
-                fetchRegType = pipeRegisterType
-            fetchAttr = cxx_writer.Attribute(self.fetchReg[0], fetchRegType.makeRef(), 'pri')
-            constructorParams = [cxx_writer.Parameter(self.fetchReg[0], fetchRegType.makeRef())] + constructorParams
+            fetchIndex = extractRegInterval(self.fetchReg[0])
+            if fetchIndex: fetchType = resourceType[self.fetchReg[0][0:self.fetchReg[0].index('[')]]
+            else: fetchType = resourceType[self.fetchReg[0]]
+            if self.fetchReg[0] in [i.name for i in self.regBanks + self.regs]:
+                fetchType = pipeRegisterType
+
+            # Find out type of fetch register.
+            from processor import extractRegInterval
+            fetchReg = self.fetchReg[0]
+            fetchIndex = extractRegInterval(fetchReg)
+            if fetchIndex: fetchReg = fetchReg[0:fetchReg.index('[')]
+            fetchType = None
+            if fetchReg in [i.name for i in self.regs + self.regBanks]:
+                fetchType = registerType
+            if fetchType == None and fetchReg in [i.name for i in self.aliasRegs + self.aliasRegBanks]:
+                fetchType = aliasType
+            fetchAttr = cxx_writer.Attribute(self.fetchReg[0], fetchType.makeRef(), 'pri')
+
+            constructorParams = [cxx_writer.Parameter(self.fetchReg[0], registerType.makeRef())] + constructorParams
             constructorInit.append(self.fetchReg[0] + '(' + self.fetchReg[0] + ')')
             curPipeElements.append(fetchAttr)
             num_instructions = cxx_writer.Attribute('num_instructions', cxx_writer.uintType.makeRef(), 'pri')
