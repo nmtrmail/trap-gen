@@ -100,7 +100,7 @@ class Method(ClassMember, Function):
             writer.write(' throw()')
         writer.write(' {\n', indent = indent, split = ',')
         self.body.writeImplementation(writer)
-        writer.write('} // ' + self.name + '()\n\n')
+        writer.write('} // ' + self.name + '()\n')
 
 class MemberOperator(ClassMember, Operator):
     """Operator of a class; note how it is nothing but a normal operator
@@ -149,7 +149,7 @@ class MemberOperator(ClassMember, Operator):
             writer.write(' throw()')
         writer.write(' {\n', indent = indent, split = ',')
         self.body.writeImplementation(writer)
-        writer.write('} // ' + className + '::' + self.name + '()\n\n')
+        writer.write('} // ' + className + '::' + self.name + '()\n')
 
 class Constructor(ClassMember, Function):
     def __init__(self, body, visibility, parameters = [], initList = []):
@@ -199,7 +199,7 @@ class Constructor(ClassMember, Function):
             else: writer.write(' ')
         writer.write('{\n', indent = indent, split = ',')
         self.body.writeImplementation(writer)
-        writer.write('} // ' + self.name + '()\n\n')
+        writer.write('} // ' + self.name + '()\n')
 
 class Destructor(ClassMember, Function):
     def __init__(self, body, visibility, virtual = False):
@@ -216,7 +216,7 @@ class Destructor(ClassMember, Function):
             writer.write(className + '::')
         writer.write(self.name + '() {\n')
         self.body.writeImplementation(writer)
-        writer.write('} // ' + self.name + '()\n\n')
+        writer.write('} // ' + self.name + '()\n')
 
 class Attribute(ClassMember, Variable):
     """Attribute of a class; note how, apart from the visibility,
@@ -268,6 +268,9 @@ class ClassDeclaration(DumpElement):
         self.template = template
         self.namespaces = namespaces
         self.innerClasses = []
+        self.ctors = { 'pu': [], 'pro': [], 'pri':  [] }
+        self.methods = { 'pu': [], 'pro': [], 'pri':  [] }
+        self.data = { 'pu': [], 'pro': [], 'pri':  [] }
 
     def addMember(self, member):
         self.members.append(member)
@@ -286,35 +289,22 @@ class ClassDeclaration(DumpElement):
     def addSuperclass(self, superclass):
         self.superclasses.append(superclass)
 
-    def computeMemVisibility(self):
-        self.private = []
-        self.protected = []
-        self.public = []
+    def sortMembers(self):
+        visibility = ''
         for i in self.members:
             try:
-                if i.visibility == 'pri':
-                    if isinstance(i, Constructor):
-                        self.private = [i] + self.private
-                    else:
-                        self.private.append(i)
-                elif i.visibility == 'pro':
-                    if isinstance(i, Constructor):
-                        self.protected = [i] + self.protected
-                    else:
-                        self.protected.append(i)
-                elif i.visibility == 'pu':
-                    if isinstance(i, Constructor):
-                        self.public = [i] + self.public
-                    else:
-                        self.public.append(i)
+                visibility = i.visibility
             except AttributeError:
-                if isinstance(i, Constructor):
-                    self.public = [i] + self.public
-                else:
-                    self.public.append(i)
+                visibility = 'pu'
+            if isinstance(i, Constructor) or isinstance(i, Destructor):
+                self.ctors[visibility].append(i)
+            elif isinstance(i, Method) or isinstance(i, Operator):
+                self.methods[visibility].append(i)
+            else:
+                self.data[visibility].append(i)
 
     def writeDeclaration(self, writer):
-        self.computeMemVisibility()
+        self.sortMembers()
         for namespace in self.namespaces:
             writer.write('namespace ' + namespace + ' {\n\n')
         if self.docbrief:
@@ -354,153 +344,73 @@ class ClassDeclaration(DumpElement):
                     i.writeDeclaration(writer)
             writer.write('/// @} Typedefs, Enums and Subclasses\n')
             writer.writeFill('-')
+        # TODO: I didn't want to break the interface, hence this hack. Perhaps I should though...
+        visibilityStr = {'pu': '\npublic:\n', 'pro': '\nprotected:\n', 'pri': '\nprivate:\n'}
         # Constructors and destructors
-        writer.write('/// @name Constructors and Destructors\n/// @{\n\n')
-        visibility = False
-        for i in self.public:
-            if isinstance(i, Constructor) or isinstance(i, Destructor):
-                if not visibility:
-                    writer.write('public:\n')
-                    visibility = True
-                if self.template:
-                    try:
-                        i.writeImplementation(writer)
-                        writer.writeFill('.')
-                        writer.write('\n')
-                    except AttributeError:
-                        pass
-                else:
-                    i.writeDeclaration(writer)
-        visibility = False
-        for i in self.protected:
-            if isinstance(i, Constructor) or isinstance(i, Destructor):
-                if not visibility:
-                    writer.write('protected:\n')
-                    visibility = True
-                if self.template:
-                    try:
-                        i.writeImplementation(writer)
-                        writer.writeFill('.')
-                        writer.write('\n')
-                    except AttributeError:
-                        pass
-                else:
-                    i.writeDeclaration(writer)
-        visibility = False
-        for i in self.private:
-            if isinstance(i, Constructor) or isinstance(i, Destructor):
-                if not visibility:
-                    writer.write('private:\n')
-                    visibility = True
-                if self.template:
-                    try:
-                        i.writeImplementation(writer)
-                        writer.writeFill('.')
-                        writer.write('\n')
-                    except AttributeError:
-                        pass
-                else:
-                    i.writeDeclaration(writer)
-        writer.write('\n/// @} Constructors and Destructors\n')
-        writer.writeFill('-')
+        if self.ctors['pu'] or self.ctors['pro'] or self.ctors['pri']:
+            memberIdx = 0
+            memberMax = len(self.ctors['pu']) + len(self.ctors['pro']) + len(self.ctors['pri'])
+            writer.write('/// @name Constructors and Destructors\n/// @{\n')
+            for i in ['pu', 'pro', 'pri']:
+                if self.ctors[i]:
+                    writer.write(visibilityStr[i])
+                    for j in self.ctors[i]:
+                        memberIdx = memberIdx + 1
+                        if self.template:
+                            j.writeImplementation(writer)
+                            writer.write('\n')
+                            if (memberIdx < memberMax):
+                                writer.writeFill('.')
+                                writer.write('\n')
+                        else:
+                            j.writeDeclaration(writer)
+                            if (memberIdx == memberMax):
+                                writer.write('\n')
+            writer.write('/// @} Constructors and Destructors\n')
+            writer.writeFill('-')
         # Methods
-        writer.write('/// @name Methods\n/// @{\n\n')
-        visibility = False
-        for i in self.public:
-            if isinstance(i, Method) or isinstance(i, Operator):
-                if not visibility:
-                    writer.write('public:\n')
-                    visibility = True
-                if self.template:
-                    try:
-                        i.writeImplementation(writer)
-                        writer.writeFill('.')
-                        writer.write('\n')
-                    except AttributeError:
-                        pass
-                else:
-                    i.writeDeclaration(writer)
-        visibility = False
-        for i in self.protected:
-            if isinstance(i, Method) or isinstance(i, Operator):
-                if not visibility:
-                    writer.write('protected:\n')
-                    visibility = True
-                if self.template:
-                    try:
-                        i.writeImplementation(writer)
-                        writer.writeFill('.')
-                        writer.write('\n')
-                    except AttributeError:
-                        pass
-                else:
-                    i.writeDeclaration(writer)
-        visibility = False
-        for i in self.private:
-            if isinstance(i, Method) or isinstance(i, Operator):
-                if not visibility:
-                    writer.write('private:\n')
-                    visibility = True
-                if self.template:
-                    try:
-                        i.writeImplementation(writer)
-                        writer.writeFill('.')
-                        writer.write('\n')
-                    except AttributeError:
-                        pass
-                else:
-                    i.writeDeclaration(writer)
-        writer.write('\n/// @} Methods\n')
-        writer.writeFill('-')
+        visibility = ''
+        if self.methods['pu'] or self.methods['pro'] or self.methods['pri']:
+            memberIdx = 0
+            memberMax = len(self.methods['pu']) + len(self.methods['pro']) + len(self.methods['pri'])
+            writer.write('/// @name Methods\n/// @{\n')
+            for i in ['pu', 'pro', 'pri']:
+                if self.methods[i]:
+                    writer.write(visibilityStr[i])
+                    for j in self.methods[i]:
+                        memberIdx = memberIdx + 1
+                        if self.template and not (j.inline or j.pure):
+                            j.writeImplementation(writer)
+                            writer.write('\n')
+                            if (memberIdx < memberMax):
+                                writer.writeFill('.')
+                                writer.write('\n')
+                        else:
+                            j.writeDeclaration(writer)
+                            if (memberIdx == memberMax):
+                                writer.write('\n')
+            writer.write('/// @} Methods\n')
+            writer.writeFill('-')
         # Data members
-        writer.write('/// @name Data\n/// @{\n\n')
-        visibility = False
-        for i in self.public:
-            if isinstance(i, Constructor) or isinstance(i, Destructor) or isinstance(i, Method) or isinstance(i, Operator):
-                continue
-            if not visibility:
-                writer.write('public:\n')
-                visibility = True
-            if self.template:
-                try:
-                    i.writeImplementation(writer)
-                except AttributeError:
-                    pass
-            else:
-                i.writeDeclaration(writer)
-        if visibility: writer.write('\n')
-        visibility = False
-        for i in self.protected:
-            if isinstance(i, Constructor) or isinstance(i, Destructor) or isinstance(i, Method) or isinstance(i, Operator):
-                continue
-            if not visibility:
-                writer.write('protected:\n')
-                visibility = True
-            if self.template:
-                try:
-                    i.writeImplementation(writer)
-                except AttributeError:
-                    pass
-            else:
-                i.writeDeclaration(writer)
-        if visibility: writer.write('\n')
-        visibility = False
-        for i in self.private:
-            if isinstance(i, Constructor) or isinstance(i, Destructor) or isinstance(i, Method) or isinstance(i, Operator):
-                continue
-            if not visibility:
-                writer.write('private:\n')
-                visibility = True
-            if self.template:
-                try:
-                    i.writeImplementation(writer)
-                except AttributeError:
-                    pass
-            else:
-                i.writeDeclaration(writer)
-        if visibility: writer.write('\n')
-        writer.write('/// @} Data\n')
-        writer.writeFill('-')
+        visibility = ''
+        if self.data['pu'] or self.data['pro'] or self.data['pri']:
+            memberIdx = 0
+            memberMax = len(self.data['pu']) + len(self.data['pro']) + len(self.data['pri'])
+            writer.write('/// @name Data\n/// @{\n')
+            for i in ['pu', 'pro', 'pri']:
+                if self.data[i]:
+                    writer.write(visibilityStr[i])
+                    for j in self.data[i]:
+                        memberIdx = memberIdx + 1
+                        if self.template:
+                            try:
+                                j.writeImplementation(writer)
+                            except AttributeError:
+                                pass
+                        else:
+                            j.writeDeclaration(writer)
+            writer.write('\n/// @} Data\n')
+            writer.writeFill('-')
         writer.write('\n')
         writer.write('}; // class ' + self.name + '\n\n')
         for namespace in self.namespaces:
@@ -550,43 +460,20 @@ class SCModule(ClassDeclaration):
     def __init__(self, className, members = [], superclasses = [], template = [], namespaces = []):
         ClassDeclaration.__init__(self, className, members, superclasses + [sc_moduleType], template, [], namespaces)
 
-    def computeMemVisibility(self):
-        self.private = []
-        self.protected = []
-        self.public = []
+    def sortMembers(self):
         added = False
+        visibility = ''
         for i in self.members:
             try:
-                if i.visibility == 'pri':
-                    if isinstance(i, Constructor):
-                        added = True
-                        self.private = [Code('SC_HAS_PROCESS(' + self.name + ');'), i] + self.private
-                    else:
-                        self.private.append(i)
-                elif i.visibility == 'pro':
-                    if isinstance(i, Constructor):
-                        if not added:
-                            added = True
-                            self.protected = [Code('SC_HAS_PROCESS(' + self.name + ');'), i] + self.protected
-                        else:
-                            self.protected = [i] + self.protected
-                    else:
-                        self.protected.append(i)
-                elif i.visibility == 'pu':
-                    if isinstance(i, Constructor):
-                        if not added:
-                            added = True
-                            self.public = [Code('SC_HAS_PROCESS(' + self.name + ');'), i] + self.public
-                        else:
-                            self.public = [i] + self.public
-                    else:
-                        self.public.append(i)
+                visibility = i.visibility
             except AttributeError:
-                if isinstance(i, Constructor):
-                    if not added:
-                        added = True
-                        self.public = [Code('SC_HAS_PROCESS(' + self.name + ');'), i] + self.public
-                    else:
-                        self.public = [i] + self.public
-                else:
-                    self.public.append(i)
+                visibility = 'pu'
+            if isinstance(i, Constructor) and not added:
+                self.ctors['pu'] = [Code('SC_HAS_PROCESS(' + self.name + ');')] + self.ctors['pu']
+                added = True
+            if isinstance(i, Constructor) or isinstance(i, Destructor):
+                self.ctors[visibility].append(i)
+            elif isinstance(i, Method) or isinstance(i, Operator):
+                self.methods[visibility].append(i)
+            else:
+                self.data[visibility].append(i)

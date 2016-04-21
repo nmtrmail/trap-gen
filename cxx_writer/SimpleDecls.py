@@ -89,7 +89,7 @@ class Define:
             writer.write('namespace ' + namespace + ' {\n')
         writer.write(self.defineStr)
         for namespace in self.namespace:
-            writer.write('} // namespace ' + namespace + '\n\n')
+            writer.write('} // namespace ' + namespace + '\n')
 
     def getIncludes(self):
         return self.includes
@@ -372,9 +372,7 @@ class Variable(DumpElement):
             writer.write(' = ' + self.initValue)
         writer.write(';\n')
         for namespace in self.namespaces:
-            writer.write('} // namespace ')
-            writer.write(namespace)
-            writer.write('\n')
+            writer.write('} // namespace ' + namespace + '\n')
 
     def getIncludes(self):
         return copy.copy(self.varType.getIncludes())
@@ -385,8 +383,7 @@ class Variable(DumpElement):
             varStr += self.docbrief
         if self.static:
             varStr += 'static '
-        varStr += str(self.varType)
-        varStr += ' ' + self.name
+        varStr += str(self.varType) + ' ' + self.name
         if self.initValue:
             varStr += ' = ' + self.initValue
         varStr += ';\n'
@@ -443,27 +440,19 @@ class Function(DumpElement):
             i.writeDeclaration(writer)
             if i != self.parameters[-1]:
                 writer.write(', ', indent = indent, split = ',')
+        writer.write(')', indent = indent, split = ',')
+        try:
+            if self.const:
+                writer.write(' const', indent = indent, split = ',')
+        except AttributeError:
+            pass
+        if self.noException:
+            writer.write(' throw()', indent = indent, split = ',')
         if self.template or self.inline:
-            writer.write(')', indent = indent, split = ',')
-            try:
-                if self.const:
-                    writer.write(' const', indent = indent, split = ',')
-            except AttributeError:
-                pass
-            if self.noException:
-                writer.write(' throw()', indent = indent, split = ',')
             writer.write(' {\n', indent = indent, split = ',')
             self.body.writeImplementation(writer)
             writer.write('} // ' + self.name + '()\n\n')
         else:
-            writer.write(')', indent = indent, split = ',')
-            try:
-                if self.const:
-                    writer.write(' const', indent = indent, split = ',')
-            except AttributeError:
-                pass
-            if self.noException:
-                writer.write(' throw()', indent = indent, split = ',')
             try:
                 if self.pure:
                     writer.write(' = 0', indent = indent, split = ',')
@@ -471,7 +460,7 @@ class Function(DumpElement):
                 pass
             writer.write(';\n', indent = indent, split = ',')
         for namespace in self.namespaces:
-            writer.write('};\n')
+            writer.write('} // namespace ' + namespace + '\n')
 
     def writeImplementation(self, writer):
         if self.template or self.inline:
@@ -502,7 +491,7 @@ class Function(DumpElement):
             writer.write(' throw()', indent = indent, split = ',')
         writer.write(' {\n', indent = indent, split = ',')
         self.body.writeImplementation(writer)
-        writer.write('} // ' + self.name + '()\n\n')
+        writer.write('} // ' + self.name + '()\n')
 
     def getIncludes(self):
         includes = copy.copy(self.retType.getIncludes())
