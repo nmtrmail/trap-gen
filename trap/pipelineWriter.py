@@ -574,7 +574,7 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
                         if aliasB.fixedIndices[j] + 1 != aliasB.fixedIndices[j + 1]:
                             checkContiguous = False
                             break
-                    if checkContiguous:
+                    if aliasB.fixedIndices and checkContiguous:
                         if aliasB.fixedIndices[0] > 0:
                             if aliasB.checkGroup:
                                 codeString += 'if (this->' + aliasB.name + '_' + self.pipes[i + 1].name + '[0].get_pipe_reg() != this->' + aliasB.name + '_' + self.pipes[i].name + '[0].get_pipe_reg()) {\n'
@@ -675,7 +675,12 @@ def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
             constructorInit.append('INSTRUCTIONS(INSTRUCTIONS)')
             # fetch register;
             regsNames = [i.name for i in self.regBanks + self.regs]
-            fetchRegType = resourceType[self.fetchReg[0]]
+            from processor import extractRegInterval
+            fetchRegBank = extractRegInterval(self.fetchReg[0])
+            if fetchRegBank:
+                fetchRegType = resourceType[self.fetchReg[0][0:self.fetchReg[0].index('[')]]
+            else:
+                fetchRegType = resourceType[self.fetchReg[0]]
             if self.fetchReg[0] in regsNames:
                 fetchRegType = pipeRegisterType
             fetchAttr = cxx_writer.Attribute(self.fetchReg[0], fetchRegType.makeRef(), 'pri')

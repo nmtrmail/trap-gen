@@ -736,13 +736,13 @@ def createRegsAttributes(self, model, processorElements, initElements, bodyAlias
             index = extractRegInterval(aliasB.initAlias)
             curIndex = index[0]
             if model.startswith('acc'):
-                bodyAliasInit[aliasB.name] += 'for (int  i = 0; i < ' + str(aliasB.numRegs) + 'i++) {\n'
+                bodyAliasInit[aliasB.name] += 'for (int  i = 0; i < ' + str(aliasB.numRegs) + '; i++) {\n'
                 for pipeStage in self.pipes:
                     offsetStr = ''
                     if index[0] != 0:
                         offsetStr = ' + ' + str(index[0])
                     if aliasB.initAlias[:aliasB.initAlias.find('[')] in regsNames:
-                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].update_alias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '_pipe[i' + offsetStr + ']);\n}\n'
+                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].update_alias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '_pipe[i' + offsetStr + ']);\n'
                     else:
                         bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].update_alias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '_' + pipeStage.name + '[i' + offsetStr + ']);\n'
                 bodyAliasInit[aliasB.name] += '}\n'
