@@ -262,51 +262,57 @@ class ClassDeclaration(DumpElement):
 
     def __init__(self, className, members = [], superclasses = [], template = [], virtual_superclasses = [], namespaces = []):
         DumpElement.__init__(self, className)
-        self.members = members
         self.superclasses = superclasses
         self.virtual_superclasses = virtual_superclasses
         self.template = template
         self.namespaces = namespaces
         self.innerClasses = []
+        # NOTE: I could make this more pythonic by reverting to one members
+        # list and sorting it with a lambda over [ctors, methods, data] then
+        # ['pu', 'pro', 'pri'].
+        # members.sort(key=methodcaller('member_type', 'visibility_type'))
+        # On the other hand, when I'm iterating and printing the members I'll
+        # have to constantly check what type I'm currently dealing with.
         self.ctors = { 'pu': [], 'pro': [], 'pri':  [] }
         self.methods = { 'pu': [], 'pro': [], 'pri':  [] }
         self.data = { 'pu': [], 'pro': [], 'pri':  [] }
+        for member in members:
+            self.addMember(member)
 
     def addMember(self, member):
-        self.members.append(member)
+        visibility = 'pu'
+        try:
+            visibility = member.visibility
+        except AttributeError:
+            pass
+        if isinstance(member, Constructor):
+            member.name = self.name
+            self.ctors[visibility].append(member)
+        elif isinstance(member, Destructor):
+            member.name = '~' + self.name
+            self.ctors[visibility].append(member)
+        elif isinstance(member, Method) or isinstance(member, MemberOperator):
+            self.methods[visibility].append(member)
+        else:
+            self.data[visibility].append(member)
 
     def addConstructor(self, constructor):
         constructor.name = self.name
-        self.members.append(constructor)
+        self.ctors[constructor.visibility].append(constructor)
 
     def addInnerClass(self, innerClass):
         self.innerClasses.append(innerClass)
 
     def addDestructor(self, destructor):
         destructor.name = '~' + self.name
-        self.members.append(destructor)
+        self.ctors[destructor.visibility].append(destructor)
 
     def addSuperclass(self, superclass):
         self.superclasses.append(superclass)
 
-    def sortMembers(self):
-        visibility = ''
-        for i in self.members:
-            try:
-                visibility = i.visibility
-            except AttributeError:
-                visibility = 'pu'
-            if isinstance(i, Constructor) or isinstance(i, Destructor):
-                self.ctors[visibility].append(i)
-            elif isinstance(i, Method) or isinstance(i, Operator):
-                self.methods[visibility].append(i)
-            else:
-                self.data[visibility].append(i)
-
     def writeDeclaration(self, writer):
-        self.sortMembers()
-        for namespace in self.namespaces:
-            writer.write('namespace ' + namespace + ' {\n\n')
+        #for namespace in self.namespaces:
+        #    writer.write('namespace ' + namespace + ' {\n\n')
         if self.docbrief:
             self.printDocString(writer)
         if self.template:
@@ -412,9 +418,9 @@ class ClassDeclaration(DumpElement):
             writer.write('\n/// @} Data\n')
             writer.writeFill('-')
         writer.write('\n')
-        writer.write('}; // class ' + self.name + '\n\n')
-        for namespace in self.namespaces:
-            writer.write('} // namespace ' + namespace + '\n\n')
+        writer.write('}; // class ' + self.name + '\n')
+        #for namespace in self.namespaces:
+        #    writer.write('\n} // namespace ' + namespace + '\n')
 
     def writeImplementation(self, writer, namespaces = []):
         if self.template:
@@ -427,15 +433,28 @@ class ClassDeclaration(DumpElement):
                 i.writeImplementation(writer, namespaces + self.namespaces + [self.name])
             except AttributeError:
                 pass
-        for i in self.members:
+        for i in self.ctors['pu'] + self.ctors['pro'] + self.ctors['pri']:
             try:
                 i.writeImplementation(writer, self.name, namespaces + self.namespaces)
-                if isinstance(i, Constructor) or isinstance(i, Destructor):
+                writer.write('\n')
+                writer.writeFill('-')
+                writer.write('\n')
+            except AttributeError:
+                pass
+            except TypeError:
+                i.writeImplementation(writer)
+        for i in self.methods['pu'] + self.methods['pro'] + self.methods['pri']:
+            try:
+                i.writeImplementation(writer, self.name, namespaces + self.namespaces)
+                if not (i.inline or i.pure):
+                    writer.write('\n')
                     writer.writeFill('-')
                     writer.write('\n')
-                elif isinstance(i, Method) or isinstance(i, MemberOperator) and not (i.inline or i.pure):
-                    writer.writeFill('-')
-                    writer.write('\n')
+            except AttributeError:
+                pass
+        for i in self.data['pu'] + self.data['pro'] + self.data['pri']:
+            try:
+                i.writeImplementation(writer, self.name, namespaces + self.namespaces)
             except AttributeError:
                 pass
 
@@ -445,7 +464,7 @@ class ClassDeclaration(DumpElement):
             for j in i.getIncludes():
                 if not j in includes:
                     includes.append(j)
-        for i in self.members:
+        for i in self.ctors['pu'] + self.ctors['pro'] + self.ctors['pri'] + self.methods['pu'] + self.methods['pro'] + self.methods['pri'] + self.data['pu'] + self.data['pro'] + self.data['pri']:
             for j in i.getIncludes():
                 if not j in includes:
                     includes.append(j)
@@ -459,21 +478,4 @@ class SCModule(ClassDeclaration):
     normal class lies in the presence of defines inside the class declaration"""
     def __init__(self, className, members = [], superclasses = [], template = [], namespaces = []):
         ClassDeclaration.__init__(self, className, members, superclasses + [sc_moduleType], template, [], namespaces)
-
-    def sortMembers(self):
-        added = False
-        visibility = ''
-        for i in self.members:
-            try:
-                visibility = i.visibility
-            except AttributeError:
-                visibility = 'pu'
-            if isinstance(i, Constructor) and not added:
-                self.ctors['pu'] = [Code('SC_HAS_PROCESS(' + self.name + ');')] + self.ctors['pu']
-                added = True
-            if isinstance(i, Constructor) or isinstance(i, Destructor):
-                self.ctors[visibility].append(i)
-            elif isinstance(i, Method) or isinstance(i, Operator):
-                self.methods[visibility].append(i)
-            else:
-                self.data[visibility].append(i)
+        self.ctors['pu'] = [Code('SC_HAS_PROCESS(' + self.name + ');')] + self.ctors['pu']

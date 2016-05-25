@@ -39,6 +39,7 @@
 ################################################################################
 
 import cxx_writer
+from registerWriter import registerContainerType
 
 def getCPPExternalPorts(self, model, namespace):
     if len(self.tlmPorts) == 0:
@@ -71,11 +72,11 @@ def getCPPExternalPorts(self, model, namespace):
     aliasAttrs = []
     aliasParams = []
     aliasInit = []
-    from registerWriter import aliasType
-    for alias in self.memAlias:
-        aliasAttrs.append(cxx_writer.Attribute(alias.alias, aliasType.makeRef(), 'pri'))
-        aliasParams.append(cxx_writer.Parameter(alias.alias, registerContainerType.makeRef()))
-        aliasInit.append(alias.alias + '(' + alias.alias + ')')
+    from registerWriter import registerType, aliasType
+    if self.memAlias:
+        aliasAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'pri'))
+        aliasParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
+        aliasInit.append('R(R)')
 
     MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
     tlmPortElements.append(cxx_writer.Attribute('debugger', MemoryToolsIfType.makePointer(), 'pri'))
@@ -744,7 +745,7 @@ def getIRQTests(self, trace, combinedTrace, namespace):
     from registerWriter import registerType
     testFuns = []
     global testNames
-    from procWriter import testNames
+    from procWriter import testNames, instrCtorValues
 
     archElemsDeclStr = ''
     destrDecls = ''
@@ -867,8 +868,7 @@ def getIRQTests(self, trace, combinedTrace, namespace):
             code += ') {\n'
             # Now here we insert the actual interrupt behavior by simply creating and calling the
             # interrupt instruction
-            from procWriter import baseInstrInitElement
-            code += + irq.name + 'IntrInstruction test_instruction(' + baseInstrInitElement + ', ' + irq.name + ');\n'
+            code += + irq.name + 'IntrInstruction test_instruction(' + instrCtorValues + ', ' + irq.name + ');\n'
             code += """try {
                 test_instruction.behavior();
             }

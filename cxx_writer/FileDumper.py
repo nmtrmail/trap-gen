@@ -129,9 +129,10 @@ class FileDumper:
             except AttributeError:
                 pass
         # This is to choose between the #include <xxx> and #include "xxx" syntax.
-        # By sorting the includes in three different lists we can group them logically.
+        # By sorting the includes in different lists we can group them logically.
+        # TODO: This is silly. I should just change the interface of types and
+        # define a Type.addInclude(include, scope = {'project'|'libs'|'system'})
         defines = []
-        prjincludes = []
         sysincludes = []
         for include in self.includes:
             include = include.lstrip()
@@ -140,26 +141,35 @@ class FileDumper:
             elif include.startswith('#'):
                 defines.append(include)
             elif include != self.name:
-                if include in self.projectFiles:
-                    prjincludes.append(include)
-                else:
-                    sysincludes.append(include)
-        writer.write('\n')
-        for include in prjincludes:
-            writer.write('#include <' + include + '>\n')
+                sysincludes.append(include)
         writer.write('\n')
         for include in sysincludes:
             writer.write('#include <' + include + '>\n')
         writer.write('\n')
-        for include in defines:
-           writer.write(include + '\n')
+        for define in defines:
+           writer.write(define + '\n')
         writer.write('\n')
         # Now I simply have to print in order all the members
+        namespaces = []
         for member in self.members:
             if self.isHeader:
                 try:
+                    # Group members of one namespace together.
+                    # Starting a new namespace.
+                    if namespaces != member.namespaces:
+                        # Close previous namespace, if any.
+                        for namespace in namespaces:
+                            writer.write('} // namespace ' + namespace + '\n')
+                        namespaces = member.namespaces
+                        # Open new namespace.
+                        for namespace in member.namespaces:
+                            writer.write('namespace ' + namespace + ' {\n\n')
+                except AttributeError:
+                    pass
+                try:
                     member.writeDeclaration(writer)
                     if isinstance(member, ClassDeclaration) or isinstance(member, SCModule):
+                        printOnFile('', fileHnd)
                         writer.writeFill('*')
                     printOnFile('', fileHnd)
                 except AttributeError:
@@ -168,11 +178,15 @@ class FileDumper:
                 try:
                     member.writeImplementation(writer)
                     if isinstance(member, Function) or isinstance(member, Operator) or isinstance(member, ClassDeclaration) or isinstance(member, SCModule):
+                        printOnFile('', fileHnd)
                         writer.writeFill('*')
                     printOnFile('', fileHnd)
                 except AttributeError:
                     pass
         if self.isHeader:
+            # Close previous namespace, if any.
+            for namespace in namespaces:
+                writer.write('} // namespace ' + namespace + '\n\n')
             writer.write('#endif // ' + FileDumper.def_prefix + self.name.replace('.','_').upper() + '\n')
         fileHnd.close()
 
@@ -342,6 +356,8 @@ class Folder:
     for flag in ctx.env['CPPFLAGS']:
         if flag.startswith('-D'):
             ctx.env.append_unique('DEFINES', flag[2:])
+    ctx.env.append_unique('CXXFLAGS', '-std=c++11')
+    ctx.env.append_unique('CXXFLAGS', '-fpermissive')
 
     # Check for standard tools
     ctx.check_waf_version(mini='1.6.6')

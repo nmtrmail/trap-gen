@@ -112,7 +112,7 @@ def updateAliasCode_exception():
 # Methods used (just by the cycle accurate processor) to check that a register window is valid
 # when a decrement or an increment are performed
 checkIncrementWin_code = """
-unsigned newCwp = ((unsigned)(PSR[key_CWP] + 1)) % NUM_REG_WIN;
+unsigned newCwp = ((unsigned)(PSR[PSR_CWP] + 1)) % NUM_REG_WIN;
 if(((0x01 << (newCwp)) & WIM) != 0){
     return false;
 }
@@ -124,7 +124,7 @@ opCode = cxx_writer.Code(checkIncrementWin_code)
 checkIncrementWin_method = trap.HelperMethod('checkIncrementWin', opCode, 'decode', exception = False, const = True)
 checkIncrementWin_method.setSignature(cxx_writer.boolType)
 checkDecrementWin_code = """
-unsigned newCwp = ((unsigned)(PSR[key_CWP] - 1)) % NUM_REG_WIN;
+unsigned newCwp = ((unsigned)(PSR[PSR_CWP] - 1)) % NUM_REG_WIN;
 if(((0x01 << (newCwp)) & WIM) != 0){
     return false;
 }
@@ -140,7 +140,7 @@ checkDecrementWin_method.setSignature(cxx_writer.boolType)
 # the check that there is an empty valid window and in the update of
 # the window aliases
 IncrementRegWindow_code = """
-newCwp = ((unsigned)(PSR[key_CWP] + 1)) % NUM_REG_WIN;
+newCwp = ((unsigned)(PSR[PSR_CWP] + 1)) % NUM_REG_WIN;
 if(((0x01 << (newCwp)) & WIM) != 0){
     return false;
 }
@@ -156,7 +156,7 @@ IncrementRegWindow_method.addVariable(('newCwp', 'BIT<32>'))
 # the check that there is an empty valid window and in the update of
 # the window aliases
 DecrementRegWindow_code = """
-newCwp = ((unsigned)(PSR[key_CWP] - 1)) % NUM_REG_WIN;
+newCwp = ((unsigned)(PSR[PSR_CWP] - 1)) % NUM_REG_WIN;
 if(((0x01 << (newCwp)) & WIM) != 0){
     return false;
 }
@@ -183,7 +183,7 @@ SignExtend_method.setSignature(cxx_writer.intType, [('bitSeq', 'BIT<32>'), cxx_w
 # while just nPC in case we are in the functional one; if the branch has the annuling bit
 # set, then also in the functional model both the PC and nPC will be modified
 raiseExcCode = """
-if(PSR[key_ET] == 0){
+if(PSR[PSR_ET] == 0){
     if(exceptionId < IRQ_LEV_15){
         // I print a core dump and then I signal an error: an exception happened while
         // exceptions were disabled in the processor core
@@ -192,10 +192,10 @@ if(PSR[key_ET] == 0){
 }
 else{
     unsigned curPSR = PSR;
-    curPSR = (curPSR & 0xffffffbf) | (PSR[key_S] << 6);
+    curPSR = (curPSR & 0xffffffbf) | (PSR[PSR_S] << 6);
     curPSR = (curPSR & 0xffffff7f) | 0x00000080;
     curPSR &= 0xffffffdf;
-    unsigned newCwp = ((unsigned)(PSR[key_CWP] - 1)) % NUM_REG_WIN;
+    unsigned newCwp = ((unsigned)(PSR[PSR_CWP] - 1)) % NUM_REG_WIN;
 """
 raiseExcCode += updateAliasCode_exception()
 raiseExcCode +=  """
@@ -210,118 +210,118 @@ raiseExcCode +=  """
         case RESET:{
         }break;
         case DATA_STORE_ERROR:{
-            TBR[key_TT] = 0x2b;
+            TBR[TBR_TT] = 0x2b;
         }break;
         case INSTR_ACCESS_MMU_MISS:{
-            TBR[key_TT] = 0x3c;
+            TBR[TBR_TT] = 0x3c;
         }break;
         case INSTR_ACCESS_ERROR:{
-            TBR[key_TT] = 0x21;
+            TBR[TBR_TT] = 0x21;
         }break;
         case R_REGISTER_ACCESS_ERROR:{
-            TBR[key_TT] = 0x20;
+            TBR[TBR_TT] = 0x20;
         }break;
         case INSTR_ACCESS_EXC:{
-            TBR[key_TT] = 0x01;
+            TBR[TBR_TT] = 0x01;
         }break;
         case PRIVILEDGE_INSTR:{
-            TBR[key_TT] = 0x03;
+            TBR[TBR_TT] = 0x03;
         }break;
         case ILLEGAL_INSTR:{
-            TBR[key_TT] = 0x02;
+            TBR[TBR_TT] = 0x02;
         }break;
         case FP_DISABLED:{
-            TBR[key_TT] = 0x04;
+            TBR[TBR_TT] = 0x04;
         }break;
         case CP_DISABLED:{
-            TBR[key_TT] = 0x24;
+            TBR[TBR_TT] = 0x24;
         }break;
         case UNIMPL_FLUSH:{
-            TBR[key_TT] = 0x25;
+            TBR[TBR_TT] = 0x25;
         }break;
         case WATCHPOINT_DETECTED:{
-            TBR[key_TT] = 0x0b;
+            TBR[TBR_TT] = 0x0b;
         }break;
         case WINDOW_OVERFLOW:{
-            TBR[key_TT] = 0x05;
+            TBR[TBR_TT] = 0x05;
         }break;
         case WINDOW_UNDERFLOW:{
-            TBR[key_TT] = 0x06;
+            TBR[TBR_TT] = 0x06;
         }break;
         case MEM_ADDR_NOT_ALIGNED:{
-            TBR[key_TT] = 0x07;
+            TBR[TBR_TT] = 0x07;
         }break;
         case FP_EXCEPTION:{
-            TBR[key_TT] = 0x08;
+            TBR[TBR_TT] = 0x08;
         }break;
         case CP_EXCEPTION:{
-            TBR[key_TT] = 0x28;
+            TBR[TBR_TT] = 0x28;
         }break;
         case DATA_ACCESS_ERROR:{
-            TBR[key_TT] = 0x29;
+            TBR[TBR_TT] = 0x29;
         }break;
         case DATA_ACCESS_MMU_MISS:{
-            TBR[key_TT] = 0x2c;
+            TBR[TBR_TT] = 0x2c;
         }break;
         case DATA_ACCESS_EXC:{
-            TBR[key_TT] = 0x09;
+            TBR[TBR_TT] = 0x09;
         }break;
         case TAG_OVERFLOW:{
-            TBR[key_TT] = 0x0a;
+            TBR[TBR_TT] = 0x0a;
         }break;
         case DIV_ZERO:{
-            TBR[key_TT] = 0x2a;
+            TBR[TBR_TT] = 0x2a;
         }break;
         case TRAP_INSTRUCTION:{
-            TBR[key_TT] = 0x80 + customTrapOffset;
+            TBR[TBR_TT] = 0x80 + customTrapOffset;
         }break;
         case IRQ_LEV_15:{
-            TBR[key_TT] = 0x1f;
+            TBR[TBR_TT] = 0x1f;
         }break;
         case IRQ_LEV_14:{
-            TBR[key_TT] = 0x1e;
+            TBR[TBR_TT] = 0x1e;
         }break;
         case IRQ_LEV_13:{
-            TBR[key_TT] = 0x1d;
+            TBR[TBR_TT] = 0x1d;
         }break;
         case IRQ_LEV_12:{
-            TBR[key_TT] = 0x1c;
+            TBR[TBR_TT] = 0x1c;
         }break;
         case IRQ_LEV_11:{
-            TBR[key_TT] = 0x1b;
+            TBR[TBR_TT] = 0x1b;
         }break;
         case IRQ_LEV_10:{
-            TBR[key_TT] = 0x1a;
+            TBR[TBR_TT] = 0x1a;
         }break;
         case IRQ_LEV_9:{
-            TBR[key_TT] = 0x19;
+            TBR[TBR_TT] = 0x19;
         }break;
         case IRQ_LEV_8:{
-            TBR[key_TT] = 0x18;
+            TBR[TBR_TT] = 0x18;
         }break;
         case IRQ_LEV_7:{
-            TBR[key_TT] = 0x17;
+            TBR[TBR_TT] = 0x17;
         }break;
         case IRQ_LEV_6:{
-            TBR[key_TT] = 0x16;
+            TBR[TBR_TT] = 0x16;
         }break;
         case IRQ_LEV_5:{
-            TBR[key_TT] = 0x15;
+            TBR[TBR_TT] = 0x15;
         }break;
         case IRQ_LEV_4:{
-            TBR[key_TT] = 0x14;
+            TBR[TBR_TT] = 0x14;
         }break;
         case IRQ_LEV_3:{
-            TBR[key_TT] = 0x13;
+            TBR[TBR_TT] = 0x13;
         }break;
         case IRQ_LEV_2:{
-            TBR[key_TT] = 0x12;
+            TBR[TBR_TT] = 0x12;
         }break;
         case IRQ_LEV_1:{
-            TBR[key_TT] = 0x11;
+            TBR[TBR_TT] = 0x11;
         }break;
         case IMPL_DEP_EXC:{
-            TBR[key_TT] = 0x60 + customTrapOffset;
+            TBR[TBR_TT] = 0x60 + customTrapOffset;
         }break;
         default:{
         }break;
@@ -338,7 +338,7 @@ raiseExcCode +=  """
     }
     if(exceptionId > TRAP_INSTRUCTION && exceptionId < IMPL_DEP_EXC){
         // finally I acknowledge the interrupt on the external pin port
-        irqAck.send_pin_req(IMPL_DEP_EXC - exceptionId, 0);
+        irqAck_pin.send_pin_req(IMPL_DEP_EXC - exceptionId, 0);
     }
     flush();
     annul();
@@ -385,10 +385,10 @@ WB_tv.addUserInstructionElement('rd')
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after an logical operation or after the multiply operation
 opCode = cxx_writer.Code("""
-PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
-PSR[key_ICC_z] = (result == 0);
-PSR[key_ICC_v] = 0;
-PSR[key_ICC_c] = 0;
+PSR[PSR_ICC_n] = ((result & 0x80000000) >> 31);
+PSR[PSR_ICC_z] = (result == 0);
+PSR[PSR_ICC_v] = 0;
+PSR[PSR_ICC_c] = 0;
 """)
 ICC_writeLogic = trap.HelperOperation('ICC_writeLogic', opCode, exception = False)
 ICC_writeLogic.addInstructionVar(('result', 'BIT<32>'))
@@ -396,10 +396,10 @@ ICC_writeLogic.addInstructionVar(('result', 'BIT<32>'))
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after an addition operation
 opCode = cxx_writer.Code("""
-PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
-PSR[key_ICC_z] = (result == 0);
-PSR[key_ICC_v] = ((unsigned)((rs1_op & rs2_op & (~result)) | ((~rs1_op) & (~rs2_op) & result))) >> 31;
-PSR[key_ICC_c] = ((unsigned)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
+PSR[PSR_ICC_n] = ((result & 0x80000000) >> 31);
+PSR[PSR_ICC_z] = (result == 0);
+PSR[PSR_ICC_v] = ((unsigned)((rs1_op & rs2_op & (~result)) | ((~rs1_op) & (~rs2_op) & result))) >> 31;
+PSR[PSR_ICC_c] = ((unsigned)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
 """)
 ICC_writeAdd = trap.HelperOperation('ICC_writeAdd', opCode, exception = False)
 ICC_writeAdd.addInstructionVar(('result', 'BIT<32>'))
@@ -409,10 +409,10 @@ ICC_writeAdd.addInstructionVar(('rs2_op', 'BIT<32>'))
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a tagged addition operation
 opCode = cxx_writer.Code("""
-PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
-PSR[key_ICC_z] = (result == 0);
-PSR[key_ICC_v] = temp_V;
-PSR[key_ICC_c] = ((unsigned)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
+PSR[PSR_ICC_n] = ((result & 0x80000000) >> 31);
+PSR[PSR_ICC_z] = (result == 0);
+PSR[PSR_ICC_v] = temp_V;
+PSR[PSR_ICC_c] = ((unsigned)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
 """)
 ICC_writeTAdd = trap.HelperOperation('ICC_writeTAdd', opCode, exception = False)
 ICC_writeTAdd.addInstructionVar(('result', 'BIT<32>'))
@@ -424,10 +424,10 @@ ICC_writeTAdd.addInstructionVar(('rs2_op', 'BIT<32>'))
 # after a division operation
 opCode = cxx_writer.Code("""
 if(!exception){
-    PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
-    PSR[key_ICC_z] = (result == 0);
-    PSR[key_ICC_v] = temp_V;
-    PSR[key_ICC_c] = 0;
+    PSR[PSR_ICC_n] = ((result & 0x80000000) >> 31);
+    PSR[PSR_ICC_z] = (result == 0);
+    PSR[PSR_ICC_v] = temp_V;
+    PSR[PSR_ICC_c] = 0;
 }
 """)
 ICC_writeDiv = trap.HelperOperation('ICC_writeDiv', opCode, exception = False)
@@ -439,10 +439,10 @@ ICC_writeDiv.addInstructionVar(('temp_V', 'BIT<1>'))
 # after a tagged addition operation
 opCode = cxx_writer.Code("""
 if(!temp_V){
-    PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
-    PSR[key_ICC_z] = (result == 0);
-    PSR[key_ICC_v] = 0;
-    PSR[key_ICC_c] = ((unsigned)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
+    PSR[PSR_ICC_n] = ((result & 0x80000000) >> 31);
+    PSR[PSR_ICC_z] = (result == 0);
+    PSR[PSR_ICC_v] = 0;
+    PSR[PSR_ICC_c] = ((unsigned)((rs1_op & rs2_op) | ((rs1_op | rs2_op) & (~result)))) >> 31;
 }
 """)
 ICC_writeTVAdd = trap.HelperOperation('ICC_writeTVAdd', opCode, exception = False)
@@ -454,10 +454,10 @@ ICC_writeTVAdd.addInstructionVar(('rs2_op', 'BIT<32>'))
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a subtraction operation
 opCode = cxx_writer.Code("""
-PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
-PSR[key_ICC_z] = (result == 0);
-PSR[key_ICC_v] = ((unsigned)((rs1_op & (~rs2_op) & (~result)) | ((~rs1_op) & rs2_op & result))) >> 31;
-PSR[key_ICC_c] = ((unsigned)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
+PSR[PSR_ICC_n] = ((result & 0x80000000) >> 31);
+PSR[PSR_ICC_z] = (result == 0);
+PSR[PSR_ICC_v] = ((unsigned)((rs1_op & (~rs2_op) & (~result)) | ((~rs1_op) & rs2_op & result))) >> 31;
+PSR[PSR_ICC_c] = ((unsigned)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
 """)
 ICC_writeSub = trap.HelperOperation('ICC_writeSub', opCode, exception = False)
 ICC_writeSub.addInstructionVar(('result', 'BIT<32>'))
@@ -467,10 +467,10 @@ ICC_writeSub.addInstructionVar(('rs2_op', 'BIT<32>'))
 # Modification of the Integer Condition Codes of the Processor Status Register
 # after a tagged subtraction operation
 opCode = cxx_writer.Code("""
-PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
-PSR[key_ICC_z] = (result == 0);
-PSR[key_ICC_v] = temp_V;
-PSR[key_ICC_c] = ((unsigned)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
+PSR[PSR_ICC_n] = ((result & 0x80000000) >> 31);
+PSR[PSR_ICC_z] = (result == 0);
+PSR[PSR_ICC_v] = temp_V;
+PSR[PSR_ICC_c] = ((unsigned)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
 """)
 ICC_writeTSub = trap.HelperOperation('ICC_writeTSub', opCode, exception = False)
 ICC_writeTSub.addInstructionVar(('result', 'BIT<32>'))
@@ -482,10 +482,10 @@ ICC_writeTSub.addInstructionVar(('rs2_op', 'BIT<32>'))
 # after a tagged subtraction operation
 opCode = cxx_writer.Code("""
 if(!temp_V){
-    PSR[key_ICC_n] = ((result & 0x80000000) >> 31);
-    PSR[key_ICC_z] = (result == 0);
-    PSR[key_ICC_v] = temp_V;
-    PSR[key_ICC_c] = ((unsigned)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
+    PSR[PSR_ICC_n] = ((result & 0x80000000) >> 31);
+    PSR[PSR_ICC_z] = (result == 0);
+    PSR[PSR_ICC_v] = temp_V;
+    PSR[PSR_ICC_c] = ((unsigned)(((~rs1_op) & rs2_op) | (((~rs1_op) | rs2_op) & result))) >> 31;
 }
 """)
 ICC_writeTVSub = trap.HelperOperation('ICC_writeTVSub', opCode, exception = False)

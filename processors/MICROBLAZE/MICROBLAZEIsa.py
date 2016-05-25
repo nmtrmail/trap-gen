@@ -86,7 +86,7 @@ isa.addMethod(handleUserPermissionException_method)
 # ADD
 opCode = cxx_writer.Code("""
 long long result = (long long)((int)rb) + (long long)((int)ra);
-MSR[key_C] = ((ra^rb^(unsigned)(result >> 1)) & 0x80000000) != 0;
+MSR[MSR_C] = ((ra^rb^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result;""")
 add_Instr = trap.Instruction('ADD', True)
 add_Instr.setMachineCode(oper_reg, {'opcode0': [0,0,0,0,0,0], 'opcode1': [0,0,0,0,0,0,0,0,0,0,0]}, ('add r', '%rd', ' r', '%ra', ' r', '%rb'))
@@ -110,8 +110,8 @@ isa.addInstruction(add_Instr)
 
 # ADDC
 opCode = cxx_writer.Code("""
-long long result = (long long)((int)ra) + (long long)((int)rb) + (long long)MSR[key_C];
-MSR[key_C] = ((ra^rb^(unsigned)(result >> 1)) & 0x80000000) != 0;
+long long result = (long long)((int)ra) + (long long)((int)rb) + (long long)MSR[MSR_C];
+MSR[MSR_C] = ((ra^rb^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result;
 """)
 addc_Instr = trap.Instruction('ADDC', True)
@@ -157,7 +157,7 @@ isa.addInstruction(addk_Instr)
 
 # ADDKC
 opCode = cxx_writer.Code("""
-rd = (int)rb + (int)ra +(int)MSR[key_C];
+rd = (int)rb + (int)ra +(int)MSR[MSR_C];
 """)
 addkc_Instr = trap.Instruction('ADDKC', True)
 addkc_Instr.setMachineCode(oper_reg, {'opcode0': [0,0,0,1,1,0], 'opcode1': [0,0,0,0,0,0,0,0,0,0,0]}, ('addkc r', '%rd', ' r', '%ra', ' r', '%rb'))
@@ -178,7 +178,7 @@ isa.addInstruction(addkc_Instr)
 #ADDI
 opCode = cxx_writer.Code("""
 long long result = (long long)((long long)((int)ra) + ((long long)(int)imm_value));
-MSR[key_C] = ((ra^imm_value^(unsigned)(result >> 1)) & 0x80000000) != 0;
+MSR[MSR_C] = ((ra^imm_value^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result;
 """)
 addi_Instr = trap.Instruction('ADDI', True)
@@ -196,8 +196,8 @@ isa.addInstruction(addi_Instr)
 
 #ADDIC
 opCode = cxx_writer.Code("""
-long long result = (long long)((long long)((int)ra) + ((long long)(int)imm_value) + (long long)MSR[key_C]);
-MSR[key_C] = ((ra^imm_value^(unsigned)(result >> 1)) & 0x80000000) != 0;
+long long result = (long long)((long long)((int)ra) + ((long long)(int)imm_value) + (long long)MSR[MSR_C]);
+MSR[MSR_C] = ((ra^imm_value^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd = (int)result;
 """)
 addic_Instr = trap.Instruction('ADDIC', True)
@@ -230,7 +230,7 @@ isa.addInstruction(addik_Instr)
 
 #ADDIKC
 opCode = cxx_writer.Code("""
-rd = (int)ra + (int)imm_value + (int)MSR[key_C];
+rd = (int)ra + (int)imm_value + (int)MSR[MSR_C];
 """)
 addikc_Instr = trap.Instruction('ADDIKC', True)
 addikc_Instr.setMachineCode(oper_imm, {'opcode': [0,0,1,1,1,0]}, ('addikc r', '%rd', ' r', '%ra', ' ', '%imm'))
@@ -851,12 +851,12 @@ isa.addInstruction(bralid_Instr)
 
 #BRK
 opCode = cxx_writer.Code("""
-if ( MSR[key_UM] == 0x1 ) {
-	ESR[key_EC] = 0x1c;
+if ( MSR[MSR_UM] == 0x1 ) {
+	ESR[ESR_EC] = 0x1c;
 } else {
 	rd = PC;
 	PC = (int)rb;
-	MSR[key_BIP] = 0x1;
+	MSR[MSR_BIP] = 0x1;
 }
 """)
 brk_Instr = trap.Instruction('BRK','True')
@@ -869,17 +869,17 @@ isa.addInstruction(brk_Instr)
 
 #BRKI
 opCode = cxx_writer.Code("""
-if ((MSR[key_UM] == 1) && ((int)imm_value != 0x8) && ((int)imm_value != 0x18)) {
-	ESR[key_EC] = 0x1c;
+if ((MSR[MSR_UM] == 1) && ((int)imm_value != 0x8) && ((int)imm_value != 0x18)) {
+	ESR[ESR_EC] = 0x1c;
 } else {
 	rd = PC;
 	PC = (int)imm_value;
-	MSR[key_BIP] = 0x1;
+	MSR[MSR_BIP] = 0x1;
 	if ( ((int)imm_value == 0x8) || ((int)imm_value == 0x18) ) {
-		MSR[key_UMS] = MSR[key_UM];
-		MSR[key_VMS] = MSR[key_VM];
-		MSR[key_UM] = 0x0;
-		MSR[key_VM] = 0x0;
+		MSR[MSR_UMS] = MSR[MSR_UM];
+		MSR[MSR_VMS] = MSR[MSR_VM];
+		MSR[MSR_UM] = 0x0;
+		MSR[MSR_VM] = 0x0;
 	}
 }
 """)
@@ -1039,8 +1039,8 @@ float fres=fra+frb;
 unsigned res= *( (int*)( (void*)(&fres) ) );
 //if isDnz(ra) or isDnz(rb):
 if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){	rd=(unsigned)0xffc00000;
-	FSR[key_DO]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_DO]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isSigNan(ra) or isSigNaN(rb) or (isPosInfinite(ra) and isNegInfinite(rb)) or (isNegInfinite(ra) and isPosInfinite(rb)):
@@ -1056,8 +1056,8 @@ else if (	(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x004
 		)
 	){
 	rd=(unsigned)0xffc00000;
-	FSR[key_IO]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_IO]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isQuietNaN(ra) or isQuietNaN(rb):
@@ -1070,15 +1070,15 @@ else if (
 //else if isDnz (ra+rb):
 else if(res & 0x7f800000 == 0 && res & 0x007fffff != 0){
 	rd=(unsigned) res & 0x80000000 == 0x80000000;
-	FSR[key_UF]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_UF]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isNaN(ra+rb):
 else if (res & 0x7f800000 == 0x7f800000 && res & 0x007fffff !=0){
 	rd=(unsigned) res & 0x80000000 == 0x80000000;
-	FSR[key_OF]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_OF]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 else {
@@ -1103,8 +1103,8 @@ float fres=frb-fra;
 unsigned res= *( (int*)( (void*)(&fres) ) );
 //if isDnz(ra) or isDnz(rb):
 if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){	rd=(unsigned)0xffc00000;
-	FSR[key_DO]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_DO]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isSigNan(ra) or isSigNaN(rb) or (isPosInfinite(ra) and isPosInfinite(rb)) or (isNegInfinite(ra) and isNegInfinite(rb)):
@@ -1120,8 +1120,8 @@ else if (	(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x004
 		)
 	){
 	rd=(unsigned)0xffc00000;
-	FSR[key_IO]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_IO]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isQuietNaN(ra) or isQuietNaN(rb):
@@ -1134,15 +1134,15 @@ else if (
 //else if isDnz (rb-ra):
 else if(res & 0x7f800000 == 0 && res & 0x007fffff != 0){
 	rd=(unsigned) res & 0x80000000 == 0x80000000;
-	FSR[key_UF]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_UF]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isNaN(rb-ra):
 else if (res & 0x7f800000 == 0x7f800000 && res & 0x007fffff !=0){
 	rd=(unsigned) res & 0x80000000 == 0x80000000;
-	FSR[key_OF]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_OF]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 else {
@@ -1167,8 +1167,8 @@ float fres=frb * fra;
 unsigned res= *( (int*)( (void*)(&fres) ) );
 //if isDnz(ra) or isDnz(rb):
 if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){	rd=(unsigned)0xffc00000;
-	FSR[key_DO]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_DO]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isSigNan(ra) or isSigNaN(rb) or (isZero(ra) and isInfinite(rb)) or (isInfinite(ra) and isZero(rb)):
@@ -1184,8 +1184,8 @@ else if (	(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x004
 		)
 	){
 	rd=(unsigned)0xffc00000;
-	FSR[key_IO]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_IO]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isQuietNaN(ra) or isQuietNaN(rb):
@@ -1198,15 +1198,15 @@ else if (
 //else if isDnz (rb*ra):
 else if(res & 0x7f800000 == 0 && res & 0x007fffff != 0){
 	rd=(unsigned) res & 0x80000000 == 0x80000000;
-	FSR[key_UF]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_UF]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isNaN(rb*ra):
 else if (res & 0x7f800000 == 0x7f800000 && res & 0x007fffff !=0){
 	rd=(unsigned) res & 0x80000000 == 0x80000000;
-	FSR[key_OF]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_OF]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 else {
@@ -1231,8 +1231,8 @@ float fres=frb / fra;
 unsigned res= *( (int*)( (void*)(&fres) ) );
 //if isDnz(ra) or isDnz(rb):
 if ( (ira & 0x7f800000 == 0 && ira & 0x007fffff != 0) || ( irb & 0x7f800000 == 0 && irb & 0x007fffff != 0 )){	rd=(unsigned)0xffc00000;
-	FSR[key_DO]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_DO]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isSigNan(ra) or isSigNaN(rb) or (isZero(ra) and isZero(rb)) or (isInfinite(ra) and isInfinite(rb)):
@@ -1249,15 +1249,15 @@ else if (	(ira & 0x7f800000 == 0x7f800000 && ira & 0x007fffff !=0 && ira & 0x004
 		)
 	){
 	rd=(unsigned)0xffc00000;
-	FSR[key_IO]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_IO]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isZero(ra) and not isInfinite(rb):
 else if (		(ira & 0x7f800000 == 0 && ira & 0x007fffff == 0) &&		( ! ( irb & 0x7f800000 == 0x7f800000 && irb & 0x007fffff == 0 )) ){
 	rd =(unsigned) res & 0x80000000 == 0x80000000;
-	FSR[key_DZ]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_DZ]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isQuietNaN(ra) or isQuietNaN(rb):
@@ -1270,15 +1270,15 @@ else if (
 //else if isDnz (rb/ra):
 else if(res & 0x7f800000 == 0 && res & 0x007fffff != 0){
 	rd=(unsigned) res & 0x80000000 == 0x80000000;
-	FSR[key_UF]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_UF]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 //else if isNaN(rb/ra):
 else if (res & 0x7f800000 == 0x7f800000 && res & 0x007fffff !=0){
 	rd=(unsigned) res & 0x80000000 == 0x80000000;
-	FSR[key_OF]=1;
-	ESR[key_EC]=0x0c;
+	FSR[FSR_OF]=1;
+	ESR[ESR_EC]=0x0c;
 	//EXCEPTION
 }
 else {
@@ -1341,8 +1341,8 @@ isa.addInstruction(fsqrt_Instr)
 opCode = cxx_writer.Code("""
 if (ra==0){
 	rd=(int)0;
-	MSR[key_DZ]=1;
-	ESR[key_EC]=0x14; // 00101 ---> 10100
+	MSR[MSR_DZ]=1;
+	ESR[ESR_EC]=0x14; // 00101 ---> 10100
 	//EXCEPTION
 }
 else{
@@ -1363,8 +1363,8 @@ isa.addInstruction(idiv_Instr)
 opCode = cxx_writer.Code("""
 if (ra==0){
 	rd=(unsigned)0;
-	MSR[key_DZ]=1;
-	ESR[key_EC]=0x5;
+	MSR[MSR_DZ]=1;
+	ESR[ESR_EC]=0x5;
 	//EXCEPTION
 }
 else{
@@ -1570,8 +1570,8 @@ isa.addInstruction(mfs_Instr)
 
 #MSRCLR. The bit reversing problem is handled
 opCode = cxx_writer.Code("""
-if (MSR[key_UM] == 1 && ((unsigned)imm15) != 0x4 ){
-	ESR[key_EC]=0x1c; // 00111 -----> 11100
+if (MSR[MSR_UM] == 1 && ((unsigned)imm15) != 0x4 ){
+	ESR[ESR_EC]=0x1c; // 00111 -----> 11100
 	//EXCEPTION
 }
 else{
@@ -1599,8 +1599,8 @@ isa.addInstruction(msrclr_Instr)
 
 #MSRSET
 opCode = cxx_writer.Code("""
-if (MSR[key_UM] == 1 && ((unsigned)imm15) != 0x4 ){
-	ESR[key_EC]=0x1c; // 00111 -----> 11100
+if (MSR[MSR_UM] == 1 && ((unsigned)imm15) != 0x4 ){
+	ESR[ESR_EC]=0x1c; // 00111 -----> 11100
 	//EXCEPTION
 }
 else{
@@ -1628,8 +1628,8 @@ isa.addInstruction(msrset_Instr)
 
 #MTS
 opCode = cxx_writer.Code("""
-if (MSR[key_UM] == 1){
-	ESR[key_EC]=0x1c;
+if (MSR[MSR_UM] == 1){
+	ESR[ESR_EC]=0x1c;
 	//EXCEPTION;
 }
 else{
@@ -1850,7 +1850,7 @@ opCode = cxx_writer.Code("""
 int a = (int)ra;
 int b = (int)rb;
 long long result = (long long)( (long long)b + ~((long long)a) + 1);
-MSR[key_C] = (( (~a + 1)^b^(unsigned)(result >> 1)) & 0x80000000) != 0;
+MSR[MSR_C] = (( (~a + 1)^b^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd=(int)result;
 """)
 rsub_Instr = trap.Instruction('RSUB', True)
@@ -1869,8 +1869,8 @@ isa.addInstruction(rsub_Instr)
 opCode = cxx_writer.Code("""
 int a = (int)ra;
 int b = (int)rb;
-long long result = (long long)( (long long)b + ~((long long)a) + (int)MSR[key_C]);
-MSR[key_C] = (( (~a + MSR[key_C])^b^(unsigned)(result >> 1)) & 0x80000000) != 0;
+long long result = (long long)( (long long)b + ~((long long)a) + (int)MSR[MSR_C]);
+MSR[MSR_C] = (( (~a + MSR[MSR_C])^b^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd=(int)result;
 """)
 rsubc_Instr = trap.Instruction('RSUBC', True)
@@ -1907,7 +1907,7 @@ isa.addInstruction(rsubk_Instr)
 opCode = cxx_writer.Code("""
 int a = (int)ra;
 int b = (int)rb;
-rd = (int)(b + ~a + MSR[key_C]);
+rd = (int)(b + ~a + MSR[MSR_C]);
 """)
 rsubkc_Instr = trap.Instruction('RSUBKC', True)
 rsubkc_Instr.setMachineCode(oper_reg, {'opcode0': [0,0,0,1,1,1], 'opcode1': [0,0,0,0,0,0,0,0,0,0,0]}, ('rsubkc r', '%rd', ' r', '%ra', ' r', '%rb'))
@@ -1927,7 +1927,7 @@ opCode = cxx_writer.Code("""
 int a = (int)ra;
 int imm = (int)imm_value;
 long long result = (long long) ( ((long long)imm) + ~((long long)a) + 1);
-MSR[key_C] = ( ((~a + 1)^imm^(unsigned)(result >> 1)) & 0x80000000) != 0;
+MSR[MSR_C] = ( ((~a + 1)^imm^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd=(int)result;
 """)
 rsubi_Instr = trap.Instruction('RSUBI', True)
@@ -1947,8 +1947,8 @@ isa.addInstruction(rsubi_Instr)
 opCode = cxx_writer.Code("""
 int a = (int)ra;
 int imm = (int)imm_value;
-long long result = (long long) ( ((long long)imm) + ~((long long)a) + (int)MSR[key_C]);
-MSR[key_C] = ( ((~a + MSR[key_C])^imm^(unsigned)(result >> 1)) & 0x80000000) != 0;
+long long result = (long long) ( ((long long)imm) + ~((long long)a) + (int)MSR[MSR_C]);
+MSR[MSR_C] = ( ((~a + MSR[MSR_C])^imm^(unsigned)(result >> 1)) & 0x80000000) != 0;
 rd=(int)result;
 """)
 rsubic_Instr = trap.Instruction('RSUBIC', True)
@@ -1987,7 +1987,7 @@ isa.addInstruction(rsubik_Instr)
 opCode = cxx_writer.Code("""
 int a = (int)ra;
 int imm = (int)imm_value;
-rd=(int)(imm + ~a + (int)MSR[key_C]);
+rd=(int)(imm + ~a + (int)MSR[MSR_C]);
 """)
 rsubikc_Instr = trap.Instruction('RSUBIKC', True)
 rsubikc_Instr.setMachineCode(oper_imm, {'opcode': [0,0,1,1,1,1]}, ('rsubikc r', '%rd', ' r', '%ra', ' ', '%imm'))
@@ -2005,13 +2005,13 @@ isa.addInstruction(rsubikc_Instr)
 #RETURN instruction family
 #RTBD
 opCode = cxx_writer.Code("""
-if ( MSR[key_UM] == 1 ) {
+if ( MSR[MSR_UM] == 1 ) {
 	handleUserPermissionException();
 } else {
 	TARGET = (int)ra + (int)imm_value;
-	MSR[key_BIP] = 0x0;
-	MSR[key_UM] = MSR[key_UMS];
-	MSR[key_VM] = MSR[key_VMS];
+	MSR[MSR_BIP] = 0x0;
+	MSR[MSR_UM] = MSR[MSR_UMS];
+	MSR[MSR_VM] = MSR[MSR_VMS];
 	PC = PC + 4;}
 """)
 rtbd_Instr = trap.Instruction('RTBD','True')
@@ -2025,13 +2025,13 @@ isa.addInstruction(rtbd_Instr)
 
 #RTID
 opCode = cxx_writer.Code("""
-if ( MSR[key_UM] == 1 ) {
+if ( MSR[MSR_UM] == 1 ) {
 	handleUserPermissionException();
 } else {
 	TARGET = (int)ra + (int)imm_value;
-	MSR[key_IE] = 0x1;
-	MSR[key_UM] = MSR[key_UMS];
-	MSR[key_VM] = MSR[key_VMS];
+	MSR[MSR_IE] = 0x1;
+	MSR[MSR_UM] = MSR[MSR_UMS];
+	MSR[MSR_VM] = MSR[MSR_VMS];
 	PC = PC + 4;}
 """)
 rtid_Instr = trap.Instruction('RTID','True')
@@ -2045,17 +2045,17 @@ isa.addInstruction(rtid_Instr)
 
 #RTED
 opCode = cxx_writer.Code("""
-if ( MSR[key_UM] == 1 ) {
+if ( MSR[MSR_UM] == 1 ) {
 	handleUserPermissionException();
 } else {
-	if (ESR[key_DS] ) {
+	if (ESR[ESR_DS] ) {
 		TARGET = BTR;	} else {
 		TARGET = (int)ra + (int)imm_value;
 	}
-	MSR[key_EE] = 0x1;
-	MSR[key_EIP] = 0x0;
-	MSR[key_UM] = MSR[key_UMS];
-	MSR[key_VM] = MSR[key_VMS];
+	MSR[MSR_EE] = 0x1;
+	MSR[MSR_EIP] = 0x0;
+	MSR[MSR_UM] = MSR[MSR_UMS];
+	MSR[MSR_VM] = MSR[MSR_VMS];
 	ESR = 0x0;
 	PC = PC + 4;}
 """)
@@ -2245,7 +2245,7 @@ if ((int)ra & 0x80000000) {
 } else {
 	result &= 0x7fffffff;
 }
-MSR[key_C]= ((int)ra & 0x00000001) ? 0x1 : 0x0;
+MSR[MSR_C]= ((int)ra & 0x00000001) ? 0x1 : 0x0;
 rd = (int)result;
 """)
 sra_Instr = trap.Instruction('SRA', True)
@@ -2264,12 +2264,12 @@ isa.addInstruction(sra_Instr)
 #SRC
 opCode = cxx_writer.Code("""
 int result = ((int)ra)>>1;
-if (MSR[key_C]) {
+if (MSR[MSR_C]) {
 	result |= 0x80000000;
 } else {
 	result &= 0x7fffffff;
 }
-MSR[key_C]= ((int)ra & 0x00000001) ? 0x1 : 0x0;
+MSR[MSR_C]= ((int)ra & 0x00000001) ? 0x1 : 0x0;
 rd = (int) result;
 """)
 src_Instr = trap.Instruction('SRC', True)
@@ -2293,7 +2293,7 @@ isa.addInstruction(src_Instr)
 opCode = cxx_writer.Code("""
 int result = ((int)ra)>>1;
 result &= 0x7fffffff;
-MSR[key_C]= ((int)ra & 0x00000001) ? 0x1 : 0x0;
+MSR[MSR_C]= ((int)ra & 0x00000001) ? 0x1 : 0x0;
 rd = (int) result;
 """)
 srl_Instr = trap.Instruction('SRL', True)

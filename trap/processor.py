@@ -940,9 +940,6 @@ class Processor:
                 if not stage in stageNames:
                     raise Exception('Pipeline stage ' + stage + ' specified for interrupt ' + irq.name + ' does not exist.')
 
-    def getCPPRegisterFields(self):
-        return registerWriter.getCPPRegisterFields(self)
-
     def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         """This method creates all the classes necessary for declaring
         the registers: in particular the register base class
@@ -1144,7 +1141,8 @@ class Processor:
             headFileRegs = cxx_writer.FileDumper('registers.hpp', True)
             headFileRegs.addMember(defCode)
             headFileRegs.addMember(self.defines)
-            headFileRegs.addMember(self.getCPPRegisterFields())
+            headFileRegs.addMember(registerWriter.getCPPRegisterDefines(self))
+            headFileRegs.addMember(registerWriter.getCPPRegisterFields(self))
             implFileRegs.addMember(namespaceUse)
             implFileRegs.addMember(RegClasses)
             headFileRegs.addMember(RegClasses)

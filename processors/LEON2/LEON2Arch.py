@@ -154,7 +154,7 @@ tbrReg = trap.Register('TBR', 32, tbrBitMask)
 tbrReg.setDefaultValue(0)
 processor.addRegister(tbrReg)
 # Multiply / Divide Register
-yReg = trap.Register('Y', 32)
+yReg = trap.Register('YREG', 32)
 processor.addRegister(yReg)
 # Program Counter
 pcReg = trap.Register('PC', 32)
@@ -256,7 +256,7 @@ irqPort.setOperation("""//Basically, what I have to do when
 // (IMPL_DEP_EXC): this because interrupt 1 has id 37, etc.
 RaiseException(pcounter, npcounter, 38 - IRQ);
 """, 'wb')
-irqPort.setCondition('PSR[key_ET] && (IRQ == 15 || IRQ > PSR[key_PIL])')
+irqPort.setCondition('PSR[PSR_ET] && (IRQ == 15 || IRQ > PSR[PSR_PIL])')
 irqPort.addVariable(('pcounter', 'BIT<32>'))
 irqPort.addVariable(('npcounter', 'BIT<32>'))
 # in the IRQ tests I specify first the status of the processor before the
@@ -293,16 +293,16 @@ processor.addPipeStage(wbStage)
 # The ABI is necessary to emulate system calls, personalize the GDB stub and,
 # eventually, retarget GCC
 abi = trap.ABI('REGS[24]', 'REGS[24-29]', 'PC', 'LR', 'SP', 'FP')
-abi.addVarRegsCorrespondence({'REGS[0-31]': (0, 31), 'Y': 64, 'PSR': 65, 'WIM': 66, 'TBR': 67, 'PC': 68, 'NPC': 69})
+abi.addVarRegsCorrespondence({'REGS[0-31]': (0, 31), 'YREG': 64, 'PSR': 65, 'WIM': 66, 'TBR': 67, 'PC': 68, 'NPC': 69})
 # ************* TODO ************ Do I need to check for register window over/under -flow even for
 # systemcalls ?????
 pre_code = """
-unsigned newCwp = ((unsigned)(PSR[key_CWP] - 1)) % """ + str(numRegWindows) + """;
+unsigned newCwp = ((unsigned)(PSR[PSR_CWP] - 1)) % """ + str(numRegWindows) + """;
 PSR.write_force((PSR & 0xFFFFFFE0) | newCwp);
 """
 pre_code += updateAliasCode_abi()
 post_code = """
-unsigned newCwp = ((unsigned)(PSR[key_CWP] + 1)) % """ + str(numRegWindows) + """;
+unsigned newCwp = ((unsigned)(PSR[PSR_CWP] + 1)) % """ + str(numRegWindows) + """;
 PSR.write_force((PSR & 0xFFFFFFE0) | newCwp);
 """
 post_code += updateAliasCode_abi()
@@ -316,17 +316,10 @@ abi.setReturnCallInstr([(LEON2Isa.restore_imm_Instr, LEON2Isa.restore_reg_Instr,
 processor.setABI(abi)
 
 # Finally we can dump the processor on file
-#processor.write(folder = 'processor', models = ['funcLT'], dumpDecoderName = 'decoder.dot')
-#processor.write(folder = 'processor', models = ['funcLT'], trace = True)
 if standalone:
     processor.write(folder = destFolderName, models = ['funcLT'], tests = False)
 else:
-    processor.write(folder = destFolderName, models = ['funcLT', 'funcAT'], tests = False)
-#processor.write(folder = 'processor', models = ['funcAT'], tests = False)
-#processor.write(folder = 'processor', models = ['funcLT'], trace = True, tests = False)
-#processor.write(folder = 'processor', models = ['funcAT'], trace = False)
-#processor.write(folder = 'processor', models = ['funcAT'])
-#processor.write(folder = 'processor', models = ['funcAT', 'funcLT'], tests = False)
-#processor.write(folder = 'processor', models = ['accLT'], trace = False)
-#processor.write(folder = 'processor', models = ['accLT', 'funcAT', 'accAT', 'funcLT'], trace = False)
-#processor.write(folder = 'processor', models = ['accLT', 'funcLT'], trace = True, combinedTrace = True)
+    processor.write(folder = destFolderName, models = ['funcLT'], tests = False)
+    #processor.write(folder = destFolderName, models = ['funcLT', 'funcAT'], tests = False)
+    #processor.write(folder = destFolderName, models = ['accLT', 'funcLT', 'funcAT'], tests = True)
+    #processor.write(folder = destFolderName, models = ['accLT', 'funcLT', 'funcAT'], trace = True, combinedTrace = True)

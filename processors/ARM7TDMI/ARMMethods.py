@@ -87,16 +87,16 @@ opCode = cxx_writer.Code("""
 long long resultSign = (long long)((long long)((int)operand1) + (long long)((int)operand2)) + (long long)((int)carry);
 
 // N flag if the results is negative
-CPSR[key_N] = ((resultSign & 0x0000000080000000LL) != 0);
+CPSR[CPSR_N] = ((resultSign & 0x0000000080000000LL) != 0);
 
 //Update flag Z if the result is 0
-CPSR[key_Z] = (resultSign == 0);
+CPSR[CPSR_Z] = (resultSign == 0);
 
 //Update the C resultUnSign if a carry occurred in the operation
-CPSR[key_C] = (((operand1 ^ operand2 ^ ((unsigned)(resultSign >> 1))) & 0x80000000) != 0);
+CPSR[CPSR_C] = (((operand1 ^ operand2 ^ ((unsigned)(resultSign >> 1))) & 0x80000000) != 0);
 
 //Update the V flag if an overflow occurred in the operation
-CPSR[key_V] = ((((unsigned)(resultSign >> 1)) ^ ((unsigned)resultSign)) & 0x80000000) != 0;
+CPSR[CPSR_V] = ((((unsigned)(resultSign >> 1)) ^ ((unsigned)resultSign)) & 0x80000000) != 0;
 """)
 UpdatePSRAdd_method = trap.HelperMethod('UpdatePSRAddInner', opCode, 'execute')
 UpdatePSRAdd_method.setSignature(parameters = [('operand1', 'BIT<32>'), ('operand2', 'BIT<32>'), ('carry', 'BIT<1>')])
@@ -105,25 +105,25 @@ opCode = cxx_writer.Code("""
 long long resultSign = (long long)((long long)((int)operand1) - (long long)((int)operand2)) - (long long)((int)carry);
 //unsigned long long resultUnSign = (unsigned long long)((unsigned long long)operand1 - (unsigned long long)operand2);
 // N flag if the results is negative
-CPSR[key_N] = ((resultSign & 0x0000000080000000LL) != 0);
+CPSR[CPSR_N] = ((resultSign & 0x0000000080000000LL) != 0);
 //Update flag Z if the result is 0
-CPSR[key_Z] = (resultSign == 0);
+CPSR[CPSR_Z] = (resultSign == 0);
 //Update the C flag if a borrow didn't occurr in the operation
 //operand2 = (int)-operand2;
-CPSR[key_C] = (((operand1 ^ operand2 ^ ((unsigned)(resultSign >> 1))) & 0x80000000) == 0);
+CPSR[CPSR_C] = (((operand1 ^ operand2 ^ ((unsigned)(resultSign >> 1))) & 0x80000000) == 0);
 //Update the V flag if an overflow occurred in the operation
-CPSR[key_V] = ((((unsigned)(resultSign >> 1)) ^ ((unsigned)resultSign)) & 0x80000000) != 0;
+CPSR[CPSR_V] = ((((unsigned)(resultSign >> 1)) ^ ((unsigned)resultSign)) & 0x80000000) != 0;
 """)
 UpdatePSRSub_method = trap.HelperMethod('UpdatePSRSubInner', opCode, 'execute')
 UpdatePSRSub_method.setSignature(parameters = [('operand1', 'BIT<32>'), ('operand2', 'BIT<32>'), ('carry', 'BIT<1>')])
 
 opCode = cxx_writer.Code("""
 // N flag if the results is negative
-CPSR[key_N] = ((result & 0x80000000) != 0);
+CPSR[CPSR_N] = ((result & 0x80000000) != 0);
 //Update flag Z if the result is 0
-CPSR[key_Z] = (result == 0);
+CPSR[CPSR_Z] = (result == 0);
 //Update the C flag if a carry occurred in the operation
-CPSR[key_C] = (carry != 0);
+CPSR[CPSR_C] = (carry != 0);
 //No updates performed to the V flag.
 """)
 UpdatePSRBitM_method = trap.HelperMethod('UpdatePSRBitM', opCode, 'execute')
@@ -166,7 +166,7 @@ switch(shift_type){
         break;}
     case 3:{
         if(shift_amm == 0){
-            return (((unsigned)toShift) >> 1) | ((CPSR[key_C]) << 31);
+            return (((unsigned)toShift) >> 1) | ((CPSR[CPSR_C]) << 31);
         }
         else{
             // rotate right
@@ -183,7 +183,7 @@ LSRegShift_method = trap.HelperMethod('LSRegShift', opCode, 'execute')
 LSRegShift_method.setSignature(('BIT<32>'), [cxx_writer.Parameter('shift_type', cxx_writer.uintType), cxx_writer.Parameter('shift_amm', cxx_writer.uintType), ('toShift', 'BIT<32>')])
 
 opCode = cxx_writer.Code("""
-unsigned curMode = CPSR[key_mode];
+unsigned curMode = CPSR[CPSR_mode];
 switch(curMode){
     case 0x1:{
         //I'm in FIQ mode
@@ -209,7 +209,7 @@ switch(curMode){
         THROW_EXCEPTION("Unable to restore the PSR when starting from user or supervisor mode");
         break;}
 }
-updateAliases(curMode, CPSR[key_mode]);
+updateAliases(curMode, CPSR[CPSR_mode]);
 """)
 restoreSPSR_method = trap.HelperMethod('restoreSPSR', opCode, 'execute')
 opCode = cxx_writer.Code("""
@@ -276,99 +276,99 @@ if(cond != 0xE){
     switch(cond){
         case 0x0:{
             // EQ
-            if (CPSR[key_Z] == 0x0){
-                annul();
+            if (CPSR[CPSR_Z] == 0x0){
+                Instruction::annul();
             }
             break;
         }
         case 0x1:{
             // NE
-            if (CPSR[key_Z] != 0x0){
-                annul();
+            if (CPSR[CPSR_Z] != 0x0){
+                Instruction::annul();
             }
             break;
         }
         case 0x2:{
             // CS/HS
-            if (CPSR[key_C] == 0x0){
-                annul();
+            if (CPSR[CPSR_C] == 0x0){
+                Instruction::annul();
             }
             break;
         }
         case 0x3:{
             // CC/LO
-            if (CPSR[key_C] != 0x0){
-                annul();
+            if (CPSR[CPSR_C] != 0x0){
+                Instruction::annul();
             }
             break;
         }
         case 0x4:{
             // MI
-            if (CPSR[key_N] == 0x0){
-                annul();
+            if (CPSR[CPSR_N] == 0x0){
+                Instruction::annul();
             }
             break;
         }
         case 0x5:{
             // PL
-            if (CPSR[key_N] != 0x0){
-                annul();
+            if (CPSR[CPSR_N] != 0x0){
+                Instruction::annul();
             }
             break;
         }
         case 0x6:{
             // VS
-            if (CPSR[key_V] == 0x0){
-                annul();
+            if (CPSR[CPSR_V] == 0x0){
+                Instruction::annul();
             }
             break;
         }
         case 0x7:{
             // VC
-            if (CPSR[key_V] != 0x0){
-                annul();
+            if (CPSR[CPSR_V] != 0x0){
+                Instruction::annul();
             }
             break;
         }
         case 0x8:{
             // HI
             if ((CPSR & 0x60000000) != 0x20000000){
-                annul();
+                Instruction::annul();
             }
             break;
         }
         case 0x9:{
             // LS
             if ((CPSR & 0x60000000) == 0x20000000){
-                annul();
+                Instruction::annul();
             }
             break;
         }
         case 0xA:{
             // GE
-            if (CPSR[key_V] != CPSR[key_N]){
-                annul();
+            if (CPSR[CPSR_V] != CPSR[CPSR_N]){
+                Instruction::annul();
             }
             break;
         }
         case 0xB:{
             // LT
-            if (CPSR[key_V] == CPSR[key_N]){
-                annul();
+            if (CPSR[CPSR_V] == CPSR[CPSR_N]){
+                Instruction::annul();
             }
             break;
         }
         case 0xC:{
             // GT
-            if ((CPSR[key_Z] != 0x0) || (CPSR[key_V] != CPSR[key_N])){
-                annul();
+            if ((CPSR[CPSR_Z] != 0x0) || (CPSR[CPSR_V] != CPSR[CPSR_N])){
+                Instruction::annul();
             }
             break;
         }
         case 0xD:{
             // LE
-            if ((CPSR[key_Z] == 0x0) && (CPSR[key_V] == CPSR[key_N])){
-                annul();
+            if ((CPSR[CPSR_Z] == 0x0) && (CPSR[CPSR_V] == CPSR[CPSR_N])){
+                Instruction::annul();
             }
             break;
         }
@@ -391,7 +391,7 @@ condCheckOp.addUserInstructionElement('cond')
 opCode = cxx_writer.Code("""
 if(shift_op == 0 && shift_amm == 0){
     operand = rm;
-    carry = (CPSR[key_C] != 0);
+    carry = (CPSR[CPSR_C] != 0);
 }
 else{
     switch(shift_op) {
@@ -434,7 +434,7 @@ else{
             // Rotate right
             if (shift_amm == 0){
                 //Rotate rigth with extend
-                operand = (rm >> 1) | ((CPSR[key_C]) << 31);
+                operand = (rm >> 1) | ((CPSR[CPSR_C]) << 31);
                 carry = ((rm & 0x00000001) != 0);
             }
             else {
@@ -463,7 +463,7 @@ switch(shift_op) {
         // Logical shift left
         if(shift_amm == 0){
             operand = rm;
-            carry = (CPSR[key_C] != 0);
+            carry = (CPSR[CPSR_C] != 0);
         }
         else if (shift_amm < 32){
             operand = rm << shift_amm;
@@ -482,7 +482,7 @@ switch(shift_op) {
         // Logical shift right
         if(shift_amm == 0){
             operand = rm;
-            carry = (CPSR[key_C] != 0);
+            carry = (CPSR[CPSR_C] != 0);
         }
         else if (shift_amm < 32){
             operand = rm >> shift_amm;
@@ -501,7 +501,7 @@ switch(shift_op) {
         // Arithmetic shift right
         if(shift_amm == 0){
             operand = rm;
-            carry = (CPSR[key_C] != 0);
+            carry = (CPSR[CPSR_C] != 0);
         }
         else if (shift_amm < 32){
             operand = ArithmeticShiftRight(shift_amm, rm);
@@ -522,7 +522,7 @@ switch(shift_op) {
         // Rotate right
         if(shift_amm == 0){
             operand = rm;
-            carry = (CPSR[key_C] != 0);
+            carry = (CPSR[CPSR_C] != 0);
         }
         else if((shift_amm & 0x0000001F) == 0){
             operand = rm;
@@ -540,7 +540,7 @@ switch(shift_op) {
 //Ok, this operation is such that it stall the pipeline for 1 stage;
 //note how the stall is not performed at this exact moment, but when
 //all the operations of the stage have ended
-stall(1);
+num_cycles = 1;
 """)
 DPI_reg_shift_Op = trap.HelperOperation('DPI_reg_shift', opCode)
 DPI_reg_shift_Op.addInstructionVar(('operand', 'BIT<32>'))
@@ -553,7 +553,7 @@ DPI_reg_shift_Op.addUserInstructionElement('rs')
 opCode = cxx_writer.Code("""
 if (rotate == 0){
     operand = immediate;
-    carry = (CPSR[key_C] != 0);
+    carry = (CPSR[CPSR_C] != 0);
 }
 else{
     operand = RotateRight(rotate*2, immediate);
@@ -602,7 +602,7 @@ if (s == 0x1){
     else{
         //Here I have to normally update the flags
         //Carry bit is counted
-        carry = CPSR[key_C];
+        carry = CPSR[CPSR_C];
         UpdatePSRAddInner(operand1, operand2, carry);
     }
 }
@@ -654,7 +654,7 @@ if (s == 0x1){
     else{
         //Here I have to normally update the flags
         //Carry bit is counted
-        carry = (CPSR[key_C] == 0);
+        carry = (CPSR[CPSR_C] == 0);
         UpdatePSRSubInner(operand1, operand2, carry);
     }
 }
@@ -699,9 +699,9 @@ if (s == 0x1){
     else{
         //Here I have to normally update the flags
         // N flag if the results is negative
-        CPSR[key_N] = ((rd & 0x80000000) != 0);
+        CPSR[CPSR_N] = ((rd & 0x80000000) != 0);
         //Update flag Z if the result is 0
-        CPSR[key_Z] = (rd == 0);
+        CPSR[CPSR_Z] = (rd == 0);
         //No updates performed to the C flag.
         //No updates performed to the V flag.
     }
@@ -716,18 +716,18 @@ if (s == 0x1){
     if(rd_bit == 15){
         //In case the destination register is the program counter I have to
         //specify that I have a latency of two clock cycles
-        stall(2);
-        flush();
+        num_cycles = 2;
+        Instruction::flush();
     }else{
         //Here I have to normally update the flags
         // N flag if the results is negative
-        CPSR[key_N] = ((rd & 0x80000000) != 0);
+        CPSR[CPSR_N] = ((rd & 0x80000000) != 0);
         //Update flag Z if the result is 0
-        CPSR[key_Z] = (result == 0);
+        CPSR[CPSR_Z] = (result == 0);
         //No updates performed to the C flag.
         //No updates performed to the V flag.
     }
-}    
+}
 """)
 UpdatePSRmul_64 = trap.HelperOperation('UpdatePSRmul_64', opCode)
 UpdatePSRmul_64.addUserInstructionElement('s')
@@ -741,8 +741,8 @@ opCode = cxx_writer.Code("""
 if(rd_bit == 15){
     //In case the destination register is the program counter I have to
     //specify that I have a latency of two clock cycles
-    stall(2);
-    flush();
+    num_cycles = 2;
+    Instruction::flush();
 }
 """)
 UpdatePC = trap.HelperOperation('UpdatePC', opCode, inline = False)

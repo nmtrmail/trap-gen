@@ -422,7 +422,7 @@ isa.addInstruction(ldd_reg_Instr)
 # Here are the load operations accessing alternate space
 opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
-supervisor = PSR[key_S];
+supervisor = PSR[PSR_S];
 """)
 opCodeWb = cxx_writer.Code("""
 rd = readValue;
@@ -909,7 +909,7 @@ isa.addInstruction(std_reg_Instr)
 opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
 toWrite = (unsigned char)(rd & 0x000000FF);
-supervisor = PSR[key_S];
+supervisor = PSR[PSR_S];
 """)
 opCodeMem = cxx_writer.Code("""
 if(supervisor){
@@ -951,7 +951,7 @@ isa.addInstruction(stba_reg_Instr)
 opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
 toWrite = (unsigned short int)(rd & 0x0000FFFF);
-supervisor = PSR[key_S];
+supervisor = PSR[PSR_S];
 """)
 opCodeMem = cxx_writer.Code("""
 if(supervisor || !notAligned){
@@ -998,7 +998,7 @@ isa.addInstruction(stha_reg_Instr)
 opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
 toWrite = rd;
-supervisor = PSR[key_S];
+supervisor = PSR[PSR_S];
 """)
 opCodeMem = cxx_writer.Code("""
 if(supervisor || !notAligned){
@@ -1042,7 +1042,7 @@ if(rd_bit % 2 == 0){
 else{
     toWrite = REGS[rd_bit + 1] || (((unsigned long long)rd) << 32);
 }
-supervisor = PSR[key_S];
+supervisor = PSR[PSR_S];
 """)
 opCodeMem = cxx_writer.Code("""
 if(supervisor || !notAligned){
@@ -1117,7 +1117,7 @@ ldstub_reg_Instr.addVariable(('readValue', 'BIT<32>'))
 isa.addInstruction(ldstub_reg_Instr)
 opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
-supervisor = PSR[key_S];
+supervisor = PSR[PSR_S];
 """)
 opCodeExec = cxx_writer.Code("""
 #ifdef ACC_MODEL
@@ -1233,7 +1233,7 @@ isa.addInstruction(swap_reg_Instr)
 opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
 toWrite = rd;
-supervisor = PSR[key_S];
+supervisor = PSR[PSR_S];
 """)
 opCodeExec = cxx_writer.Code("""
 notAligned = (address & 0x00000003) != 0;
@@ -1734,7 +1734,7 @@ addcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(addcc_reg_Instr)
 opCodeExec = cxx_writer.Code("""
 #ifndef ACC_MODEL
-result = rs1_op + rs2_op + PSR[key_ICC_c];
+result = rs1_op + rs2_op + PSR[PSR_ICC_c];
 #else
 //I read the register of the execute stage since this
 //is the one containing the bypass value
@@ -1920,7 +1920,7 @@ subcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 isa.addInstruction(subcc_reg_Instr)
 opCodeExec = cxx_writer.Code("""
 #ifndef ACC_MODEL
-result = rs1_op - rs2_op - PSR[key_ICC_c];
+result = rs1_op - rs2_op - PSR[PSR_ICC_c];
 #else
 result = rs1_op - rs2_op - PSR_execute[key_ICC_c];
 #endif
@@ -2057,16 +2057,16 @@ rs2_op = rs2;
 """)
 opCodeExec = cxx_writer.Code("""
 #ifndef ACC_MODEL
-unsigned yNew = (((unsigned)Y) >> 1) | (rs1_op << 31);
+unsigned yNew = (((unsigned)YREG) >> 1) | (rs1_op << 31);
 #else
-unsigned yNew = (((unsigned)Y_execute) >> 1) | (rs1_op << 31);
+unsigned yNew = (((unsigned)YREG_execute) >> 1) | (rs1_op << 31);
 #endif
-rs1_op = ((PSR[key_ICC_n] ^ PSR[key_ICC_v]) << 31) | (((unsigned)rs1_op) >> 1);
+rs1_op = ((PSR[PSR_ICC_n] ^ PSR[PSR_ICC_v]) << 31) | (((unsigned)rs1_op) >> 1);
 result = rs1_op;
 #ifndef ACC_MODEL
-unsigned yOld = Y;
+unsigned yOld = YREG;
 #else
-unsigned yOld = Y_execute;
+unsigned yOld = YREG_execute;
 #endif
 if((yOld & 0x00000001) != 0){
     result += rs2_op;
@@ -2074,7 +2074,7 @@ if((yOld & 0x00000001) != 0){
 else{
     rs2_op = 0;
 }
-Y = yNew;
+YREG = yNew;
 """)
 mulscc_imm_Instr = trap.Instruction('MULScc_imm', True, frequency = 2)
 mulscc_imm_Instr.setMachineCode(dpi_format2, {'op3': [1, 0, 0, 1, 0, 0]}, ('mulscc r', '%rs1', ' ', '%simm13', ' r', '%rd'))
@@ -2087,7 +2087,7 @@ mulscc_imm_Instr.addVariable(('result', 'BIT<32>'))
 mulscc_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 mulscc_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
 mulscc_imm_Instr.addSpecialRegister('PSR', 'in')
-mulscc_imm_Instr.addSpecialRegister('Y', 'inout', 'execute')
+mulscc_imm_Instr.addSpecialRegister('YREG', 'inout', 'execute')
 isa.addInstruction(mulscc_imm_Instr)
 mulscc_reg_Instr = trap.Instruction('MULScc_reg', True, frequency = 2)
 mulscc_reg_Instr.setMachineCode(dpi_format1, {'op3': [1, 0, 0, 1, 0, 0], 'asi' : [0, 0, 0, 0, 0, 0, 0, 0]}, ('mulscc r', '%rs1', ' r', '%rs2', ' r', '%rd'))
@@ -2100,7 +2100,7 @@ mulscc_reg_Instr.addVariable(('result', 'BIT<32>'))
 mulscc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 mulscc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 mulscc_reg_Instr.addSpecialRegister('PSR', 'in')
-mulscc_reg_Instr.addSpecialRegister('Y', 'inout', 'execute')
+mulscc_reg_Instr.addSpecialRegister('YREG', 'inout', 'execute')
 isa.addInstruction(mulscc_reg_Instr)
 
 # Multiply
@@ -2114,7 +2114,7 @@ rs2_op = rs2;
 """)
 opCodeExecS = cxx_writer.Code("""
 long long resultTemp = (long long)(((long long)((int)rs1_op))*((long long)((int)rs2_op)));
-Y = ((unsigned long long)resultTemp) >> 32;
+YREG = ((unsigned long long)resultTemp) >> 32;
 result = resultTemp & 0x00000000FFFFFFFF;
 #ifdef MULT_SIZE_16
 stall(3);
@@ -2122,7 +2122,7 @@ stall(3);
 """)
 opCodeExecU = cxx_writer.Code("""
 unsigned long long resultTemp = (unsigned long long)(((unsigned long long)((unsigned)rs1_op))*((unsigned long long)((unsigned)rs2_op)));
-Y = resultTemp >> 32;
+YREG = resultTemp >> 32;
 result = resultTemp & 0x00000000FFFFFFFF;
 #ifdef MULT_SIZE_16
 stall(3);
@@ -2137,7 +2137,7 @@ umul_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 umul_imm_Instr.addVariable(('result', 'BIT<32>'))
 umul_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 umul_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-umul_imm_Instr.addSpecialRegister('Y', 'out', 'execute')
+umul_imm_Instr.addSpecialRegister('YREG', 'out', 'execute')
 #if pipelinedMult:
     #umul_imm_Instr.setWbDelay('rd', 3)
 #else:
@@ -2152,7 +2152,7 @@ umul_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 umul_reg_Instr.addVariable(('result', 'BIT<32>'))
 umul_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 umul_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-umul_reg_Instr.addSpecialRegister('Y', 'out', 'execute')
+umul_reg_Instr.addSpecialRegister('YREG', 'out', 'execute')
 #if pipelinedMult:
     #umul_reg_Instr.setWbDelay('rd', 3)
 #else:
@@ -2167,7 +2167,7 @@ smul_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 smul_imm_Instr.addVariable(('result', 'BIT<32>'))
 smul_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 smul_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-smul_imm_Instr.addSpecialRegister('Y', 'out', 'execute')
+smul_imm_Instr.addSpecialRegister('YREG', 'out', 'execute')
 #if pipelinedMult:
     #smul_imm_Instr.setWbDelay('rd', 3)
 #else:
@@ -2182,7 +2182,7 @@ smul_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 smul_reg_Instr.addVariable(('result', 'BIT<32>'))
 smul_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 smul_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-smul_reg_Instr.addSpecialRegister('Y', 'out', 'execute')
+smul_reg_Instr.addSpecialRegister('YREG', 'out', 'execute')
 #if pipelinedMult:
     #smul_reg_Instr.setWbDelay('rd', 3)
 #else:
@@ -2198,7 +2198,7 @@ umulcc_imm_Instr.addBehavior(ICC_writeLogic, 'execute', False)
 umulcc_imm_Instr.addVariable(('result', 'BIT<32>'))
 umulcc_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 umulcc_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-umulcc_imm_Instr.addSpecialRegister('Y', 'out', 'execute')
+umulcc_imm_Instr.addSpecialRegister('YREG', 'out', 'execute')
 umulcc_imm_Instr.addSpecialRegister('PSR', 'out', 'execute')
 #if pipelinedMult:
     #umulcc_imm_Instr.setWbDelay('rd', 3)
@@ -2215,7 +2215,7 @@ umulcc_reg_Instr.addBehavior(ICC_writeLogic, 'execute', False)
 umulcc_reg_Instr.addVariable(('result', 'BIT<32>'))
 umulcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 umulcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-umulcc_reg_Instr.addSpecialRegister('Y', 'out', 'execute')
+umulcc_reg_Instr.addSpecialRegister('YREG', 'out', 'execute')
 umulcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 #if pipelinedMult:
     #umulcc_reg_Instr.setWbDelay('rd', 3)
@@ -2232,7 +2232,7 @@ smulcc_imm_Instr.addBehavior(ICC_writeLogic, 'execute', False)
 smulcc_imm_Instr.addVariable(('result', 'BIT<32>'))
 smulcc_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 smulcc_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-smulcc_imm_Instr.addSpecialRegister('Y', 'out', 'execute')
+smulcc_imm_Instr.addSpecialRegister('YREG', 'out', 'execute')
 smulcc_imm_Instr.addSpecialRegister('PSR', 'out', 'execute')
 #if pipelinedMult:
     #smulcc_imm_Instr.setWbDelay('rd', 3)
@@ -2249,7 +2249,7 @@ smulcc_reg_Instr.addBehavior(ICC_writeLogic, 'execute', False)
 smulcc_reg_Instr.addVariable(('result', 'BIT<32>'))
 smulcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 smulcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-smulcc_reg_Instr.addSpecialRegister('Y', 'out', 'execute')
+smulcc_reg_Instr.addSpecialRegister('YREG', 'out', 'execute')
 smulcc_reg_Instr.addSpecialRegister('PSR', 'out', 'execute')
 #if pipelinedMult:
     #smulcc_reg_Instr.setWbDelay('rd', 3)
@@ -2268,16 +2268,16 @@ rs2_op = rs2;
 """)
 opCodeExecS = cxx_writer.Code("""
 int resultTemp = ((int)SignExtend(rs1_op & 0x0000ffff, 16))*((int)SignExtend(rs2_op & 0x0000ffff, 16));
-long long resultAcc = ((((long long)(Y & 0x000000ff)) << 32) | (int)ASR[18]) + resultTemp;
-Y = (resultAcc & 0x000000ff00000000LL) >> 32;
+long long resultAcc = ((((long long)(YREG & 0x000000ff)) << 32) | (int)ASR[18]) + resultTemp;
+YREG = (resultAcc & 0x000000ff00000000LL) >> 32;
 ASR[18] = resultAcc & 0x00000000FFFFFFFFLL;
 result = resultAcc & 0x00000000FFFFFFFFLL;
 stall(1);
 """)
 opCodeExecU = cxx_writer.Code("""
 unsigned resultTemp = ((unsigned)rs1_op & 0x0000ffff)*((unsigned)rs2_op & 0x0000ffff);
-unsigned long long resultAcc = ((((unsigned long long)(Y & 0x000000ff)) << 32) | (unsigned)ASR[18]) + resultTemp;
-Y = (resultAcc & 0x000000ff00000000LL) >> 32;
+unsigned long long resultAcc = ((((unsigned long long)(YREG & 0x000000ff)) << 32) | (unsigned)ASR[18]) + resultTemp;
+YREG = (resultAcc & 0x000000ff00000000LL) >> 32;
 ASR[18] = resultAcc & 0x00000000FFFFFFFFLL;
 result = resultAcc & 0x00000000FFFFFFFFLL;
 stall(1);
@@ -2291,7 +2291,7 @@ umac_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 umac_imm_Instr.addVariable(('result', 'BIT<32>'))
 umac_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 umac_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-umac_imm_Instr.addSpecialRegister('Y', 'inout', 'execute')
+umac_imm_Instr.addSpecialRegister('YREG', 'inout', 'execute')
 umac_imm_Instr.addSpecialRegister('ASR[18]', 'inout', 'execute')
 isa.addInstruction(umac_imm_Instr)
 umac_reg_Instr = trap.Instruction('UMAC_reg', True, frequency = 1)
@@ -2303,7 +2303,7 @@ umac_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 umac_reg_Instr.addVariable(('result', 'BIT<32>'))
 umac_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 umac_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-umac_reg_Instr.addSpecialRegister('Y', 'inout', 'execute')
+umac_reg_Instr.addSpecialRegister('YREG', 'inout', 'execute')
 umac_reg_Instr.addSpecialRegister('ASR[18]', 'inout', 'execute')
 isa.addInstruction(umac_reg_Instr)
 smac_imm_Instr = trap.Instruction('SMAC_imm', True, frequency = 1)
@@ -2315,7 +2315,7 @@ smac_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 smac_imm_Instr.addVariable(('result', 'BIT<32>'))
 smac_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 smac_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-smac_imm_Instr.addSpecialRegister('Y', 'inout', 'execute')
+smac_imm_Instr.addSpecialRegister('YREG', 'inout', 'execute')
 smac_imm_Instr.addSpecialRegister('ASR[18]', 'inout', 'execute')
 isa.addInstruction(smac_imm_Instr)
 smac_reg_Instr = trap.Instruction('SMAC_reg', True, frequency = 1)
@@ -2327,7 +2327,7 @@ smac_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 smac_reg_Instr.addVariable(('result', 'BIT<32>'))
 smac_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 smac_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-smac_reg_Instr.addSpecialRegister('Y', 'inout', 'execute')
+smac_reg_Instr.addSpecialRegister('YREG', 'inout', 'execute')
 smac_reg_Instr.addSpecialRegister('ASR[18]', 'inout', 'execute')
 isa.addInstruction(smac_reg_Instr)
 
@@ -2344,9 +2344,9 @@ opCodeExecU = cxx_writer.Code("""
 exception = rs2_op == 0;
 if(!exception){
     #ifndef ACC_MODEL
-    unsigned long long res64 = ((unsigned long long)((((unsigned long long)Y) << 32) | (unsigned long long)rs1_op))/(unsigned long long)rs2_op;
+    unsigned long long res64 = ((unsigned long long)((((unsigned long long)YREG) << 32) | (unsigned long long)rs1_op))/(unsigned long long)rs2_op;
     #else
-    unsigned long long res64 = ((unsigned long long)((((unsigned long long)Y_execute) << 32) | (unsigned long long)rs1_op))/(unsigned long long)rs2_op;
+    unsigned long long res64 = ((unsigned long long)((((unsigned long long)YREG_execute) << 32) | (unsigned long long)rs1_op))/(unsigned long long)rs2_op;
     #endif
     temp_V = (res64 & 0xFFFFFFFF00000000LL) != 0;
     if(temp_V){
@@ -2362,9 +2362,9 @@ opCodeExecS = cxx_writer.Code("""
 exception = rs2_op == 0;
 if(!exception){
     #ifndef ACC_MODEL
-    long long res64 = ((long long)((((unsigned long long)Y) << 32) | (unsigned long long)rs1_op))/((long long)((int)rs2_op));
+    long long res64 = ((long long)((((unsigned long long)YREG) << 32) | (unsigned long long)rs1_op))/((long long)((int)rs2_op));
     #else
-    long long res64 = ((long long)((((unsigned long long)Y_execute) << 32) | (unsigned long long)rs1_op))/((long long)((int)rs2_op));
+    long long res64 = ((long long)((((unsigned long long)YREG_execute) << 32) | (unsigned long long)rs1_op))/((long long)((int)rs2_op));
     #endif
     temp_V = (res64 & 0xFFFFFFFF80000000LL) != 0 && (res64 & 0xFFFFFFFF80000000LL) != 0xFFFFFFFF80000000LL;
     if(temp_V){
@@ -2402,7 +2402,7 @@ udiv_imm_Instr.addVariable(('temp_V', 'BIT<1>'))
 udiv_imm_Instr.addVariable(('result', 'BIT<32>'))
 udiv_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 udiv_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-udiv_imm_Instr.addSpecialRegister('Y', 'in', 'execute')
+udiv_imm_Instr.addSpecialRegister('YREG', 'in', 'execute')
 udiv_imm_Instr.setWbDelay('rd', 33)
 isa.addInstruction(udiv_imm_Instr)
 udiv_reg_Instr = trap.Instruction('UDIV_reg', True, frequency = 2)
@@ -2421,7 +2421,7 @@ udiv_reg_Instr.addVariable(('temp_V', 'BIT<1>'))
 udiv_reg_Instr.addVariable(('result', 'BIT<32>'))
 udiv_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 udiv_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-udiv_reg_Instr.addSpecialRegister('Y', 'in', 'execute')
+udiv_reg_Instr.addSpecialRegister('YREG', 'in', 'execute')
 udiv_reg_Instr.setWbDelay('rd', 33)
 isa.addInstruction(udiv_reg_Instr)
 sdiv_imm_Instr = trap.Instruction('SDIV_imm', True, frequency = 2)
@@ -2440,7 +2440,7 @@ sdiv_imm_Instr.addVariable(('temp_V', 'BIT<1>'))
 sdiv_imm_Instr.addVariable(('result', 'BIT<32>'))
 sdiv_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 sdiv_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-sdiv_imm_Instr.addSpecialRegister('Y', 'in', 'execute')
+sdiv_imm_Instr.addSpecialRegister('YREG', 'in', 'execute')
 sdiv_imm_Instr.setWbDelay('rd', 33)
 isa.addInstruction(sdiv_imm_Instr)
 sdiv_reg_Instr = trap.Instruction('SDIV_reg', True, frequency = 2)
@@ -2459,7 +2459,7 @@ sdiv_reg_Instr.addVariable(('temp_V', 'BIT<1>'))
 sdiv_reg_Instr.addVariable(('result', 'BIT<32>'))
 sdiv_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 sdiv_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-sdiv_reg_Instr.addSpecialRegister('Y', 'in', 'execute')
+sdiv_reg_Instr.addSpecialRegister('YREG', 'in', 'execute')
 sdiv_reg_Instr.setWbDelay('rd', 33)
 isa.addInstruction(sdiv_reg_Instr)
 udivcc_imm_Instr = trap.Instruction('UDIVcc_imm', True, frequency = 1)
@@ -2479,7 +2479,7 @@ udivcc_imm_Instr.addVariable(('temp_V', 'BIT<1>'))
 udivcc_imm_Instr.addVariable(('result', 'BIT<32>'))
 udivcc_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 udivcc_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-udivcc_imm_Instr.addSpecialRegister('Y', 'in', 'execute')
+udivcc_imm_Instr.addSpecialRegister('YREG', 'in', 'execute')
 udivcc_imm_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 udivcc_imm_Instr.setWbDelay('rd', 33)
 isa.addInstruction(udivcc_imm_Instr)
@@ -2500,7 +2500,7 @@ udivcc_reg_Instr.addVariable(('temp_V', 'BIT<1>'))
 udivcc_reg_Instr.addVariable(('result', 'BIT<32>'))
 udivcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 udivcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-udivcc_reg_Instr.addSpecialRegister('Y', 'in', 'execute')
+udivcc_reg_Instr.addSpecialRegister('YREG', 'in', 'execute')
 udivcc_reg_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 udivcc_reg_Instr.setWbDelay('rd', 33)
 isa.addInstruction(udivcc_reg_Instr)
@@ -2521,7 +2521,7 @@ sdivcc_imm_Instr.addVariable(('temp_V', 'BIT<1>'))
 sdivcc_imm_Instr.addVariable(('result', 'BIT<32>'))
 sdivcc_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 sdivcc_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-sdivcc_imm_Instr.addSpecialRegister('Y', 'in', 'execute')
+sdivcc_imm_Instr.addSpecialRegister('YREG', 'in', 'execute')
 sdivcc_imm_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 sdivcc_imm_Instr.setWbDelay('rd', 33)
 isa.addInstruction(sdivcc_imm_Instr)
@@ -2542,7 +2542,7 @@ sdivcc_reg_Instr.addVariable(('temp_V', 'BIT<1>'))
 sdivcc_reg_Instr.addVariable(('result', 'BIT<32>'))
 sdivcc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 sdivcc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-sdivcc_reg_Instr.addSpecialRegister('Y', 'in', 'execute')
+sdivcc_reg_Instr.addSpecialRegister('YREG', 'in', 'execute')
 sdivcc_reg_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 sdivcc_reg_Instr.setWbDelay('rd', 33)
 isa.addInstruction(sdivcc_reg_Instr)
@@ -2725,10 +2725,10 @@ switch(cond){
     break;}
     default:{
         #ifndef ACC_MODEL
-        bool icc_z = PSR[key_ICC_z];
-        bool icc_n = PSR[key_ICC_n];
-        bool icc_v = PSR[key_ICC_v];
-        bool icc_c = PSR[key_ICC_c];
+        bool icc_z = PSR[PSR_ICC_z];
+        bool icc_n = PSR[PSR_ICC_n];
+        bool icc_v = PSR[PSR_ICC_v];
+        bool icc_c = PSR[PSR_ICC_c];
         #else
         bool icc_z = PSR_execute[key_ICC_z];
         bool icc_n = PSR_execute[key_ICC_n];
@@ -2883,9 +2883,9 @@ isa.addInstruction(jump_reg_Instr)
 # N.B. In the reg read stage it writes the values of the SU and ET PSR
 # fields??????? TODO: check the stages where the operations are performed:
 # is everything performed in the decode stage?
-opCodeAll = """newCwp = ((unsigned)(PSR[key_CWP] + 1)) % NUM_REG_WIN;
-exceptionEnabled = PSR[key_ET];
-supervisor = PSR[key_S];
+opCodeAll = """newCwp = ((unsigned)(PSR[PSR_CWP] + 1)) % NUM_REG_WIN;
+exceptionEnabled = PSR[PSR_ET];
+supervisor = PSR[PSR_S];
 invalidWin = ((0x01 << (newCwp)) & WIM) != 0;
 notAligned = (targetAddr & 0x00000003) != 0;
 if(!exceptionEnabled && supervisor && !invalidWin && !notAligned){
@@ -2905,7 +2905,7 @@ if(exceptionEnabled || !supervisor || invalidWin || notAligned){
     flush();
 }
 else{
-    PSR.write_force((PSR & 0xFFFFFF40) | (newCwp | 0x20 | (PSR[key_PS] << 7)));
+    PSR.write_force((PSR & 0xFFFFFF40) | (newCwp | 0x20 | (PSR[PSR_PS] << 7)));
     stall(2);
 }
 """)
@@ -2980,10 +2980,10 @@ isa.addInstruction(rett_reg_Instr)
 # of the PSR, the same as the branch instruction
 opCode = cxx_writer.Code(ReadNPCDecode + """
 #ifndef ACC_MODEL
-bool icc_z = PSR[key_ICC_z];
-bool icc_n = PSR[key_ICC_n];
-bool icc_v = PSR[key_ICC_v];
-bool icc_c = PSR[key_ICC_c];
+bool icc_z = PSR[PSR_ICC_z];
+bool icc_n = PSR[PSR_ICC_n];
+bool icc_v = PSR[PSR_ICC_v];
+bool icc_c = PSR[PSR_ICC_c];
 #else
 bool icc_z = PSR_execute[key_ICC_z];
 bool icc_n = PSR_execute[key_ICC_n];
@@ -3076,7 +3076,7 @@ isa.addInstruction(trap_reg_Instr)
 
 # Read State Register
 opCodeRegs = cxx_writer.Code("""
-y_temp = Y;
+y_temp = YREG;
 """)
 opCodeWb = cxx_writer.Code("""
 rd = y_temp;
@@ -3088,7 +3088,7 @@ readY_Instr.setCode(opCodeRegs, 'regs')
 readY_Instr.setCode(opCodeWb, 'wb')
 readY_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 readY_Instr.addVariable(('y_temp', 'BIT<32>'))
-readY_Instr.addSpecialRegister('Y', 'in')
+readY_Instr.addSpecialRegister('YREG', 'in')
 isa.addInstruction(readY_Instr)
 opCodeRegs = cxx_writer.Code("""
 asr_temp = ASR[asr];
@@ -3134,7 +3134,7 @@ readPsr_Instr.addVariable(('psr_temp', 'BIT<32>'))
 isa.addInstruction(readPsr_Instr)
 opCodeRegs = cxx_writer.Code("""
 wim_temp = WIM;
-supervisor = PSR[key_S];
+supervisor = PSR[PSR_S];
 """)
 opCodeTrap = cxx_writer.Code("""
 if(!supervisor){
@@ -3159,7 +3159,7 @@ readWim_Instr.addVariable(('wim_temp', 'BIT<32>'))
 isa.addInstruction(readWim_Instr)
 opCodeRegs = cxx_writer.Code("""
 tbr_temp = TBR;
-supervisor = PSR[key_S];
+supervisor = PSR[PSR_S];
 """)
 opCodeTrap = cxx_writer.Code("""
 if(!supervisor){
@@ -3191,14 +3191,14 @@ opCodeXorI = cxx_writer.Code("""
 result = rs1 ^ SignExtend(simm13, 13);
 """)
 opCodeExec = cxx_writer.Code("""
-Y = result;
+YREG = result;
 """)
 writeY_reg_Instr = trap.Instruction('WRITEY_reg', True, frequency = 1)
 writeY_reg_Instr.setMachineCode(write_special_format1, {'op3': [1, 1, 0, 0, 0, 0], 'rd': [0, 0, 0, 0, 0]}, ('wr r', '%rs1', ' r', '%rs2', ' y'), subInstr = True)
 writeY_reg_Instr.setCode(opCodeXorR, 'regs')
 writeY_reg_Instr.setCode(opCodeExec, 'execute')
 writeY_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
-writeY_reg_Instr.addSpecialRegister('Y', 'out', 'execute')
+writeY_reg_Instr.addSpecialRegister('YREG', 'out', 'execute')
 writeY_reg_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writeY_reg_Instr)
 writeY_imm_Instr = trap.Instruction('WRITEY_imm', True, frequency = 2)
@@ -3206,7 +3206,7 @@ writeY_imm_Instr.setMachineCode(write_special_format2, {'op3': [1, 1, 0, 0, 0, 0
 writeY_imm_Instr.setCode(opCodeXorI, 'regs')
 writeY_imm_Instr.setCode(opCodeExec, 'execute')
 writeY_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
-writeY_imm_Instr.addSpecialRegister('Y', 'out', 'execute')
+writeY_imm_Instr.addSpecialRegister('YREG', 'out', 'execute')
 writeY_imm_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writeY_imm_Instr)
 opCodeWb = cxx_writer.Code("""
@@ -3235,14 +3235,14 @@ opCodeXorR = cxx_writer.Code("""
 // Note how we filter writes to EF and EC fields since we do not
 // have neither a co-processor nor the FPU
 result = ((rs1 ^ rs2) & 0x00FFCFFF) | 0xF3000000;
-supervisorException = (PSR[key_S] == 0);
+supervisorException = (PSR[PSR_S] == 0);
 illegalCWP = (result & 0x0000001f) >= NUM_REG_WIN;
 """)
 opCodeXorI = cxx_writer.Code("""
 // Note how we filter writes to EF and EC fields since we do not
 // have neither a co-processor nor the FPU
 result = ((rs1 ^ SignExtend(simm13, 13)) & 0x00FFCFFF) | 0xF3000000;
-supervisorException = (PSR[key_S] == 0);
+supervisorException = (PSR[PSR_S] == 0);
 illegalCWP = (result & 0x0000001f) >= NUM_REG_WIN;
 """)
 opCodeExec = cxx_writer.Code("""
@@ -3294,11 +3294,11 @@ writePsr_imm_Instr.addVariable(('result', 'BIT<32>'))
 isa.addInstruction(writePsr_imm_Instr)
 opCodeXorR = cxx_writer.Code("""
 result = rs1 ^ rs2;
-raiseException = (PSR[key_S] == 0);
+raiseException = (PSR[PSR_S] == 0);
 """)
 opCodeXorI = cxx_writer.Code("""
 result = rs1 ^ SignExtend(simm13, 13);
-raiseException = (PSR[key_S] == 0);
+raiseException = (PSR[PSR_S] == 0);
 """)
 opCodeWb = cxx_writer.Code("""
 if(!raiseException){

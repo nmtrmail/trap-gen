@@ -76,9 +76,9 @@ opCode = cxx_writer.Code("""
 		IMMREG &= 0x7fffffff;
 	} else {	/* No IMM instruction */
 		imm_value = (int)SignExtend(imm,16);
-	} 
-	
-	
+	}
+
+
 """)
 IMM_handler = trap.HelperOperation('IMM_handler', opCode)
 IMM_handler.addInstructionVar(('imm_value', 'BIT<32>'))
@@ -90,40 +90,40 @@ opCode = cxx_writer.Code("""
 IMM_reset = trap.HelperOperation('IMM_reset', opCode)
 
 opCode = cxx_writer.Code("""
-	ESR[key_DS] = DSFLAG ? 0x1 : 0x0;
-	if ( ESR[key_DS] ) {
+	ESR[ESR_DS] = DSFLAG ? 0x1 : 0x0;
+	if ( ESR[ESR_DS] ) {
 		BTR = PC; /* In this moment, TARGET value is in PC */
 		GPR[17] = 0xffffffff;
 	} else {
-		GPR[17] = PC; /* In this moment, PC points to the NEXT instruction */		
+		GPR[17] = PC; /* In this moment, PC points to the NEXT instruction */
 	}
 	PC = 0x00000020;
-	MSR[key_EE] = 0x0; MSR[key_EIP] = 0x1;
-	MSR[key_UMS] = MSR[key_UM]; MSR[key_UM] = 0x0;
-	MSR[key_VMS] = MSR[key_VMS]; MSR[key_VM] = 0x0;
-	
-	ESR[key_EC] = 0x1;
-	ESR[key_W] = W_value;
-	ESR[key_S] = S_value;
-	ESR[key_Rx] = rd_bit_value; /* the value that identifies rd */
+	MSR[MSR_EE] = 0x0; MSR[MSR_EIP] = 0x1;
+	MSR[MSR_UMS] = MSR[MSR_UM]; MSR[MSR_UM] = 0x0;
+	MSR[MSR_VMS] = MSR[MSR_VMS]; MSR[MSR_VM] = 0x0;
+
+	ESR[ESR_EC] = 0x1;
+	ESR[ESR_W] = W_value;
+	ESR[ESR_S] = S_value;
+	ESR[ESR_Rx] = rd_bit_value; /* the value that identifies rd */
 	EAR = addr;
 """)
 handleMemoryException_method = trap.HelperMethod('handleMemoryException', opCode, 'execute')
 handleMemoryException_method.setSignature(parameters = [cxx_writer.Parameter('W_value', cxx_writer.uintType), cxx_writer.Parameter('S_value', cxx_writer.uintType), cxx_writer.Parameter('rd_bit_value', cxx_writer.uintType), cxx_writer.Parameter('addr', cxx_writer.uintType)])
 
 opCode = cxx_writer.Code("""
-	ESR[key_DS] = DSFLAG ? 0x1 : 0x0;
-	if ( ESR[key_DS] ) {
+	ESR[ESR_DS] = DSFLAG ? 0x1 : 0x0;
+	if ( ESR[ESR_DS] ) {
 		BTR = PC; /* In this moment, TARGET value is in PC */
 		GPR[17] = 0xffffffff;
 	} else {
-		GPR[17] = PC; /* In this moment, PC points to the NEXT instruction */		
+		GPR[17] = PC; /* In this moment, PC points to the NEXT instruction */
 	}
 	PC = 0x00000020;
-	MSR[key_EE] = 0x0; MSR[key_EIP] = 0x1;
-	MSR[key_UMS] = MSR[key_UM]; MSR[key_UM] = 0x0;
-	MSR[key_VMS] = MSR[key_VMS]; MSR[key_VM] = 0x0;
-	
-	ESR[key_EC] = 0x1c;
+	MSR[MSR_EE] = 0x0; MSR[MSR_EIP] = 0x1;
+	MSR[MSR_UMS] = MSR[MSR_UM]; MSR[MSR_UM] = 0x0;
+	MSR[MSR_VMS] = MSR[MSR_VMS]; MSR[MSR_VM] = 0x0;
+
+	ESR[ESR_EC] = 0x1c;
 """)
 handleUserPermissionException_method = trap.HelperMethod('handleUserPermissionException', opCode, 'execute')

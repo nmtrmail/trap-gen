@@ -74,12 +74,12 @@ class DumpElement:
             return self.name
 
 class Define:
-    def __init__(self, defineStr, namespace = [], includes = []):
+    def __init__(self, defineStr, namespaces = [], includes = []):
         self.defineStr = defineStr
-        if type(namespace) == type(''):
-            self.namespace = [namespace]
+        if type(namespaces) == type(''):
+            self.namespaces = [namespaces]
         else:
-            self.namespace = namespace
+            self.namespaces = namespaces
         if type(includes) == type(''):
             self.includes = [includes]
         else:
@@ -89,11 +89,11 @@ class Define:
         pass
 
     def writeDeclaration(self, writer):
-        for namespace in self.namespace:
-            writer.write('namespace ' + namespace + ' {\n')
-        writer.write(self.defineStr)
-        for namespace in self.namespace:
-            writer.write('} // namespace ' + namespace + '\n')
+        #for namespace in self.namespaces:
+        #    writer.write('namespace ' + namespace + ' {\n')
+        writer.write(self.defineStr + '\n')
+        #for namespace in self.namespaces:
+        #    writer.write('} // namespace ' + namespace + '\n')
 
     def getIncludes(self):
         return self.includes
@@ -409,8 +409,8 @@ class Function(DumpElement):
         self.noException = noException
 
     def writeDeclaration(self, writer):
-        for namespace in self.namespaces:
-            writer.write('namespace ' + namespace + ' {\n')
+        #for namespace in self.namespaces:
+        #    writer.write('namespace ' + namespace + ' {\n')
         if self.docbrief:
             self.printDocString(writer)
         if self.template:
@@ -463,8 +463,8 @@ class Function(DumpElement):
             except AttributeError:
                 pass
             writer.write(';\n', indent = indent, split = ',')
-        for namespace in self.namespaces:
-            writer.write('} // namespace ' + namespace + '\n')
+        #for namespace in self.namespaces:
+        #    writer.write('} // namespace ' + namespace + '\n')
 
     def writeImplementation(self, writer):
         if self.template or self.inline:
@@ -534,8 +534,8 @@ class Enum(DumpElement):
         self.values[name] = value
 
     def writeDeclaration(self, writer):
-        for namespace in self.namespaces:
-            writer.write('namespace ' + namespace + ' {\n')
+        #for namespace in self.namespaces:
+        #    writer.write('namespace ' + namespace + ' {\n')
         if self.docbrief:
             self.printDocString(writer)
         if not self.values:
@@ -552,8 +552,8 @@ class Enum(DumpElement):
                 code += ' = ' + str(val)
             code += ',\n'
         writer.write(code[:-2] + '\n}; // enum ' + self.name + '\n')
-        for namespace in self.namespaces:
-            writer.write('} // namespace ' + namespace + '\n')
+        #for namespace in self.namespaces:
+        #    writer.write('} // namespace ' + namespace + '\n')
 
 class Union(DumpElement):
     """Represents a union"""
@@ -567,8 +567,8 @@ class Union(DumpElement):
         self.members.append(member)
 
     def writeDeclaration(self, writer):
-        for namespace in self.namespaces:
-            writer.write('namespace ' + namespace + '{\n')
+        #for namespace in self.namespaces:
+        #    writer.write('namespace ' + namespace + '{\n')
         if self.docbrief:
             self.printDocString(writer)
         if not self.members:
@@ -577,8 +577,8 @@ class Union(DumpElement):
         for i in self.members:
             i.writeImplementation(writer)
         writer.write('};\n')
-        for namespace in self.namespaces:
-            writer.write('} // namespace ' + namespace + '\n')
+        #for namespace in self.namespaces:
+        #    writer.write('} // namespace ' + namespace + '\n')
 
     def getIncludes(self):
         includes = []
@@ -603,8 +603,8 @@ class BitField(DumpElement):
         self.members.append(member)
 
     def writeDeclaration(self, writer):
-        for namespace in self.namespaces:
-            writer.write('namespace ' + namespace + '{\n')
+        #for namespace in self.namespaces:
+        #    writer.write('namespace ' + namespace + '{\n')
         if self.docbrief:
             self.printDocString(writer)
         if not self.members:
@@ -613,8 +613,8 @@ class BitField(DumpElement):
         for i in self.members:
             writer.write('unsigned ' + str(i[0]) + ':' + str(i[1]) + ';\n')
         writer.write('};\n')
-        for namespace in self.namespaces:
-            writer.write('} // namespace ' + namespace + '\n')
+        #for namespace in self.namespaces:
+        #    writer.write('} // namespace ' + namespace + '\n')
 
     def getIncludes(self):
         return []
@@ -631,15 +631,15 @@ class Typedef(DumpElement):
         self.namespaces = namespaces
 
     def writeDeclaration(self, writer):
-        for namespace in self.namespaces:
-            writer.write('namespace ' + namespace + '{\n')
+        #for namespace in self.namespaces:
+        #    writer.write('namespace ' + namespace + '{\n')
         if self.docbrief:
             self.printDocString(writer)
         writer.write('typedef ' + self.name + ' ')
         self.oldType.writeDeclaration(writer)
         writer.write(';\n')
-        for namespace in self.namespaces:
-            writer.write('} // namespace ' + namespace + '\n')
+        #for namespace in self.namespaces:
+        #    writer.write('} // namespace ' + namespace + '\n')
 
     def getIncludes(self):
         return copy.copy(self.oldType.getIncludes())

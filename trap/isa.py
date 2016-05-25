@@ -578,7 +578,7 @@ class HelperOperation:
     variables of the instructions it is associated to (note that
     all the instructions this piece of code is associated to must
     have the referenced variables)"""
-    def __init__(self, name, code, inline = True, model = 'all', exception = True):
+    def __init__(self, name, code, inline = False, model = 'all', exception = True):
         """Code must be an instance of cxx_writer.CustomCode. Note
         that even if inline is specified, in case this operation
         is used only one, its code is directly put inside the
@@ -625,15 +625,9 @@ class HelperOperation:
         the current operation needs to access the field of a machine code"""
         self.archElems.append(archElem)
 
-    def getCppOperation(self, parameters = False):
+    def getCPPOperation(self, namespace):
         """returns the cpp code implementing the current method"""
-        return isaWriter.getCppOperation(self, parameters)
-
-    def getCppOpClass(self, processor, namespace):
-        """Relturn a CPP class, deriving from Instruction,
-        implementing a method which defines the current
-        oepration"""
-        return isaWriter.getCppOpClass(self, processor, namespace)
+        return isaWriter.getCPPOperation(self, namespace)
 
     def __repr__(self):
         return self.name
@@ -690,9 +684,9 @@ class HelperMethod:
                     raise Exception('Cannot add parameter ' + param.name + ' to operation ' + self.name + '. Parameter already exists in operation.')
             self.parameters.append(param)
 
-    def getCppMethod(self, model, processor):
+    def getCPPMethod(self, model, namespace):
         """returns the cpp code implementing the current method"""
-        return isaWriter.getCppMethod(self, model, processor)
+        return isaWriter.getCPPMethod(self, model, namespace)
 
     def __repr__(self):
         return self.name

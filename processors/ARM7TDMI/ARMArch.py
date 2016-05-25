@@ -139,7 +139,7 @@ else:
     processor.setMemory('dataMem', 10*1024*1024)
 # Now lets add the interrupt ports
 irq = trap.Interrupt('IRQ', 1, priority = 0)
-irq.setOperation('CPSR[key_I] == 0', """
+irq.setOperation('CPSR[CPSR_I] == 0', """
 //Save LR_irq
 LR_IRQ = PC;
 //Save the current PSR
@@ -154,7 +154,7 @@ CPSR = (CPSR & 0xFFFFFFD0) | 0x00000092;
 PC = 0x18;""")
 #processor.addIrq(irq)
 fiq = trap.Interrupt('FIQ', 1, priority = 1)
-fiq.setOperation('CPSR[key_F] == 0', """
+fiq.setOperation('CPSR[CPSR_F] == 0', """
 //Save LR_irq
 LR_FIQ = PC;
 //Save the current PSR
@@ -201,10 +201,7 @@ abi.addIgnoreStateReg('MP_ID')
 processor.setABI(abi)
 
 # Finally we can dump the processor on file
-#processor.write(folder = 'processor', models = ['funcLT'], dumpDecoderName = 'decoder.dot')
-#processor.write(folder = 'processor', models = ['funcLT'], trace = True)
 processor.write(folder = 'processor', models = ['funcLT'], tests = True)
-#processor.write(folder = 'processor', models = ['funcAT'], trace = True)
-#processor.write(folder = 'processor', models = ['accAT', 'funcLT'])
-#processor.write(folder = 'processor', models = ['accAT'])
-#processor.write(folder = 'processor', models = ['accAT','funcLT'], trace = True)
+#processor.write(folder = 'processor', models = ['funcLT', 'funcAT'], tests = False)
+#processor.write(folder = 'processor', models = ['accLT', 'funcLT', 'funcAT'], tests = True)
+#processor.write(folder = 'processor', models = ['accLT', 'funcLT', 'funcAT'], trace = True, combinedTrace = True)

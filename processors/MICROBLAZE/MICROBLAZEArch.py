@@ -173,10 +173,7 @@ abi.returnCall([('PC', 'GPR[15]', 8)])
 processor.setABI(abi)
 
 # Finally we can dump the processor on file
-#processor.write(folder = 'processor', models = ['funcLT'], dumpDecoderName = 'decoder.dot')
 processor.write(folder = 'processor', models = ['funcLT'], trace = True)
-#processor.write(folder = 'processor', models = ['funcLT'])
-#processor.write(folder = 'processor', models = ['funcAT'], trace = True)
-#processor.write(folder = 'processor', models = ['accAT', 'funcLT'])
-#processor.write(folder = 'processor', models = ['accAT'])
-#processor.write(folder = 'processor', models = ['accAT','funcLT'], trace = True)
+#processor.write(folder = 'processor', models = ['funcLT', 'funcAT'], tests = False)
+#processor.write(folder = 'processor', models = ['accLT', 'funcLT', 'funcAT'], tests = True)
+#processor.write(folder = 'processor', models = ['accLT', 'funcLT', 'funcAT'], trace = True, combinedTrace = True)

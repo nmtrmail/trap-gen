@@ -41,6 +41,7 @@
 import cxx_writer
 
 def getGetIRQInstr(self, model, trace, namespace):
+    from procWriter import instrCtorParams, instrCtorValues
     from pipelineWriter import hasCheckHazard
     from registerWriter import registerType
     instructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
@@ -90,8 +91,7 @@ def getGetIRQInstr(self, model, trace, namespace):
             IRQInstrElements.append(behaviorDecl)
 
         # Standard Instruction methods, there is not much to do since the IRQ instruction does nothing special
-        from procWriter import baseInstrInitElement
-        replicateBody = cxx_writer.Code('return new ' + irq.name + 'IntrInstruction(' + baseInstrInitElement + ', this->' + irq.name + ');')
+        replicateBody = cxx_writer.Code('return new ' + irq.name + 'IntrInstruction(' + instrCtorValues + ', this->' + irq.name + ');')
         replicateDecl = cxx_writer.Method('replicate', replicateBody, instructionType.makePointer(), 'pu', noException = True, const = True)
         IRQInstrElements.append(replicateDecl)
         setparamsParam = cxx_writer.Parameter('bitstring', self.bitSizes[1].makeRef().makeConst())
@@ -145,9 +145,7 @@ def getGetIRQInstr(self, model, trace, namespace):
             IRQInstrElements.append(cxx_writer.Attribute(var.name, var.varType, 'pro',  var.static))
 
         # Finally I can declare the IRQ class for this specific IRQ
-        from procWriter import baseInstrInitElement
-        from isaWriter import baseInstrConstrParams
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', baseInstrConstrParams + irqParams, ['Instruction(' + baseInstrInitElement + ')'] + irqInit)
+        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', instrCtorParams + irqParams, ['Instruction(' + instrCtorValues + ')'] + irqInit)
         IRQInstrClass = cxx_writer.ClassDeclaration(irq.name + 'IntrInstruction', IRQInstrElements, [instructionType], namespaces = [namespace])
         IRQInstrClass.addDocString(brief = 'IRQ Instruction Class', detail = 'Wraps IRQ exception handling behavior as a dummy instruction.')
         IRQInstrClass.addConstructor(publicConstr)

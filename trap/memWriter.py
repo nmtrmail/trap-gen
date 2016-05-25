@@ -75,7 +75,7 @@ def getCPPMemoryIf(self, model, namespace):
     """Creates the necessary structures for communicating with the memory; an
     array in case of an internal memory, the TLM port for the use with TLM
     etc."""
-    from registerWriter import registerType, aliasType
+    from registerWriter import registerType, aliasType, registerContainerType
     archDWordType = self.bitSizes[0]
     archWordType = self.bitSizes[1]
     archHWordType = self.bitSizes[2]
@@ -140,9 +140,10 @@ def getCPPMemoryIf(self, model, namespace):
     aliasParams = []
     aliasInit = []
     MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
-    for alias in self.memAlias:
-        aliasAttrs.append(cxx_writer.Attribute(alias.alias, aliasType, 'pri'))
-        aliasInit.append(alias.alias + '("' + alias.alias.name + '")')
+    if self.memAlias:
+        aliasAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'pri'))
+        aliasParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
+        aliasInit.append('R(R)')
 
     checkAddressCode = 'if (address >= this->size) {\nTHROW_ERROR("Address " << std::hex << std::showbase << address << " out of memory.");\n}\n'
     checkAddressCodeException = 'if (address >= this->size) {\nTHROW_EXCEPTION("Address " << std::hex << std::showbase << address << " out of memory.");\n}\n'
@@ -266,9 +267,10 @@ def getCPPMemoryIf(self, model, namespace):
         memoryElements.append(sizeAttribute)
         memoryElements += aliasAttrs
         localMemDecl = cxx_writer.ClassDeclaration('LocalMemory', memoryElements, [memoryIfDecl.getType()], namespaces = [namespace])
+        localMemDecl.addDocString(brief = 'Memory Interface Class', detail = 'Interface used by the core to communicate with memory. Defines the required TLM ports.')
         constructorBody = cxx_writer.Code('this->memory = new char[size];\nthis->debugger = NULL;')
         constructorParams = [cxx_writer.Parameter('size', cxx_writer.uintType)]
-        publicMemConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams, ['size(size)'] + aliasInit)
+        publicMemConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams + aliasParams, ['size(size)'] + aliasInit)
         localMemDecl.addConstructor(publicMemConstr)
         destructorBody = cxx_writer.Code('delete [] this->memory;')
         publicMemDestr = cxx_writer.Destructor(destructorBody, 'pu', True)

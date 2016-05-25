@@ -47,7 +47,9 @@
 import cxx_writer
 
 # Helper variables
-baseInstrInitElement = ''
+instrAttrs = []
+instrCtorParams = []
+instrCtorValues = ''
 testNames = []
 
 # Note that even if we use a separate namespace for
@@ -192,7 +194,7 @@ def computeFetchCode(self):
 # Computes current program counter, in order to fetch
 # instrutions from it
 def computeCurrentPC(self, model):
-    fetchAddress = 'this->R.' + self.fetchReg[0]
+    fetchAddress = self.fetchReg[0]
     if model.startswith('func'):
         if self.fetchReg[1] < 0:
             fetchAddress += str(self.fetchReg[1])
@@ -397,21 +399,6 @@ def createPipeStage(self, processorElements, initElements):
     NOPinstructionsAttribute = cxx_writer.Attribute('NOP_instr', NOPIntructionType.makePointer(), 'pu', True)
     processorElements.append(NOPinstructionsAttribute)
 
-def createInstrInitCode(self, model, trace):
-    baseInstrInitElement = ''
-    if (self.regs or self.regBanks):
-        baseInstrInitElement += 'R, '
-    if self.memory:
-        baseInstrInitElement += self.memory[0] + ', '
-    for tlmPorts in self.tlmPorts.keys():
-        baseInstrInitElement += tlmPorts + ', '
-    for pinPort in self.pins:
-        if not pinPort.inbound:
-            baseInstrInitElement += pinPort.name + '_pin, '
-    if trace and not self.systemc and not model.startswith('acc'):
-        baseInstrInitElement += 'total_cycles, '
-    return baseInstrInitElement[:-2]
-
 def getCPPProc(self, model, trace, combinedTrace, namespace):
     """creates the class describing the processor"""
     fetchWordType = self.bitSizes[1]
@@ -527,7 +514,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         # Now I have to call the update method for all the delayed registers
         for reg in self.regs:
             if reg.delay:
-                codeString += 'this->R.' + reg.name + '.clock_cycle();\n'
+                codeString += reg.name + '.clock_cycle();\n'
         for reg in self.regBanks:
             for regNum in reg.delay.keys():
                 codeString += reg.name + '[' + str(regNum) + '].clock_cycle();\n'
@@ -640,19 +627,32 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         from registerWriter import registerContainerType
         processorElements.append(cxx_writer.Attribute('R', registerContainerType, 'pu'))
         # Register const or reset values could be processor variables.
-        initRegCode = ''
+        initRegList = []
         for reg in self.regs:
             if isinstance(reg.constValue, str):
-                initRegCode += reg.constValue + ', '
-            if isinstance(reg.defValue, str):
-                initRegCode += reg.defValue + ', '
+                if reg.constValue not in initRegList:
+                    initRegList.append(reg.constValue)
+            if isinstance(reg.defValue, tuple):
+                if reg.defValue[0] not in initRegList:
+                    initRegList.append(reg.defValue[0])
+            elif isinstance(reg.defValue, str):
+                if reg.defValue not in initRegList:
+                    initRegList.append(reg.defValue)
         for regBank in self.regBanks:
             for regConstValue in regBank.constValue.values():
                 if isinstance(regConstValue, str):
-                    initRegCode += regConstValue + ', '
+                    if regConstValue not in initRegList:
+                        initRegList.append(regConstValue)
             for regDefaultValue in regBank.defValues:
-                if isinstance(regDefaultValue, str):
-                    initRegCode += regDefaultValue + ', '
+                if isinstance(regDefaultValue, tuple):
+                    if regDefaultValue[0] not in initRegList:
+                        initRegList.append(regDefaultValue[0])
+                elif isinstance(regDefaultValue, str):
+                    if regDefaultValue not in initRegList:
+                        initRegList.append(regDefaultValue)
+        initRegCode = ''
+        for initRegElement in initRegList:
+            initRegCode += initRegElement + ', '
         if initRegCode:
           initElements.append('R(' + initRegCode[:-2] + ')')
         if self.abi:
@@ -664,10 +664,10 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         initMemCode = self.memory[0] + '(' + str(self.memory[1])
         if self.memory[2] and not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
             initMemCode += ', total_cycles'
-        for memAl in self.memAlias:
-            initMemCode += ', ' + memAl.alias
+        if self.memAlias:
+            initMemCode += ', this->R'
         if self.memory[2] and self.memory[3]:
-            initMemCode += ', R.' + self.memory[3]
+            initMemCode += ', ' + self.memory[3]
         initMemCode += ')'
         if self.abi and self.memory[0] in self.abi.memories.keys():
             abiIfInit = 'this->' + self.memory[0] + ', ' + abiIfInit
@@ -679,7 +679,7 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
         if self.systemc and model.endswith('LT') and not model.startswith('acc'):
             initPortCode += ', this->quant_keeper'
         for memAl in self.memAlias:
-            initPortCode += ', ' + memAl.alias
+            initPortCode += ', this->R'
         initPortCode += ')'
         if self.abi and tlmPortName in self.abi.memories.keys():
             abiIfInit = 'this->' + tlmPortName + ', ' + abiIfInit
@@ -852,24 +852,93 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     # initialize the INSTRUCTIONS array, the local memory (if present)
     # the TLM ports, the pipeline stages, etc.
     ########################################################################
-    global baseInstrInitElement
-    baseInstrInitElement = createInstrInitCode(self, model, trace)
-
     constrCode = 'this->reset_called = false;\n' + processor_name + '::num_instances++;\n'
+
+    # Initialize base Instruction class.
+    global instrAttrs, instrCtorParams, instrCtorValues
     constrCode += '// Initialize the array containing the initial instance of the instructions.\n'
     maxInstrId = max([instr.id for instr in self.isa.instructions.values()]) + 1
     constrCode += 'this->INSTRUCTIONS = new Instruction*[' + str(maxInstrId + 1) + '];\n'
+    # Initialize static members of base Instruction class.
+    from registerWriter import registerContainerType
+    if (self.regs or self.regBanks):
+        instrAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'pu'))
+        instrCtorParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
+        instrCtorValues += 'R, '
+    '''# TODO
+    if model.startswith('acc'):
+        pipeRegisterType = cxx_writer.Type('PipelineRegister', '#include \"registers.hpp\"')
+        for reg in self.regs:
+            instrAttrs.append(cxx_writer.Attribute(reg.name + '_pipe', pipeRegisterType.makeRef(), 'pu'))
+            instrCtorParams.append(cxx_writer.Parameter(reg.name + '_pipe', pipeRegisterType.makeRef()))
+            instrCtorInit.append(reg.name + '_pipe(' + reg.name + '_pipe)')
+        for regB in self.regBanks:
+            instrAttrs.append(cxx_writer.Attribute(regB.name + '_pipe', pipeRegisterType.makePointer(), 'pu'))
+            instrCtorParams.append(cxx_writer.Parameter(regB.name + '_pipe', pipeRegisterType.makePointer()))
+            instrCtorInit.append(regB.name + '_pipe(' + regB.name + '_pipe)')
+        for pipeStage in self.pipes:
+            for reg in self.regs:
+                instrAttrs.append(cxx_writer.Attribute(reg.name + '_' + pipeStage.name, registerType.makeRef(), 'pu'))
+                instrCtorParams.append(cxx_writer.Parameter(reg.name + '_' + pipeStage.name, registerType.makeRef()))
+                instrCtorInit.append(reg.name + '_' + pipeStage.name + '(' + reg.name + '_' + pipeStage.name + ')')
+            for regB in self.regBanks:
+                if (regB.constValue and len(regB.constValue) < regB.numRegs):
+                    curRegBType = registerType.makeRef()
+                else:
+                    curRegBType = registerType
+                instrAttrs.append(cxx_writer.Attribute(regB.name + '_' + pipeStage.name, curRegBType, 'pu'))
+                instrCtorParams.append(cxx_writer.Parameter(regB.name + '_' + pipeStage.name, curRegBType))
+                instrCtorInit.append(regB.name + '_' + pipeStage.name + '(' + regB.name + '_' + pipeStage.name + ')')
+            for alias in self.aliasRegs:
+                instrAttrs.append(cxx_writer.Attribute(alias.name + '_' + pipeStage.name, registerType.makeRef(), 'pu'))
+                instrCtorParams.append(cxx_writer.Parameter(alias.name + '_' + pipeStage.name, registerType.makeRef()))
+                instrCtorInit.append(alias.name + '_' + pipeStage.name + '(' + alias.name + '_' + pipeStage.name + ')')
+            for aliasB in self.aliasRegBanks:
+                instrAttrs.append(cxx_writer.Attribute(aliasB.name + '_' + pipeStage.name, registerType.makePointer(), 'pu'))
+                instrCtorParams.append(cxx_writer.Parameter(aliasB.name + '_' + pipeStage.name, registerType.makePointer()))
+                instrCtorInit.append(aliasB.name + '_' + pipeStage.name + '(' + aliasB.name + '_' + pipeStage.name + ')')'''
+    if self.memory:
+        instrAttrs.append(cxx_writer.Attribute(self.memory[0], cxx_writer.Type('LocalMemory', '#include \"memory.hpp\"').makeRef(), 'pu'))
+        instrCtorParams.append(cxx_writer.Parameter(self.memory[0], cxx_writer.Type('LocalMemory').makeRef()))
+        instrCtorValues += self.memory[0] + ', '
+    for tlmPort in self.tlmPorts.keys():
+        instrAttrs.append(cxx_writer.Attribute(tlmPort, cxx_writer.Type('TLMMemory', '#include \"externalPorts.hpp\"').makeRef(), 'pu'))
+        instrCtorParams.append(cxx_writer.Parameter(tlmPort, cxx_writer.Type('TLMMemory').makeRef()))
+        instrCtorValues += tlmPort + ', '
+    for pinPort in self.pins:
+        if pinPort.systemc:
+            pinPortTypeName = 'SC'
+        else:
+            pinPortTypeName = 'TLM'
+        if pinPort.inbound:
+            pinPortTypeName += 'InPin_'
+        else:
+            pinPortTypeName += 'OutPin_'
+        pinPortType = cxx_writer.Type(pinPortTypeName + str(pinPort.portWidth), '#include \"externalPins.hpp\"')
+        # TODO: Remove this restriction.
+        if not pinPort.inbound:
+            instrAttrs.append(cxx_writer.Attribute(pinPort.name + '_pin', pinPortType.makeRef(), 'pu'))
+            instrCtorParams.append(cxx_writer.Parameter(pinPort.name + '_pin', pinPortType.makeRef()))
+            instrCtorValues += pinPort.name + '_pin, '
+    if trace and not self.systemc and not model.startswith('acc'):
+        instrAttrs.append(cxx_writer.Attribute('total_cycles', cxx_writer.uintType.makeRef(), 'pu'))
+        instrCtorParams.append(cxx_writer.Parameter('total_cycles', cxx_writer.uintType.makeRef()))
+        instrCtorValues += 'total_cycles, '
+
+    if instrCtorValues: instrCtorValues = instrCtorValues[:-2]
+
+    # Initialize individual instruction classes.
     for name, instr in self.isa.instructions.items():
-        constrCode += 'this->INSTRUCTIONS[' + str(instr.id) + '] = new ' + name + '(' + baseInstrInitElement +');\n'
-    constrCode += 'this->INSTRUCTIONS[' + str(maxInstrId) + '] = new InvalidInstr(' + baseInstrInitElement + ');\n'
+        constrCode += 'this->INSTRUCTIONS[' + str(instr.id) + '] = new ' + name + '(' + instrCtorValues + ');\n'
+    constrCode += 'this->INSTRUCTIONS[' + str(maxInstrId) + '] = new InvalidInstr(' + instrCtorValues + ');\n'
     if model.startswith('acc'):
         constrCode += 'if (' + processor_name + '::num_instances == 1) {\n'
-        constrCode += processor_name + '::NOP_instr = new NOPInstruction(' + baseInstrInitElement + ');\n'
+        constrCode += processor_name + '::NOP_instr = new NOPInstruction(' + instrCtorValues + ');\n'
         for pipeStage in self.pipes:
             constrCode += pipeStage.name + '_stage.NOP_instr = ' + processor_name + '::NOP_instr;\n'
         constrCode += '}\n'
     for irq in self.irqs:
-        constrCode += 'this->' + irq.name + '_instr = new ' + irq.name + 'IntrInstruction(' + baseInstrInitElement + ', this->' + irq.name + ');\n'
+        constrCode += 'this->' + irq.name + '_instr = new ' + irq.name + 'IntrInstruction(' + instrCtorValues + ', this->' + irq.name + ');\n'
         if model.startswith('acc'):
             for pipeStage in self.pipes:
                 constrCode += 'this->' + pipeStage.name + '_stage.' + irq.name + '_instr = this->' + irq.name + '_instr;\n'
@@ -1073,7 +1142,7 @@ def getMainCode(self, model, namespace):
     instrMemName = ''
     instrDissassName = ''
     if len(self.tlmPorts) > 0:
-        code += """// Instantiate the memory and connect it to the processor."""
+        code += """// Instantiate the memory and connect it to the processor.\n"""
         if self.tlmFakeMemProperties and self.tlmFakeMemProperties[2]:
             code += 'SparseMemory'
         else:

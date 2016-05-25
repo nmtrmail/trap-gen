@@ -60,7 +60,10 @@ except:
     traceback.print_exc()
     raise Exception('Cannot determine networkx version. Try changing versions >= 0.36.')
 
-# Globals
+
+################################################################################
+# Globals and Helpers
+################################################################################
 aliasGraph = None
 registerType = None
 registerContainerType = cxx_writer.Type('Registers', '#include "registers.hpp"')
@@ -73,35 +76,42 @@ aliasType = None
 def getCPPRegisterFields(self):
     """Returns a set of enum classes containing names of register fields to be
     used as register indices."""
-    # TODO: An implementation using plain enums makes accessing the fields
-    # easier (no scoping), but fails for multiple masks containing the same
-    # field name. A cleaner implementation using an enum class requires
-    # instructions to scope the field name, which is difficult because the user
-    # does not know the name of the generated enum. Luca implemented this with
-    # defines and switches for choosing the field, but that would require a
-    # derived class for each register, which brings us back where we started.
-    # Perhaps the cleanest solution would be a class for masks (instead of any
-    # arbitrary dictionary), and generating an enum class for each mask, so that
-    # the name of the scope will at least be known a priori. If I decide to
-    # leave it this way, at least I should prohibit declaring fields of the same
-    # name in different masks.
-    registerFieldMasks = []
+    # NOTE: This generates an enum containing the field names for each register,
+    # register bank, alias and alias register bank. This is obviously redundant,
+    # since many registers might share the same mask. The reason is that we need
+    # to somehow scope the masks so that different masks with the same field
+    # names can co-exist (relevant for the Microblaze e.g.). Scoping field names
+    # with the name of the register is not too difficult for the user - at least
+    # much less error-prone than scoping via mask names, which the user might
+    # get mixed up.
     registerFieldEnums = []
     for reg in self.regs + self.regBanks:
-        registerFieldMaskFound = False
         if reg.bitMask:
-            for i in registerFieldMasks:
-                if reg.bitMask == i:
-                    registerFieldMaskFound = True
-                    break
-            if registerFieldMaskFound: continue
-            registerFieldMasks.append(reg.bitMask)
-            registerFieldEnum = cxx_writer.Enum(name = 'FIELDS_' + str(len(registerFieldMasks)-1) , values = {})#, superclass = cxx_writer.uintType)
+            registerFieldEnum = cxx_writer.Enum(name = 'FIELDS_' + reg.name, values = {})#, superclass = cxx_writer.uintType)
             # Sort by value i.e. bit position
             for key, value in sorted(reg.bitMask.items(), key=itemgetter(1), reverse=True):
-                registerFieldEnum.addValue(name = 'key_' + key)
+                registerFieldEnum.addValue(name = reg.name + '_' + key)
             registerFieldEnums.append(registerFieldEnum)
     return registerFieldEnums
+
+
+################################################################################
+# Register Defines
+################################################################################
+def getCPPRegisterDefines(self):
+    """Returns a list of defines for getting rid of the R. syntax. Thus, a
+    given REG will be replaced by R.reg. Assumes the calling object has a member
+    RegisterContainer<> R; This is just a nicety to keep the old interface where
+    each register was an inividual member."""
+    # TODO: I obviously hate this ugly hack. But I don't like forcing the R.x
+    # syntax either. I need to think of a better solution, esp since this leads
+    # to cryptic compilation errors for name collisions, as was the case for
+    # LEON2/LEON3 Y register, which I had to rename YREG since it collided with
+    # a Y template parameter in boost! Very ugly and very hard to trace.
+    registerDefines = []
+    for reg in self.regs + self.regBanks + self.aliasRegs + self.aliasRegBanks:
+        registerDefines.append(cxx_writer.Define('#define ' + reg.name + ' R.' + reg.name.lower()))
+    return registerDefines
 
 
 ################################################################################
@@ -137,8 +147,10 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         if reg.bitWidth > regLen:
             regLen = reg.bitWidth
     from isa import resolveBitType
+    global registerInterfaceType, registerType, aliasType
     registerMaxBitwidth = resolveBitType('BIT<' + str(regLen) + '>')
-    global registerType, aliasType
+    registerFieldType = cxx_writer.TemplateType('trap::RegisterField', [registerMaxBitwidth], 'modules/register.hpp')
+    registerInterfaceType = cxx_writer.TemplateType('trap::RegisterInterface', [registerMaxBitwidth, registerFieldType], 'modules/register.hpp')
     registerType = cxx_writer.TemplateType('trap::Register', [registerMaxBitwidth], 'modules/register.hpp')
     aliasType = cxx_writer.TemplateType('trap::RegisterAlias', [registerMaxBitwidth], 'modules/register.hpp')
 
@@ -199,35 +211,50 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
     registerCtorBody += '// Initialize registers.\n'
     for reg in self.regs:
         # Attribute Declaration
-        registerMembers.append(cxx_writer.Attribute(reg.name, registerType, 'pu'))
+        registerMembers.append(cxx_writer.Attribute(reg.name.lower(), registerType, 'pu'))
 
         # Constructor Parameters
         if isinstance(reg.constValue, str):
-            registerCtorParams.append(cxx_writer.Parameter(reg.constValue, registerMaxBitwidth))
-        if isinstance(reg.defValue, str):
-            registerCtorParams.append(cxx_writer.Parameter(reg.defValue, registerMaxBitwidth))
+            if reg.constValue not in [param.name for param in registerCtorParams]:
+                registerCtorParams.append(cxx_writer.Parameter(reg.constValue, registerMaxBitwidth))
+        # Iterable element, i.e. initialization with a constant
+        # and an offset.
+        if isinstance(reg.defValue, tuple):
+            if reg.defValue[0] not in [param.name for param in registerCtorParams]:
+                registerCtorParams.append(cxx_writer.Parameter(str(reg.defValue[0]), registerMaxBitwidth))
+        elif isinstance(reg.defValue, str):
+            if reg.defValue not in [param.name for param in registerCtorParams]:
+                registerCtorParams.append(cxx_writer.Parameter(str(reg.defValue), registerMaxBitwidth))
 
         # Constructor Initialization List
-        Code = '("' + reg.name + '", ' + abstraction + ', '
+        Code = '("' + reg.name.lower() + '", ' + abstraction + ', '
         if reg.constValue: Code += 'true, '
         else: Code += 'false, '
         if reg.offset: Code += str(reg.offset) + ', '
         else: Code += '0, '
         if reg.delay: Code += str(reg.delay) + ', '
         else: Code += '0, '
-        if reg.constValue:
+        if reg.constValue != None:
             try: Code += hex(reg.constValue)
             except TypeError: Code += str(reg.constValue)
-        else:
-            try: Code += hex(reg.defValue)
-            except TypeError: Code += str(reg.defValue)
+        elif reg.defValue != None:
+            # Iterable element, i.e. initialization with a constant
+            # and an offset.
+            if isinstance(reg.defValue, tuple):
+                Code += str(reg.defValue[0]) + ' + '
+                try: Code += hex(reg.defValue[1])
+                except TypeError: Code += str(reg.defValue[1])
+            else:
+                try: Code += hex(reg.defValue)
+                except TypeError: Code += str(reg.defValue)
+        else: Code += '0, '
         Code += ')'
-        registerCtorInit.append(reg.name + Code)
+        registerCtorInit.append(reg.name.lower() + Code)
 
         # Constructor Body: Add fields
         if reg.bitMask:
             for registerFieldMaskName, registerFieldMaskPos in reg.bitMask.items():
-                registerCtorBody += reg.name + '.add_field("' + registerFieldMaskName + '", ' + str(registerFieldMaskPos[1]) + ', ' + str(registerFieldMaskPos[0]) + ');\n'
+                registerCtorBody += reg.name.lower() + '.add_field("' + registerFieldMaskName + '", ' + str(registerFieldMaskPos[1]) + ', ' + str(registerFieldMaskPos[0]) + ');\n'
             registerCtorBody += '\n'
 
     '''#TODO: Pipeline
@@ -256,20 +283,27 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
     registerCtorBody += '// Initialize register banks.\n'
     for regBank in self.regBanks:
         # Attribute Declaration
-        registerMembers.append(cxx_writer.Attribute(regBank.name + '[' + str(regBank.numRegs) + ']', registerType, 'pu'))
+        registerMembers.append(cxx_writer.Attribute(regBank.name.lower() + '[' + str(regBank.numRegs) + ']', registerType, 'pu'))
 
         # Constructor Parameters
         for regConstValue in regBank.constValue.values():
             if isinstance(regConstValue, str):
-                registerCtorParams.append(cxx_writer.Parameter(regConstValue, registerMaxBitwidth))
+                if regConstValue not in [param.name for param in registerCtorParams]:
+                    registerCtorParams.append(cxx_writer.Parameter(regConstValue, registerMaxBitwidth))
         for regDefaultValue in regBank.defValues:
-            if isinstance(regDefaultValue, str):
-                registerCtorParams.append(cxx_writer.Parameter(regDefaultValue, registerMaxBitwidth))
+            # Iterable element, i.e. initialization with a constant
+            # and an offset.
+            if isinstance(regDefaultValue, tuple):
+                if regDefaultValue[0] not in [param.name for param in registerCtorParams]:
+                    registerCtorParams.append(cxx_writer.Parameter(str(regDefaultValue[0]), registerMaxBitwidth))
+            elif isinstance(regDefaultValue, str):
+                if regDefaultValue not in [param.name for param in registerCtorParams]:
+                    registerCtorParams.append(cxx_writer.Parameter(str(regDefaultValue), registerMaxBitwidth))
 
         # Constructor Initialization List
         Code = ''
         for reg in range(0, regBank.numRegs):
-            Code += '{"' + regBank.name + '[' + str(reg) + ']", ' + abstraction + ', '
+            Code += '{"' + regBank.name.lower() + '[' + str(reg) + ']", ' + abstraction + ', '
             if regBank.constValue.has_key(reg): Code += 'true, '
             else: Code += 'false, '
             if regBank.offset: Code += str(regBank.offset) + ', '
@@ -279,18 +313,26 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
             if regBank.constValue.has_key(reg):
                 try: Code += hex(regBank.constValue[reg])
                 except TypeError: Code += str(regBank.constValue[reg])
-            else:
-                try: Code += hex(regBank.defValues[reg])
-                except TypeError: Code += str(regBank.defValues[reg])
+            elif regBank.defValues[reg] != None:
+                # Iterable element, i.e. initialization with a constant
+                # and an offset.
+                if isinstance(regBank.defValues[reg], tuple):
+                    Code += str(regBank.defValues[reg][0]) + ' + '
+                    try: Code += hex(regBank.defValues[reg][1])
+                    except TypeError: Code += str(regBank.defValues[reg][1])
+                else:
+                    try: Code += hex(regBank.defValues[reg])
+                    except TypeError: Code += str(regBank.defValues[reg])
+            else: Code += '0, '
             Code += '},\n'
-        registerCtorInit.append(regBank.name + ' {' + Code[:-2] + '}')
+        registerCtorInit.append(regBank.name.lower() + ' {' + Code[:-2] + '}')
 
         # Constructor Body: Add fields.
         if regBank.bitMask:
             registerCtorBody += 'for (unsigned i = 0; i < ' + str(regBank.numRegs) + '; ++i) {\n'
 
             for registerFieldMaskName, registerFieldMaskPos in regBank.bitMask.items():
-                registerCtorBody += regBank.name + '[i].add_field("' + registerFieldMaskName + '", ' + str(registerFieldMaskPos[1]) + ', ' + str(registerFieldMaskPos[0]) + ');\n'
+                registerCtorBody += regBank.name.lower() + '[i].add_field("' + registerFieldMaskName + '", ' + str(registerFieldMaskPos[1]) + ', ' + str(registerFieldMaskPos[0]) + ');\n'
 
             registerCtorBody += '}\n\n'
 
@@ -324,10 +366,10 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         # Attribute Declaration
         #aliasType = cxx_writer.TemplateType('std::reference_wrapper', [registerType], 'functional')
         #aliasBankType = cxx_writer.TemplateType('std::vector', [aliasType], 'vector')
-        registerMembers.append(cxx_writer.Attribute(alias.name, aliasType, 'pu'))
+        registerMembers.append(cxx_writer.Attribute(alias.name.lower(), aliasType, 'pu'))
 
         # Constructor Initialization List
-        registerCtorInit.append(alias.name + '("' + alias.name + '")')
+        registerCtorInit.append(alias.name.lower() + '("' + alias.name.lower() + '")')
 
     '''#TODO: Pipeline
     for alias in self.aliasRegs:
@@ -352,13 +394,13 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
     # Alias Register Banks
     for aliasBank in self.aliasRegBanks:
         # Attribute Declaration
-        registerMembers.append(cxx_writer.Attribute(aliasBank.name + '[' + str(aliasBank.numRegs) + ']', aliasType, 'pu'))
+        registerMembers.append(cxx_writer.Attribute(aliasBank.name.lower() + '[' + str(aliasBank.numRegs) + ']', aliasType, 'pu'))
 
         # Constructor Initialization List
         Code = ''
         for aliasIdx in range(0, aliasBank.numRegs):
-            Code += '{"' + aliasBank.name + '[' + str(aliasIdx) + ']"},'
-        registerCtorInit.append(aliasBank.name + ' {' + Code[:-1] + '}')
+            Code += '{"' + aliasBank.name.lower() + '[' + str(aliasIdx) + ']"},'
+        registerCtorInit.append(aliasBank.name.lower() + ' {' + Code[:-1] + '}')
 
     # Alias Registers and Alias Register Banks
     # Constructor Body: Update alias targets.
@@ -377,10 +419,10 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
                     regStart = 0
                     regEnd = reg.numRegs
                 for regIdx in range(regStart, regEnd):
-                    registerCtorBody += 'this->' + alias.name
+                    registerCtorBody += 'this->' + alias.name.lower()
                     if alias in self.aliasRegBanks:
                         registerCtorBody += '[' + str(aliasIdx) + ']'
-                    registerCtorBody += '.update_alias(this->' + regName + '[' + str(regIdx) + ']'
+                    registerCtorBody += '.update_alias(this->' + regName.lower() + '[' + str(regIdx) + ']'
                     if alias in self.aliasRegs:
                         registerCtorBody += ', ' + str(alias.offset)
                     elif alias.offsets.has_key(aliasIdx):
@@ -391,7 +433,7 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
                     aliasIdx = aliasIdx + 1
             # REG
             else:
-                registerCtorBody += 'this->' + alias.name + '.update_alias(this->' + regName
+                registerCtorBody += 'this->' + alias.name.lower() + '.update_alias(this->' + regName.lower()
                 if alias in self.aliasRegs:
                     registerCtorBody += ', ' + str(alias.offset)
                 elif alias.offsets.has_key(aliasIdx):
@@ -413,7 +455,7 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
                         regStart = 0
                         regEnd = reg.numRegs
                     for regIdx in range(regStart, regEnd):
-                        registerCtorBody += 'this->' + alias.name + '[' + str(aliasIdx) + '].update_alias(this->' + regName + '[' + str(regIdx) + ']'
+                        registerCtorBody += 'this->' + alias.name.lower() + '[' + str(aliasIdx) + '].update_alias(this->' + regName.lower() + '[' + str(regIdx) + ']'
                         if alias.offsets.has_key(aliasIdx):
                             registerCtorBody += ', ' + str(alias.offsets[aliasIdx])
                         else:
@@ -422,7 +464,7 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
                         aliasIdx = aliasIdx + 1
                 # REG
                 else:
-                    registerCtorBody += 'this->' + alias.name + '[' + str(aliasIdx) + '].update_alias(this->' + regName
+                    registerCtorBody += 'this->' + alias.name.lower() + '[' + str(aliasIdx) + '].update_alias(this->' + regName.lower()
                     if alias.offsets.has_key(aliasIdx):
                         registerCtorBody += ', ' + str(alias.offsets[aliasIdx])
                     else:
@@ -548,12 +590,12 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
     registerPrintBody = 'os << std::hex << std::showbase;\n\n// Print registers.\n'
     for reg in self.regs:
         if reg.constValue == None:
-            registerResetBody += reg.name + '.reset();\n'
-            registerWriteBody += 'ret = ret && ' + reg.name + '.write(data);\n'
-            registerWriteDbgBody += 'ret = ret && ' + reg.name + '.write_dbg(data);\n'
-            registerWriteForceBody += 'ret = ret && ' + reg.name + '.write_force(data);\n'
-        registerExecuteCallbacksBody += reg.name + '.execute_callbacks(type, 0, sizeof(' + registerMaxBitwidth.name + '));\n'
-        registerPrintBody += 'os << ' + reg.name + '.name() << ": " << ' + reg.name + '.read_dbg() << \'\\n\';\n'
+            registerResetBody += reg.name.lower() + '.reset();\n'
+            registerWriteBody += 'ret = ret && ' + reg.name.lower() + '.write(data);\n'
+            registerWriteDbgBody += 'ret = ret && ' + reg.name.lower() + '.write_dbg(data);\n'
+            registerWriteForceBody += 'ret = ret && ' + reg.name.lower() + '.write_force(data);\n'
+        registerExecuteCallbacksBody += reg.name.lower() + '.execute_callbacks(type, 0, sizeof(' + registerMaxBitwidth.name.lower() + '));\n'
+        registerPrintBody += 'os << ' + reg.name.lower() + '.name() << ": " << ' + reg.name.lower() + '.read_dbg() << \'\\n\';\n'
 
     # Method Bodies: Register Banks
     registerResetBody += '\n// Reset register banks.\n'
@@ -564,22 +606,22 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
     registerPrintBody += '\n// Print register banks.\n'
     for regBank in self.regBanks:
         registerResetBody += 'for (int i = 0; i < ' + str(regBank.numRegs) + '; ++i) {\n'
-        registerResetBody += regBank.name + '[i].reset();\n'
+        registerResetBody += regBank.name.lower() + '[i].reset();\n'
         registerResetBody += '}\n\n'
         registerWriteBody += 'for (int i = 0; i < ' + str(regBank.numRegs) + '; ++i) {\n'
-        registerWriteBody += 'ret = ret && ' + regBank.name + '[i].write(data);\n'
+        registerWriteBody += 'ret = ret && ' + regBank.name.lower() + '[i].write(data);\n'
         registerWriteBody += '}\n\n'
         registerWriteDbgBody += 'for (int i = 0; i < ' + str(regBank.numRegs) + '; ++i) {\n'
-        registerWriteDbgBody += 'ret = ret && ' + regBank.name + '[i].write_dbg(data);\n'
+        registerWriteDbgBody += 'ret = ret && ' + regBank.name.lower() + '[i].write_dbg(data);\n'
         registerWriteDbgBody += '}\n\n'
         registerWriteForceBody += 'for (int i = 0; i < ' + str(regBank.numRegs) + '; ++i) {\n'
-        registerWriteForceBody += 'ret = ret && ' + regBank.name + '[i].write_force(data);\n'
+        registerWriteForceBody += 'ret = ret && ' + regBank.name.lower() + '[i].write_force(data);\n'
         registerWriteForceBody += '}\n\n'
         registerExecuteCallbacksBody += 'for (int i = 0; i < ' + str(regBank.numRegs) + '; ++i) {\n'
-        registerExecuteCallbacksBody += regBank.name + '[i].execute_callbacks(type, 0, sizeof(' + registerMaxBitwidth.name + '));\n'
+        registerExecuteCallbacksBody += regBank.name.lower() + '[i].execute_callbacks(type, 0, sizeof(' + registerMaxBitwidth.name.lower() + '));\n'
         registerExecuteCallbacksBody += '}\n\n'
         registerPrintBody += 'for (int i = 0; i < ' + str(regBank.numRegs) + '; ++i) {\n'
-        registerPrintBody += 'os << ' + regBank.name + '[i].name() << ": " << ' + regBank.name + '[i].read_dbg() << \'\\n\';\n'
+        registerPrintBody += 'os << ' + regBank.name.lower() + '[i].name() << ": " << ' + regBank.name.lower() + '[i].read_dbg() << \'\\n\';\n'
         registerPrintBody += '}\n\n'
     registerWriteBody += 'return ret;\n'
     registerWriteDbgBody += 'return ret;\n'
