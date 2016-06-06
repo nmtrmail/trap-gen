@@ -284,7 +284,7 @@ def getCPPMethod(self, model, namespace):
         undefCode += '\n'
 
     codeTemp.appendCode(undefCode)'''
-    methodMethod = cxx_writer.Method(self.name, self.code, self.retType, 'pu', self.parameters, noException = not self.exception)
+    methodMethod = cxx_writer.Method(self.name, self.code, self.retType, 'pu', self.parameters, inline = self.inline, noException = not self.exception)
 
     return methodMethod
 
@@ -1052,7 +1052,7 @@ def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
 
     classes = []
 
-    # Now I add the custon definitions
+    # Now I add the custom definitions
     for i in self.defines:
         classes.append(cxx_writer.Define(i + '\n'))
 

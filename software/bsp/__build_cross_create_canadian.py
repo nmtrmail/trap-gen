@@ -222,25 +222,25 @@ elif os.path.exists(gdb):
 
 #Ok, lets finally procede with the actual compilation
 print '\nCompiling binutils...\n'
-if os.system('cd ' + os.path.abspath(os.path.basename(binutils) + '_build') + ' && CC=i686-mingw32-gcc CXX=i686-mingw32-g++ ' + os.path.abspath(binutilsName + '/configure') + ' --host=i686-mingw32 --build=i686-pc-linux-gnu --target=' + targetArch + ' --prefix=' + os.path.abspath(prefix) + ' --enable-multilib ' + addFlags + ' && make -j' + str(numProc) + ' && make install') != 0:
+if os.system('cd ' + os.path.abspath(os.path.basename(binutils) + '_build') + ' && CC=x86_64-linux-gnu-gcc CXX=x86_64-linux-gnu-g++ ' + os.path.abspath(binutilsName + '/configure') + ' --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=' + targetArch + ' --prefix=' + os.path.abspath(prefix) + ' --enable-multilib ' + addFlags + ' && make -j' + str(numProc) + ' && sudo make install') != 0:
     sys.exit()
 print '\nCompiling gcc step 1...\n'
-if os.system('export PATH=' + os.path.abspath(nativeToolchain + '/bin') + ':$PATH && cd ' + os.path.abspath(os.path.basename(gcc) + '_build') + ' && CC=i686-mingw32-gcc CXX=i686-mingw32-g++ ' + os.path.abspath(gccName + '/configure') + ' --host=i686-mingw32 --build=i686-pc-linux-gnu --target=' + targetArch + ' --prefix=' + os.path.abspath(prefix) + ' --enable-multilib --with-newlib --with-tls --with-__thread --enable-languages=\'c,c++\' --with-headers=' + os.path.abspath(newlibName + '/newlib/libc/include') + ' --disable-__cxa_atexit --disable-__dso_handle ' + addFlags + ' && make all-gcc -j' + str(numProc) + ' && make install-gcc') != 0:
+if os.system('export PATH=' + os.path.abspath(nativeToolchain + '/bin') + ':$PATH && cd ' + os.path.abspath(os.path.basename(gcc) + '_build') + ' && CC=x86_64-linux-gnu-gcc CXX=x86_64-linux-gnu-g++ ' + os.path.abspath(gccName + '/configure') + ' --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=' + targetArch + ' --prefix=' + os.path.abspath(prefix) + ' --enable-multilib --with-newlib --with-__thread --enable-languages=\'c,c++\' --with-headers=' + os.path.abspath(newlibName + '/newlib/libc/include') + ' --disable-__cxa_atexit --disable-__dso_handle ' + addFlags + ' && make all-gcc -j' + str(numProc) + ' && sudo make install-gcc') != 0:
     sys.exit()
 if newlibPatch.lower() == 'y':
     raw_input('Please perform all the necessary modifications to the newlib library in folder ' + os.path.abspath(newlibName) + ' and press a key when ready to continue')
 print '\nCompiling newlib...\n'
-if os.system('export PATH=' + os.path.abspath(nativeToolchain + '/bin') + ':$PATH && cd ' + os.path.abspath(os.path.basename(newlib) + '_build') + ' && CC=i686-mingw32-gcc CXX=i686-mingw32-g++ ' + os.path.abspath(newlibName + '/configure') + ' --host=i686-mingw32 --build=i686-pc-linux-gnu --target=' + targetArch + ' --prefix=' + os.path.abspath(prefix) + ' --enable-multilib ' + addFlags + ' && make -j' + str(numProc) + ' && make install') != 0:
+if os.system('export PATH=' + os.path.abspath(nativeToolchain + '/bin') + ':$PATH && cd ' + os.path.abspath(os.path.basename(newlib) + '_build') + ' && CC=x86_64-linux-gnu-gcc CXX=x86_64-linux-gnu-g++ ' + os.path.abspath(newlibName + '/configure') + ' --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=' + targetArch + ' --prefix=' + os.path.abspath(prefix) + ' --enable-multilib ' + addFlags + ' && make -j' + str(numProc) + ' && sudo make install') != 0:
     sys.exit()
 print '\nCompiling gcc step 2...\n'
-if os.system('export PATH=' + os.path.abspath(nativeToolchain + '/bin') + ':$PATH && cd ' + os.path.abspath(os.path.basename(gcc) + '_build') + ' && make -j' + str(numProc) + ' && make install') != 0:
+if os.system('export PATH=' + os.path.abspath(nativeToolchain + '/bin') + ':$PATH && cd ' + os.path.abspath(os.path.basename(gcc) + '_build') + ' && make -j' + str(numProc) + ' && sudo make install') != 0:
     sys.exit()
 #Now it is time to see if we need to cross-compiler GDB
 print '\nCompiling debugger...\n'
 if os.path.exists(insight):
-    if os.system('export PATH=' + os.path.abspath(nativeToolchain + '/bin') + ':$PATH && cd ' + os.path.abspath(os.path.basename(insight) + '_build') + ' && CC=i686-mingw32-gcc CXX=i686-mingw32-g++ ' + os.path.abspath(insightName + '/configure') + ' --host=i686-mingw32 --build=i686-pc-linux-gnu --target=' + targetArch + ' --prefix=' + os.path.abspath(prefix) + ' --enable-multilib ' + addFlags + ' && make -j' + str(numProc) + ' && make install') != 0:
+    if os.system('export PATH=' + os.path.abspath(nativeToolchain + '/bin') + ':$PATH && cd ' + os.path.abspath(os.path.basename(insight) + '_build') + ' && CC=x86_64-linux-gnu-gcc CXX=x86_64-linux-gnu-g++ ' + os.path.abspath(insightName + '/configure') + ' --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=' + targetArch + ' --prefix=' + os.path.abspath(prefix) + ' --enable-multilib ' + addFlags + ' && make -j' + str(numProc) + ' && sudo make install') != 0:
         sys.exit()
 elif os.path.exists(gdb):
-    if os.system('export PATH=' + os.path.abspath(nativeToolchain + '/bin') + ':$PATH && cd ' + os.path.abspath(os.path.basename(gdb) + '_build') + ' && CC=i686-mingw32-gcc CXX=i686-mingw32-g++ ' + os.path.abspath(gdbName + '/configure') + ' --host=i686-mingw32 --build=i686-pc-linux-gnu --target=' + targetArch + ' --prefix=' + os.path.abspath(prefix) + ' --enable-multilib ' + addFlags + ' && make -j' + str(numProc) + ' && make install') != 0:
+    if os.system('export PATH=' + os.path.abspath(nativeToolchain + '/bin') + ':$PATH && cd ' + os.path.abspath(os.path.basename(gdb) + '_build') + ' && CC=x86_64-linux-gnu-gcc CXX=x86_64-linux-gnu-g++ ' + os.path.abspath(gdbName + '/configure') + ' --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=' + targetArch + ' --prefix=' + os.path.abspath(prefix) + ' --enable-multilib ' + addFlags + ' && make -j' + str(numProc) + ' && sudo make install') != 0:
         sys.exit()
 print '\n\n\nCross-compiler created successfully in ' + os.path.abspath(prefix) + '.'

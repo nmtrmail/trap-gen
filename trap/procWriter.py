@@ -550,8 +550,12 @@ def getCPPProc(self, model, trace, combinedTrace, namespace):
     initString = ''
     if self.regs or self.regBanks:
         initString += 'this->R.reset();\n'
+    # TODO: Ugly special case for the fetch register: Since ENTRY_POINT is public
+    # and usually written after initialization, the reset value is stale.
+    initString += 'this->' + self.fetchReg[0] + ' = this->ENTRY_POINT;\n'
     for irqPort in self.irqs:
         initString += 'this->' + irqPort.name + ' = 0;\n'
+    resetOpTemp.prependCode(initString + '\n')
     if self.startup:
         resetOpTemp.appendCode('// User-defined initialization.\nthis->startup();\n')
     resetOpTemp.appendCode('this->reset_called = true;')
