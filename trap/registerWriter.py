@@ -228,6 +228,8 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
 
         # Constructor Initialization List
         Code = '("' + reg.name.lower() + '", ' + abstraction + ', '
+        if self.pipes: Code += str(len(self.pipes)) + ', '
+        else: Code += '1, '
         if reg.constValue: Code += 'true, '
         else: Code += 'false, '
         if reg.offset: Code += str(reg.offset) + ', '
@@ -248,6 +250,59 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
                 try: Code += hex(reg.defValue)
                 except TypeError: Code += str(reg.defValue)
         else: Code += '0, '
+        '''# TODO: Generate clock_cycle_func for special write-back sequences.
+        # stage_n.setWriteBack() should be treated as a shortcut for:
+        # for reg in self.regs + self.regBanks: reg.setWbStageOrder({'stage_n': ['stage_n-1', ... 'stage_0']})
+        for fromStage, toStages in reg.wbStageOrder:
+            if fromStage not in self.pipes:
+                raise Exception('Cannot set write-back order for register ' + reg.name + '. Pipeline stage ' + fromStage + ' does not exist.')
+            for toStage in toStages:
+                if toStage not in self.pipes:
+                    raise Exception('Cannot set write-back order for register ' + reg.name + '. Pipeline stage ' + toStage + ' does not exist.')
+        pipeNumbers = {}
+        i = 0
+        for pipeStage in self.pipes:
+            pipeNumbers[pipeStage.name] = i
+            i += 1
+        orders = []
+        for reg in self.regs:
+            if reg.wbStageOrder:
+                if not reg.wbStageOrder in orders:
+                    orders.append(reg.wbStageOrder)
+        for order in orders:
+            registerElements = []
+            propagateCode = 'bool has_changes = false;\n'
+            #propagateCode += 'if (!this->has_to_propagate) {\nreturn;\n}\n'
+            for pipeStage in order:
+                if pipeStage != order[0]:
+                    propagateCode += 'else '
+                propagateCode += 'if (this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']->time_stamp > this->reg_all->time_stamp) {\n'
+                ######
+                if trace and not combinedTrace:
+                    propagateCode += 'std::cerr << "Propagating stage ' + str(pipeNumbers[pipeStage]) + ' into all stages." << std::endl;\n'
+                ######
+                propagateCode += 'has_changes = true;\n'
+                propagateCode += 'this->reg_all->force_value(*(this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']));\n'
+                propagateCode += 'this->reg_all->time_stamp = this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']->time_stamp;\n'
+                propagateCode += 'for (int i = 0; i < ' + str(len(self.pipes)) + '; i++) {\n'
+                propagateCode += 'this->reg_stage[i]->force_value(*(this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']));\n'
+                propagateCode += 'this->reg_stage[i]->time_stamp = this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']->time_stamp;\n'
+                propagateCode += '}\n}\n'
+            propagateCode += 'this->has_to_propagate = has_changes;\n'
+            propagateBody = cxx_writer.Code(propagateCode)
+            propagateMethod = cxx_writer.Method('propagate', propagateBody, cxx_writer.voidType, 'pu', noException = True)
+            registerElements.append(propagateMethod)
+
+            emptyBody = cxx_writer.Code('')
+            publicFullConstr = cxx_writer.Constructor(emptyBody, 'pu', fullConstructorParams, ['PipelineRegister(' + innerConstrInit + ')'])
+            publicEmptyConstr = cxx_writer.Constructor(emptyBody, 'pu', initList = ['PipelineRegister()'])
+            pipelineRegClass = cxx_writer.ClassDeclaration('PipelineRegister_' + str(order)[1:-1].replace(', ', '_').replace('\'', ''), registerElements, [PipelineRegisterType], namespaces = [namespace])
+            pipelineRegClass.addConstructor(publicFullConstr)
+            pipelineRegClass.addConstructor(publicEmptyConstr)
+            pipelineRegClasses.append(pipelineRegClass)
+
+        return pipelineRegClasses
+        '''
         Code += ')'
         registerCtorInit.append(reg.name.lower() + Code)
 
@@ -256,28 +311,6 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
             for registerFieldMaskName, registerFieldMaskPos in reg.bitMask.items():
                 registerCtorBody += reg.name.lower() + '.add_field("' + registerFieldMaskName + '", ' + str(registerFieldMaskPos[1]) + ', ' + str(registerFieldMaskPos[0]) + ');\n'
             registerCtorBody += '\n'
-
-    '''#TODO: Pipeline
-    pipeRegisterType = cxx_writer.Type('PipelineRegister', '#include \"registers.hpp\"')
-    for reg in self.regs:
-        bodyInits += 'this->' + reg.name + '_pipe.set_register(&' + reg.name + ');\n'
-        pipeCount = 0
-        for pipeStage in self.pipes:
-            attribute = cxx_writer.Attribute(reg.name + '_' + pipeStage.name, registerType, 'pu')
-            processorElements.append(attribute)
-            bodyInits += 'this->' + reg.name + '_pipe.set_register(&' + reg.name + '_' + pipeStage.name + ', ' + str(pipeCount) + ');\n'
-            pipeCount += 1
-            bodyInits += reg.name + '_' + pipeStage.name + ' = ' + reg.name + ';\n'
-        bodyInits += reg.name + '_pipe.has_to_propagate = false;\n'
-        if reg.wbStageOrder:
-            # The atribute is of a special type since write back has to be performed in
-            # a special order
-            customPipeRegisterType = cxx_writer.Type('PipelineRegister_' + str(reg.wbStageOrder)[1:-1].replace(', ', '_').replace('\'', ''), '#include \"registers.hpp\"')
-            attribute = cxx_writer.Attribute(reg.name + '_pipe', customPipeRegisterType, 'pu')
-        else:
-            attribute = cxx_writer.Attribute(reg.name + '_pipe', pipeRegisterType, 'pu')
-        processorElements.append(attribute)
-    '''
 
     # Register Banks
     registerCtorBody += '// Initialize register banks.\n'
@@ -304,6 +337,8 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
         Code = ''
         for reg in range(0, regBank.numRegs):
             Code += '{"' + regBank.name.lower() + '[' + str(reg) + ']", ' + abstraction + ', '
+            if self.pipes: Code += str(len(self.pipes)) + ', '
+            else: Code += '1, '
             if regBank.constValue.has_key(reg): Code += 'true, '
             else: Code += 'false, '
             if regBank.offset: Code += str(regBank.offset) + ', '
@@ -336,31 +371,6 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
 
             registerCtorBody += '}\n\n'
 
-    '''#TODO: Pipeline
-    for regB in self.regBanks:
-        attribute = cxx_writer.Attribute(regB.name + '[' + str(regB.numRegs) + ']', resourceType[regB.name].makeNormal(), 'pu')
-        processorElements.append(attribute)
-        if model.startswith('acc'):
-            for pipeStage in self.pipes:
-                attribute = cxx_writer.Attribute(regB.name + '_' + pipeStage.name + '[' + str(regB.numRegs) + ']', resourceType[regB.name].makeNormal(), 'pu')
-                processorElements.append(attribute)
-            attribute = cxx_writer.Attribute(regB.name + '_pipe[' + str(regB.numRegs) + ']',  pipeRegisterType, 'pu')
-            processorElements.append(attribute)
-        bodyInits += 'for (int i = 0; i < ' + str(regB.numRegs) + '; i++) {\n'
-        pipeCount = 0
-        for pipeStage in self.pipes:
-            bodyInits += 'this->' + regB.name + '_pipe[i].set_register(&' + regB.name + '_' + pipeStage.name + '[i], ' + str(pipeCount) + ');\n'
-            pipeCount += 1
-        bodyInits += 'this->' + regB.name + '_pipe[i].set_register(&' + regB.name + '[i]);\n'
-        bodyInits += '}\n'
-
-        initString += 'for (int i = 0; i < ' + str(regB.numRegs) + '; i++) {\n'
-        for pipeStage in self.pipes:
-            initString += regB.name + '_' + pipeStage.name + '[i] = ' + regB.name + '[i];\n'
-        initString += regB.name + '_pipe[i].has_to_propagate = false;\n'
-        initString += '}\n'
-    '''
-
     # Alias Registers
     for alias in self.aliasRegs:
         # Attribute Declaration
@@ -370,26 +380,6 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
 
         # Constructor Initialization List
         registerCtorInit.append(alias.name.lower() + '("' + alias.name.lower() + '")')
-
-    '''#TODO: Pipeline
-    for alias in self.aliasRegs:
-        if model.startswith('acc'):
-            curPipeNum = 0
-            for pipeStage in self.pipes:
-                attribute = cxx_writer.Attribute(alias.name + '_' + pipeStage.name, resourceType[alias.name], 'pu')
-                processorElements.append(attribute)
-                bodyInits += alias.name + '_' + pipeStage.name + '.set_pipe_id(' + str(curPipeNum) + ');\n'
-                curPipeNum += 1
-            curStageId = 0
-            for pipeStage in self.pipes:
-                aliasInitStr = alias.name + '_' + pipeStage.name + '(' + str(curStageId)
-                if alias.initAlias.find('[') > -1:
-                    aliasInitStr += ', &' + alias.initAlias[:alias.initAlias.find('[')] + '_pipe' + alias.initAlias[alias.initAlias.find('['):]
-                else:
-                    aliasInitStr += ', &' + alias.initAlias
-                aliasInit[alias.name + '_' + pipeStage.name] = (aliasInitStr + ')')
-                curStageId += 1
-    '''
 
     # Alias Register Banks
     for aliasBank in self.aliasRegBanks:
@@ -472,105 +462,6 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
                     registerCtorBody += ');\n'
                     aliasIdx = aliasIdx + 1
 
-    '''#TODO: Pipeline
-    regsNames = [i.name for i in self.regBanks + self.regs]
-    bodyInits += '// Initialize the alias registers (plain and banks).\n'
-    for aliasB in self.aliasRegBanks:
-        bodyAliasInit[aliasB.name] = ''
-        if model.startswith('acc'):
-            bodyAliasInit[aliasB.name] += 'for (int i = 0; i < ' + str(aliasB.numRegs) + '; i++) {\n'
-            curStageId = 0
-            for pipeStage in self.pipes:
-                attribute = cxx_writer.Attribute(aliasB.name + '_' + pipeStage.name + '[' + str(aliasB.numRegs) + ']', resourceType[aliasB.name], 'pu')
-                processorElements.append(attribute)
-                bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].set_pipe_id(' + str(curStageId) + ');\n'
-                curStageId += 1
-            bodyAliasInit[aliasB.name] += '}\n'
-        else:
-            attribute = cxx_writer.Attribute(aliasB.name + '[' + str(aliasB.numRegs) + ']', resourceType[aliasB.name], 'pu')
-            processorElements.append(attribute)
-        # Lets now deal with the initialization of the single elements of the regBank
-        if isinstance(aliasB.initAlias, str):
-            index = extractRegInterval(aliasB.initAlias)
-            curIndex = index[0]
-            if model.startswith('acc'):
-                bodyAliasInit[aliasB.name] += 'for (int  i = 0; i < ' + str(aliasB.numRegs) + '; i++) {\n'
-                for pipeStage in self.pipes:
-                    offsetStr = ''
-                    if index[0] != 0:
-                        offsetStr = ' + ' + str(index[0])
-                    if aliasB.initAlias[:aliasB.initAlias.find('[')] in regsNames:
-                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].update_alias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '_pipe[i' + offsetStr + ']);\n'
-                    else:
-                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i].update_alias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '_' + pipeStage.name + '[i' + offsetStr + ']);\n'
-                bodyAliasInit[aliasB.name] += '}\n'
-            else:
-                for i in range(0, aliasB.numRegs):
-                    bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '[' + str(i) + '].update_alias(this->' + aliasB.initAlias[:aliasB.initAlias.find('[')] + '[' + str(curIndex) + ']'
-                    if aliasB.offsets.has_key(i):
-                        bodyAliasInit[aliasB.name] += ', ' + str(aliasB.offsets[i])
-                    bodyAliasInit[aliasB.name] += ');\n'
-                    curIndex += 1
-        else:
-            if model.startswith('acc'):
-                curIndex = 0
-                for curAlias in aliasB.initAlias:
-                    index = extractRegInterval(curAlias)
-                    if index:
-                        offsetStr = ''
-                        if index[0] != 0:
-                            offsetStr = ' + ' + str(index[0])
-                        indexStr = ''
-                        if curIndex != 0:
-                            indexStr = ' + ' + str(curIndex)
-                        bodyAliasInit[aliasB.name] += 'for (int i = 0; i < ' + str(index[1] + 1 - index[0]) + '; i++) {\n'
-                        for pipeStage in self.pipes:
-                            if curAlias[:curAlias.find('[')] in regsNames:
-                                bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i' + indexStr + '].update_alias(this->' + curAlias[:curAlias.find('[')] + '_pipe[i' + offsetStr + ']);\n'
-                            else:
-                                bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[i' + indexStr + '].update_alias(this->' + curAlias[:curAlias.find('[')] + '_' + pipeStage.name +'[i' + offsetStr + ']);\n'
-                        bodyAliasInit[aliasB.name] += '}\n'
-                        curIndex += index[1] + 1 - index[0]
-                    else:
-                        if curAlias in regsNames:
-                            bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[' + str(curIndex) + '].update_alias(this->' + curAlias + '_pipe);\n'
-                        else:
-                            bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '_' + pipeStage.name + '[' + str(curIndex) + '].update_alias(this->' + curAlias + '_' + pipeStage.name + ');\n'
-                        curIndex += 1
-            else:
-                curIndex = 0
-                for curAlias in aliasB.initAlias:
-                    index = extractRegInterval(curAlias)
-                    if index:
-                        for curRange in range(index[0], index[1] + 1):
-                            bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '[' + str(curIndex) + '].update_alias(this->' + curAlias[:curAlias.find('[')] + '[' + str(curRange) + ']'
-                            if aliasB.offsets.has_key(curIndex):
-                                bodyAliasInit[aliasB.name] += ', ' + str(aliasB.offsets[curIndex])
-                            bodyAliasInit[aliasB.name] += ');\n'
-                            curIndex += 1
-                    else:
-                        bodyAliasInit[aliasB.name] += 'this->' + aliasB.name + '[' + str(curIndex) + '].update_alias(this->' + curAlias
-                        if aliasB.offsets.has_key(curIndex):
-                            bodyAliasInit[aliasB.name] += ', ' + str(aliasB.offsets[curIndex])
-                        bodyAliasInit[aliasB.name] += ');\n'
-                        curIndex += 1
-
-        if index:
-            # we are dealing with a member of a register bank
-            curIndex = index[0]
-            registerCtorInitAlias[alias.name] = ''
-            for pipeStage in self.pipes:
-                if alias.initAlias[:alias.initAlias.find('[')] in regsNames:
-                    registerCtorInitAlias[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.update_alias(this->' + alias.initAlias[:alias.initAlias.find('[')] + '_pipe[' + str(curIndex) + ']);\n'
-                else:
-                    registerCtorInitAlias[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.update_alias(this->' + alias.initAlias[:alias.initAlias.find('[')] + '_' + pipeStage.name + '[' + str(curIndex) + ']);\n'
-        else:
-            for pipeStage in self.pipes:
-                if alias.initAlias in regsNames:
-                    registerCtorInitAlias[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.update_alias(this->' + alias.initAlias + '_pipe);\n'
-                else:
-                    registerCtorInitAlias[alias.name] += 'this->' + alias.name + '_' + pipeStage.name + '.update_alias(this->' + alias.initAlias + '_' + pipeStage.name + ');\n'
-                        '''
     registerCtor = cxx_writer.Constructor(cxx_writer.Code(registerCtorBody), 'pu', parameters = registerCtorParams, initList = registerCtorInit)
 
     ## @} Attributes, Constructors and Destructors
@@ -628,20 +519,6 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
     registerWriteForceBody += 'return ret;\n'
     registerPrintBody += 'os << std::dec;\nreturn os;\n'
 
-    '''#TODO: Pipeline
-    if model.startswith('acc'):
-        for reg in self.regs:
-            for pipeStage in self.pipes:
-                registerResetBody += reg.name + '_' + pipeStage.name + ' = ' + reg.name + ';\n'
-            registerResetBody += reg.name + '_pipe.has_to_propagate = false;\n'
-        for regB in self.regBanks:
-            registerResetBody += 'for (int i = 0; i < ' + str(regB.numRegs) + '; i++) {\n'
-            for pipeStage in self.pipes:
-                registerResetBody += regB.name + '_' + pipeStage.name + '[i] = ' + regB.name + '[i];\n'
-            registerResetBody += regB.name + '_pipe[i].has_to_propagate = false;\n'
-            registerResetBody += '}\n'
-    '''
-
     # Method Declarations
     registerResetMethod = cxx_writer.Method('reset', cxx_writer.Code(registerResetBody), cxx_writer.voidType, 'pu')
     registerMembers.append(registerResetMethod)
@@ -673,269 +550,5 @@ def getCPPRegisters(self, trace, combinedTrace, model, namespace):
     registerClass.addDocString(brief = 'Register Container Class', detail = 'Contains all registers and register banks of the processor as member variables. It serves for encapsulating the instantiation details (defining fields, etc) away from the processor. It also simplifies passing the registers to the instructions, instead of passing each register individually.')
     registerClass.addConstructor(registerCtor)
     return registerClass
-
-
-################################################################################
-# PipelineRegister
-################################################################################
-# TODO
-"""Returns the pipeline registers, which are special registers containing both
-the value of the registers themselves as well as all the pipeline latches.
-It also defines special methods for propagating registers values in the
-pipeline.
-Note that there are different kinds of such registers, one for the normal
-latched registers and one for the registers which are immediately visible to all
-the other stages (e.g. for LEON they are the PC and NPC registers)."""
-def getCPPPipelineReg(self, trace, combinedTrace, namespace):
-    # Lets start with the creation of the latched registers: they have exactly
-    # the same methods of the base registers
-    pipelineRegClasses = []
-    registerElements = []
-
-    ################ Constructor: it initializes the internal registers ######################
-    fullConstructorParams = []
-    innerConstrInit = ''
-    fullConstructorCode = ''
-    emptyConstructorCode = ''
-    i = 0
-    for pipeStage in self.pipes:
-        fullConstructorCode += 'this->reg_stage[' + str(i) + '] = reg_' + pipeStage.name + ';\n'
-        fullConstructorCode += 'this->reg_stage[' + str(i) + ']->has_to_propagate = &(this->has_to_propagate);\n'
-        emptyConstructorCode += 'this->reg_stage[' + str(i) + '] = NULL;\n'
-        fullConstructorParams.append(cxx_writer.Parameter('reg_' + pipeStage.name, registerType.makePointer()))
-        innerConstrInit += 'reg_' + pipeStage.name + ', '
-        i += 1
-    fullConstructorCode += 'this->reg_all = reg_all;\n'
-    fullConstructorCode += 'this->reg_all->has_to_propagate = &(this->has_to_propagate);\n'
-    fullConstructorCode += 'this->has_to_propagate = false;\n'
-    emptyConstructorCode += 'this->reg_all = NULL;\n'
-    emptyConstructorCode += 'this->has_to_propagate = false;\n'
-    innerConstrInit += 'reg_all'
-    fullConstructorParams.append(cxx_writer.Parameter('reg_all', registerType.makePointer()))
-    constructorBody = cxx_writer.Code(fullConstructorCode)
-    publicFullConstr = cxx_writer.Constructor(constructorBody, 'pu', fullConstructorParams)
-    constructorBody = cxx_writer.Code(emptyConstructorCode)
-    publicEmptyConstr = cxx_writer.Constructor(constructorBody, 'pu')
-
-    stagesRegsAttr = cxx_writer.Attribute('reg_stage[' + str(len(self.pipes)) + ']', registerType.makePointer(), 'pro')
-    registerElements.append(stagesRegsAttr)
-    generalRegAttr = cxx_writer.Attribute('reg_all', registerType.makePointer(), 'pro')
-    registerElements.append(generalRegAttr)
-    propagateAttr = cxx_writer.Attribute('has_to_propagate', cxx_writer.boolType, 'pu')
-    registerElements.append(propagateAttr)
-
-    ################ Lock and Unlock methods used for hazards detection ######################
-    # For the general register they have a particular behavior: they have to lock all versions of the
-    # registers, unlock unlocks all of them; concerning is_locked method, it returns the status
-    # of the general register. Note that is_locked takes an additional parameter: if specified
-    # the locked status of the corresponding stage register (used for bypass operations, where
-    # we do not wait for the WB, but we take the value from a pipeline register)
-
-    lockBody = cxx_writer.Code("""for (int i = 0; i < """ + str(len(self.pipes)) + """; i++) {
-        this->reg_stage[i]->lock();
-    }
-    this->reg_all->lock();""")
-    lockMethod = cxx_writer.Method('lock', lockBody, cxx_writer.voidType, 'pu', virtual = True, noException = True)
-    registerElements.append(lockMethod)
-    unlockBody = cxx_writer.Code("""for (int i = 0; i < """ + str(len(self.pipes)) + """; i++) {
-        this->reg_stage[i]->unlock();
-    }
-    this->reg_all->unlock();""")
-    unlockMethod = cxx_writer.Method('unlock', unlockBody, cxx_writer.voidType, 'pu', virtual = True, noException = True)
-    registerElements.append(unlockMethod)
-    latencyParam = cxx_writer.Parameter('wb_latency', cxx_writer.intType)
-    unlockMethod = cxx_writer.Method('unlock', unlockBody, cxx_writer.voidType, 'pu', [latencyParam], virtual = True, noException = True)
-    registerElements.append(unlockMethod)
-    isLockedBody = cxx_writer.Code('return this->reg_all->is_locked();')
-    isLockedMethod = cxx_writer.Method('is_locked', isLockedBody, cxx_writer.boolType, 'pu', noException = True)
-    registerElements.append(isLockedMethod)
-    stageIdParam = cxx_writer.Parameter('stage_id', cxx_writer.intType)
-    isLockedBody = cxx_writer.Code('return this->reg_stage[stage_id]->is_locked();')
-    isLockedMethod = cxx_writer.Method('is_locked', isLockedBody, cxx_writer.boolType, 'pu', [stageIdParam], noException = True)
-    registerElements.append(isLockedMethod)
-
-    # Now some virtual methods inherited from the base class
-    forceValueBody = cxx_writer.Code('this->reg_all->force_value(value);')
-    forceValueParam = [cxx_writer.Parameter('value', registerType.makeRef().makeConst())]
-    forceValueMethod = cxx_writer.Method('force_value', forceValueBody, cxx_writer.voidType, 'pu', forceValueParam, noException = True)
-    registerElements.append(forceValueMethod)
-
-    writeAllCode = '*(this->reg_all) = value;\n'
-    writeAllCode += 'for (int i = 0; i < ' + str(len(self.pipes)) + '; i++) {\n'
-    writeAllCode += '*(this->reg_stage[i]) = value;\n}\n'
-    writeAllBody = cxx_writer.Code(writeAllCode)
-    writeAllParam = [cxx_writer.Parameter('value', registerType.makeRef().makeConst())]
-    writeAllMethod = cxx_writer.Method('write_all', writeAllBody, cxx_writer.voidType, 'pu', writeAllParam, noException = True)
-    registerElements.append(writeAllMethod)
-    immediateWriteBody = cxx_writer.Code('this->reg_all->write_force(value);')
-    immediateWriteParam = [cxx_writer.Parameter('value', registerType.makeRef().makeConst())]
-    immediateWriteMethod = cxx_writer.Method('write_force', immediateWriteBody, cxx_writer.voidType, 'pu', immediateWriteParam, noException = True)
-    registerElements.append(immediateWriteMethod)
-    readNewValueBody = cxx_writer.Code('return this->reg_all->read_force();')
-    readNewValueMethod = cxx_writer.Method('read_force', readNewValueBody, registerType, 'pu', noException = True)
-    registerElements.append(readNewValueMethod)
-
-    # Propagate method, used to move register values from one stage to the other; the default implementation of such
-    # method proceeded from the last stage to the first one: wb copied in REGS_all, exec in wb, .... REGS_all in fetch
-    regReadUpdate = ''
-    firstStages = 0
-    for pipeStage in self.pipes:
-        regReadUpdate += 'if (this->reg_all->time_stamp > this->reg_stage[' + str(firstStages) + ']->time_stamp) {\n'
-        ######
-        if trace and not combinedTrace:
-            regReadUpdate += 'std::cerr << "Propagating stage all into stage ' + str(firstStages) + '" << \'.\' << std::endl;\n'
-        ######
-        regReadUpdate += 'has_changes = true;\n'
-        regReadUpdate += 'this->reg_stage[' + str(firstStages) + ']->time_stamp = this->reg_all->time_stamp;\n'
-        regReadUpdate += 'this->reg_stage[' + str(firstStages) + ']->force_value(*(this->reg_all));\n}\n'
-        if pipeStage.checkHazard:
-            break
-        else:
-            firstStages += 1
-    propagateCode = 'bool has_changes = false;\n'
-    #propagateCode += 'if (!this->has_to_propagate) {\nreturn;\n}\n'
-    propagateCode += 'if (this->reg_stage[' + str(len(self.pipes) - 1) + ']->time_stamp > this->reg_all->time_stamp) {\n'
-    ######
-    if trace and not combinedTrace:
-        propagateCode += 'std::cerr << "Propagating stage ' + str(len(self.pipes) - 1) + ' into reg_all." << std::endl;\n'
-    ######
-    propagateCode += 'has_changes = true;\n'
-    propagateCode += 'this->reg_all->time_stamp = this->reg_stage[' + str(len(self.pipes) - 1) + ']->time_stamp;\n'
-    propagateCode += 'this->reg_all->force_value(*(this->reg_stage[' + str(len(self.pipes) - 1) + ']));\n}\n'
-    propagateCode += 'for (int i = ' + str(len(self.pipes) - 2) + '; i >= ' + str(firstStages) + '; i--) {\n'
-    propagateCode += 'if (this->reg_stage[i]->time_stamp > this->reg_stage[i + 1]->time_stamp) {\n'
-    ######
-    if trace and not combinedTrace:
-        propagateCode += 'std::cerr << "Propagating stage " << std::dec << i << " into stage " << std::dec << i + 1 << \'.\' << std::endl;\n'
-    ######
-    propagateCode += 'has_changes = true;\n'
-    propagateCode += 'this->reg_stage[i + 1]->time_stamp = this->reg_stage[i]->time_stamp;\n'
-    propagateCode += 'this->reg_stage[i + 1]->force_value(*(this->reg_stage[i]));\n}\n'
-    propagateCode += '}\n'
-    propagateCode += regReadUpdate
-    propagateCode += 'this->has_to_propagate = has_changes;\n'
-    propagateBody = cxx_writer.Code(propagateCode)
-    propagateMethod = cxx_writer.Method('propagate', propagateBody, cxx_writer.voidType, 'pu', noException = True, virtual = True)
-    registerElements.append(propagateMethod)
-
-    # Now here I have to define the method to get/set the pointer to the various
-    # registers
-    regIndexParam = cxx_writer.Parameter('reg_idx', cxx_writer.intType, initValue = '-1')
-    getRegisterBody = cxx_writer.Code("""if (reg_idx < 0) {
-        return this->reg_all;
-    } else {
-        return this->reg_stage[reg_idx];
-    }""")
-    getRegisterMethod = cxx_writer.Method('get_register', getRegisterBody, registerType.makePointer(), 'pu', [regIndexParam], inline = True, noException = True)
-    registerElements.append(getRegisterMethod)
-    regPointerParam = cxx_writer.Parameter('reg_ptr', registerType.makePointer())
-    getRegisterBody = cxx_writer.Code("""if (reg_idx < 0) {
-        if (this->reg_all != NULL) {
-            THROW_EXCEPTION("Cannot initialize main register after the pipeline register initialization has completed.");
-        }
-        this->reg_all = reg_ptr;
-        this->reg_all->has_to_propagate = &(this->has_to_propagate);
-    } else {
-        if (this->reg_stage[reg_idx] != NULL) {
-            THROW_EXCEPTION("Cannot initialize register " << reg_idx << " after the pipeline register initialization has completed.");
-        }
-        this->reg_stage[reg_idx] = reg_ptr;
-        this->reg_stage[reg_idx]->has_to_propagate = &(this->has_to_propagate);
-    }""")
-    setRegisterMethod = cxx_writer.Method('set_register', getRegisterBody, cxx_writer.voidType, 'pu', [regPointerParam, regIndexParam])
-    registerElements.append(setRegisterMethod)
-
-    # Simple base methods used to access the general register operators: we simply perform a forward towards
-    # the corresponding operator of the general register (reg_all)
-    InnerFieldType = cxx_writer.Type('InnerField')
-    operatorParam = cxx_writer.Parameter('bitfield', cxx_writer.intType)
-    operatorBody = cxx_writer.Code('return (*(this->reg_all))[bitfield];')
-    operatorDecl = cxx_writer.MemberOperator('[]', operatorBody, InnerFieldType.makeRef(), 'pu', [operatorParam], noException = True)
-    registerElements.append(operatorDecl)
-    for i in unaryOps:
-        operatorBody = cxx_writer.Code('return ' + i + '(*(this->reg_all));')
-        operatorDecl = cxx_writer.MemberOperator(i, operatorBody, registerType, 'pu', noException = True)
-        registerElements.append(operatorDecl)
-    for i in binaryOps:
-        operatorParam = cxx_writer.Parameter('other', registerType.makeRef().makeConst())
-        operatorBody = cxx_writer.Code('return (*(this->reg_all)) ' + i + ' other;')
-        operatorDecl = cxx_writer.MemberOperator(i, operatorBody, registerType, 'pu', [operatorParam], const = True, noException = True)
-        registerElements.append(operatorDecl)
-    for i in comparisonOps:
-        operatorParam = cxx_writer.Parameter('other', registerType.makeRef().makeConst())
-        operatorBody = cxx_writer.Code('return (*(this->reg_all)) ' + i + ' other;')
-        operatorDecl = cxx_writer.MemberOperator(i, operatorBody, cxx_writer.boolType, 'pu', [operatorParam], const = True, noException = True)
-        registerElements.append(operatorDecl)
-
-    pureDeclTypes = [registerType, registerType]
-    for pureDecls in pureDeclTypes:
-        for i in assignmentOps:
-            operatorParam = cxx_writer.Parameter('other', pureDecls.makeRef().makeConst())
-            operatorBody = cxx_writer.Code('return (*(this->reg_all)) ' + i + ' other;')
-            operatorDecl = cxx_writer.MemberOperator(i, operatorBody, registerType.makeRef(), 'pu', [operatorParam], noException = True)
-            registerElements.append(operatorDecl)
-    # Stream Operators
-    outStreamType = cxx_writer.Type('std::ostream', 'ostream')
-    operatorParam = cxx_writer.Parameter('stream', outStreamType.makeRef())
-    operatorBody = cxx_writer.Code('return stream << (*(this->reg_all));')
-    operatorDecl = cxx_writer.MemberOperator('<<', operatorBody, outStreamType.makeRef(), 'pu', [operatorParam], const = True, noException = True)
-    registerElements.append(operatorDecl)
-    operatorBody = cxx_writer.Code('return *(this->reg_all);')
-    operatorIntDecl = cxx_writer.MemberOperator(str(registerType), operatorBody, cxx_writer.Type(''), 'pu', const = True, noException = True)
-    registerElements.append(operatorIntDecl)
-
-    pipelineRegClass = cxx_writer.ClassDeclaration('PipelineRegister', registerElements, [registerType], namespaces = [namespace])
-    pipelineRegClass.addConstructor(publicFullConstr)
-    pipelineRegClass.addConstructor(publicEmptyConstr)
-    pipelineRegClasses.append(pipelineRegClass)
-    PipelineRegisterType = pipelineRegClass.getType()
-
-    ############################################################################
-    # Now I have to examine all the registers with special write back conditions
-    # and create a special propagate method for all of them
-    # First I need to create correspondence pipeline stages, numbers
-    pipeNumbers = {}
-    i = 0
-    for pipeStage in self.pipes:
-        pipeNumbers[pipeStage.name] = i
-        i += 1
-    orders = []
-    for reg in self.regs:
-        if reg.wbStageOrder:
-            if not reg.wbStageOrder in orders:
-                orders.append(reg.wbStageOrder)
-    for order in orders:
-        registerElements = []
-        propagateCode = 'bool has_changes = false;\n'
-        #propagateCode += 'if (!this->has_to_propagate) {\nreturn;\n}\n'
-        for pipeStage in order:
-            if pipeStage != order[0]:
-                propagateCode += 'else '
-            propagateCode += 'if (this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']->time_stamp > this->reg_all->time_stamp) {\n'
-            ######
-            if trace and not combinedTrace:
-                propagateCode += 'std::cerr << "Propagating stage ' + str(pipeNumbers[pipeStage]) + ' into all stages." << std::endl;\n'
-            ######
-            propagateCode += 'has_changes = true;\n'
-            propagateCode += 'this->reg_all->force_value(*(this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']));\n'
-            propagateCode += 'this->reg_all->time_stamp = this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']->time_stamp;\n'
-            propagateCode += 'for (int i = 0; i < ' + str(len(self.pipes)) + '; i++) {\n'
-            propagateCode += 'this->reg_stage[i]->force_value(*(this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']));\n'
-            propagateCode += 'this->reg_stage[i]->time_stamp = this->reg_stage[' + str(pipeNumbers[pipeStage]) + ']->time_stamp;\n'
-            propagateCode += '}\n}\n'
-        propagateCode += 'this->has_to_propagate = has_changes;\n'
-        propagateBody = cxx_writer.Code(propagateCode)
-        propagateMethod = cxx_writer.Method('propagate', propagateBody, cxx_writer.voidType, 'pu', noException = True)
-        registerElements.append(propagateMethod)
-
-        emptyBody = cxx_writer.Code('')
-        publicFullConstr = cxx_writer.Constructor(emptyBody, 'pu', fullConstructorParams, ['PipelineRegister(' + innerConstrInit + ')'])
-        publicEmptyConstr = cxx_writer.Constructor(emptyBody, 'pu', initList = ['PipelineRegister()'])
-        pipelineRegClass = cxx_writer.ClassDeclaration('PipelineRegister_' + str(order)[1:-1].replace(', ', '_').replace('\'', ''), registerElements, [PipelineRegisterType], namespaces = [namespace])
-        pipelineRegClass.addConstructor(publicFullConstr)
-        pipelineRegClass.addConstructor(publicEmptyConstr)
-        pipelineRegClasses.append(pipelineRegClass)
-
-    return pipelineRegClasses
 
 ################################################################################

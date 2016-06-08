@@ -87,7 +87,7 @@ class Register:
         self.offset = 0
         self.constValue = None
         self.delay = 0
-        self.wbStageOrder = []
+        self.wbStageOrder = {}
 
     def setDefaultValue(self, value):
         if self.defValue:
@@ -117,6 +117,9 @@ class Register:
             raise Exception('Cannot set offset for register ' + self.name + ' because it uses a bit mask.')
         self.offset = value
 
+    # This is a map of forwarding paths stage -> stages, so e.g.
+    # {'ID': ['IF'], 'WB': ['REG', 'EX']} means ID forwards to IF and WB
+    # forwards to both REG and EX.
     def setWbStageOrder(self, order):
         self.wbStageOrder = order
 
@@ -1349,11 +1352,11 @@ class PipeStage:
     bypassing is started. Note that this is just the default
     information which can be overridden by each instruction"""
     def __init__(self, name):
+        self.name = name
         self.wb = False
         self.checkHazard = False
-        self.name = name
-        self.checkUnknown = False
         self.endHazard = False
+        self.checkUnknown = False
 
     def setWriteBack(self):
         self.wb = True

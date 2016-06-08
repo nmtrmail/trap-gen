@@ -159,12 +159,12 @@ processor.addRegister(yReg)
 # Program Counter
 pcReg = trap.Register('PC', 32)
 pcReg.setDefaultValue('ENTRY_POINT')
-pcReg.setWbStageOrder(['wb', 'decode', 'fetch'])
+pcReg.setWbStageOrder({'decode': ['fetch'], 'wb': ['decode']})
 processor.addRegister(pcReg)
 # Program Counter
 npcReg = trap.Register('NPC', 32)
 npcReg.setDefaultValue(('ENTRY_POINT', 4))
-npcReg.setWbStageOrder(['wb', 'decode', 'fetch'])
+npcReg.setWbStageOrder({'decode': ['fetch'], 'wb': ['decode']})
 processor.addRegister(npcReg)
 # Processor Configuration Register: contains informations on the processor
 # configuration (num reg win, etc.)
