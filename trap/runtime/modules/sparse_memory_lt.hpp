@@ -60,7 +60,7 @@ class SparseMemoryLT : public sc_module {
   public:
   SparseMemoryLT(sc_module_name name, unsigned size, sc_time latency = SC_ZERO_TIME) :
     sc_module(name), latency(latency) {
-    for (int i = 0; i < NUM_INITIATORS; i++) {
+    for (unsigned i = 0; i < NUM_INITIATORS; ++i) {
       this->target_socket[i] =
         new tlm_utils::simple_target_socket<SparseMemoryLT,
           sock_size>(("mem_socket_" + boost::lexical_cast<std::string>(i)).c_str());
@@ -75,7 +75,7 @@ class SparseMemoryLT : public sc_module {
   /// ..........................................................................
 
   ~SparseMemoryLT() {
-    for (int i = 0; i < NUM_INITIATORS; i++) {
+    for (unsigned i = 0; i < NUM_INITIATORS; ++i) {
       delete this->target_socket[i];
     }
   } // ~SparseMemoryLT()
@@ -97,11 +97,11 @@ class SparseMemoryLT : public sc_module {
     }
 
     if (cmd == tlm::TLM_READ_COMMAND) {
-      for (int i = 0; i < len; i++, ptr++) {
+      for (unsigned i = 0; i < len; ++i, ++ptr) {
         *ptr = this->mem[adr + i];
       }
     } else if (cmd == tlm::TLM_WRITE_COMMAND) {
-      for (int i = 0; i < len; i++, ptr++) {
+      for (unsigned i = 0; i < len; ++i, ++ptr) {
         this->mem[adr + i] = *ptr;
       }
     }
@@ -135,11 +135,11 @@ class SparseMemoryLT : public sc_module {
     unsigned len = trans.get_data_length();
 
     if (cmd == tlm::TLM_READ_COMMAND) {
-      for (int i = 0; i < len; i++, ptr++) {
+      for (unsigned i = 0; i < len; ++i, ++ptr) {
         *ptr = this->mem[adr + i];
       }
     } else if (cmd == tlm::TLM_WRITE_COMMAND) {
-      for (int i = 0; i < len; i++, ptr++) {
+      for (unsigned i = 0; i < len; ++i, ++ptr) {
         this->mem[adr + i] = *ptr;
       }
     }

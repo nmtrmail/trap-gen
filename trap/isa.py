@@ -248,11 +248,11 @@ class ISA:
                 if checkerMethod(reg) is None:
                     raise Exception('Register ' + reg + ' specified in the machine code does not exist.')
 
-    def getCPPClasses(self, processor, model, trace, combinedTrace, namespace):
-        return isaWriter.getCPPClasses(self, processor, model, trace, combinedTrace, namespace)
+    def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
+        return isaWriter.getCPPInstructions(self, processor, model, trace, combinedTrace, namespace)
 
-    def getCPPTests(self, processor, model, trace, combinedTrace, namespace):
-        return isaWriter.getCPPTests(self, processor, model, trace, combinedTrace, namespace)
+    def getCPPInstrTests(self, processor, model, trace, combinedTrace, namespace):
+        return isaWriter.getCPPInstrTests(self, processor, model, trace, combinedTrace, namespace)
 
     def getInstructionSig(self):
         """Returns the signature (in the form of a string) uniquely identifying the
@@ -685,9 +685,9 @@ class HelperMethod:
                     raise Exception('Cannot add parameter ' + param.name + ' to operation ' + self.name + '. Parameter already exists in operation.')
             self.parameters.append(param)
 
-    def getCPPMethod(self, model, namespace):
+    def getCPPInstrMethod(self, model, namespace):
         """returns the cpp code implementing the current method"""
-        return isaWriter.getCPPMethod(self, model, namespace)
+        return isaWriter.getCPPInstrMethod(self, model, namespace)
 
     def __repr__(self):
         return self.name

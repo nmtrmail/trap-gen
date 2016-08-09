@@ -51,12 +51,21 @@ except ImportError:
     except ImportError:
         print ('Please specify location of core TRAP files in MICROBLAZEArch.py.')
 
+# For easy of use, I add the possibility of specifying command line parameters to tune
+# the processor creation steps without having to modify this script
+destFolderName = 'processor'
+standalone = False
+if len(sys.argv) > 1:
+    destFolderName = sys.argv[1]
+if len(sys.argv) > 2 and sys.argv[2].lower() == 'standalone':
+    standalone = True
+
 # It is nice to keep the ISA and the architecture separated
 # so we use the import trick
 import MICROBLAZEIsa
 
 # Lets now start building the processor
-processor = trap.Processor('MICROBLAZE', version = '0.1', systemc = False, instructionCache = True, fastFetch = True)
+processor = trap.Processor('MICROBLAZE', version = '0.1', systemc = True, instructionCache = True, fastFetch = True)
 processor.setBigEndian() #big endian
 processor.setWordsize(4, 8) #4 bytes per word, 8 bits per byte
 processor.setISA(MICROBLAZEIsa.isa) #lets set the instruction set
@@ -160,7 +169,16 @@ executeStage = trap.PipeStage('execute')
 processor.addPipeStage(executeStage)
 
 # Here we declare a memory for the MB (with size = 10MB)
-processor.setMemory('dataMem', memorySize)
+if standalone:
+    processor.setMemory('dataMem', memorySize)
+else:
+    processor.addTLMPort('instrMem', True)
+    processor.addTLMPort('dataMem')
+    # Here I set the properties of the TLM memory: note that they are only used
+    # to instantiate a fake memory in the simulator main file, but they do not
+    # affect at all the processor core: i.e. once the processor is plugged in a
+    # system-level simulator, they have no effect at all
+    processor.setTLMMem(memorySize, 0, True)
 
 # Here we set the register from which we will fetch the next instruction
 processor.setFetchRegister('PC', 0)
@@ -173,7 +191,5 @@ abi.returnCall([('PC', 'GPR[15]', 8)])
 processor.setABI(abi)
 
 # Finally we can dump the processor on file
-processor.write(folder = 'processor', models = ['funcLT'], trace = True)
-#processor.write(folder = 'processor', models = ['funcLT', 'funcAT'], tests = False)
-#processor.write(folder = 'processor', models = ['accLT', 'funcLT', 'funcAT'], tests = True)
-#processor.write(folder = 'processor', models = ['accLT', 'funcLT', 'funcAT'], trace = True, combinedTrace = True)
+#processor.write(folder = destFolderName, models = ['funcLT'], tests = True)
+processor.write(folder = destFolderName, models = ['accAT', 'funcLT'], trace = True)

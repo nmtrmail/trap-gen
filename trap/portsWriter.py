@@ -74,14 +74,14 @@ def getCPPExternalPorts(self, model, namespace):
     aliasInit = []
     from registerWriter import registerType, aliasType
     if self.memAlias:
-        aliasAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'pri'))
+        aliasAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'private'))
         aliasParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
         aliasInit.append('R(R)')
 
     MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
-    tlmPortElements.append(cxx_writer.Attribute('debugger', MemoryToolsIfType.makePointer(), 'pri'))
+    tlmPortElements.append(cxx_writer.Attribute('debugger', MemoryToolsIfType.makePointer(), 'private'))
     setDebuggerBody = cxx_writer.Code('this->debugger = debugger;')
-    tlmPortElements.append(cxx_writer.Method('set_debugger', setDebuggerBody, cxx_writer.voidType, 'pu', [cxx_writer.Parameter('debugger', MemoryToolsIfType.makePointer())]))
+    tlmPortElements.append(cxx_writer.Method('set_debugger', setDebuggerBody, cxx_writer.voidType, 'public', [cxx_writer.Parameter('debugger', MemoryToolsIfType.makePointer())]))
     checkWatchPointCode = """if (this->debugger != NULL) {
         this->debugger->notify_address(address, sizeof(datum));
     }
@@ -110,7 +110,7 @@ def getCPPExternalPorts(self, model, namespace):
         transParam = cxx_writer.Parameter('trans', payloadType.makeRef())
         phaseParam = cxx_writer.Parameter('phase', phaseType.makeRef())
         delayParam = cxx_writer.Parameter('delay', cxx_writer.sc_timeType.makeRef())
-        helperDecl = cxx_writer.Method('nb_transport_bw', helperBody, sync_enumType, 'pu', [transParam, phaseParam, delayParam], inline = True, noException = True)
+        helperDecl = cxx_writer.Method('nb_transport_bw', helperBody, sync_enumType, 'public', [transParam, phaseParam, delayParam], inline = True, noException = True)
         tlmPortElements.append(helperDecl)
 
         helperCode = """// Payload event queue callback to handle transactions from target.
@@ -141,12 +141,12 @@ def getCPPExternalPorts(self, model, namespace):
             """
         helperBody = cxx_writer.Code(helperCode)
         phaseParam = cxx_writer.Parameter('phase', phaseType.makeRef().makeConst())
-        helperDecl = cxx_writer.Method('peq_cb', helperBody, cxx_writer.voidType, 'pu', [transParam, phaseParam])
+        helperDecl = cxx_writer.Method('peq_cb', helperBody, cxx_writer.voidType, 'public', [transParam, phaseParam])
         tlmPortElements.append(helperDecl)
 
-        tlmPortElements.append(cxx_writer.Attribute('request_in_progress', payloadType.makePointer(), 'pri'))
-        tlmPortElements.append(cxx_writer.Attribute('end_request_event', cxx_writer.sc_eventType, 'pri'))
-        tlmPortElements.append(cxx_writer.Attribute('end_response_event', cxx_writer.sc_eventType, 'pri'))
+        tlmPortElements.append(cxx_writer.Attribute('request_in_progress', payloadType.makePointer(), 'private'))
+        tlmPortElements.append(cxx_writer.Attribute('end_request_event', cxx_writer.sc_eventType, 'private'))
+        tlmPortElements.append(cxx_writer.Attribute('end_response_event', cxx_writer.sc_eventType, 'private'))
 
     if model.endswith('LT'):
         readCode = """ datum = 0;
@@ -253,17 +253,17 @@ def getCPPExternalPorts(self, model, namespace):
     readBody = cxx_writer.Code(readMemAliasCode + str(archDWordType) + readCode + swapDEndianessCode + '\nreturn datum;')
     readBody.addInclude('common/report.hpp')
     readBody.addInclude('tlm.h')
-    readDecl = cxx_writer.Method('read_dword', readBody, archDWordType, 'pu', [addressParam], noException = True)
+    readDecl = cxx_writer.Method('read_dword', readBody, archDWordType, 'public', [addressParam], noException = True)
     tlmPortElements.append(readDecl)
     readBody = cxx_writer.Code(readMemAliasCode + str(archWordType) + readCode + swapEndianessCode + '\nreturn datum;')
-    readDecl = cxx_writer.Method('read_word', readBody, archWordType, 'pu', [addressParam], inline = True, noException = True)
+    readDecl = cxx_writer.Method('read_word', readBody, archWordType, 'public', [addressParam], inline = True, noException = True)
     tlmPortElements.append(readDecl)
     readMemAliasCode = ''
     for alias in self.memAlias:
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archHWordType) + ')' + alias.alias + '_temp;\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archHWordType) + ' *)&(' + alias.alias + '_temp)) + 1);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + str(archHWordType) + readCode + swapEndianessCode + '\nreturn datum;')
-    readDecl = cxx_writer.Method('read_half', readBody, archHWordType, 'pu', [addressParam], noException = True)
+    readDecl = cxx_writer.Method('read_half', readBody, archHWordType, 'public', [addressParam], noException = True)
     tlmPortElements.append(readDecl)
     readMemAliasCode = ''
     for alias in self.memAlias:
@@ -272,7 +272,7 @@ def getCPPExternalPorts(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 2);\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 3);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + str(archByteType) + readCode + '\nreturn datum;')
-    readDecl = cxx_writer.Method('read_byte', readBody, archByteType, 'pu', [addressParam], noException = True)
+    readDecl = cxx_writer.Method('read_byte', readBody, archByteType, 'public', [addressParam], noException = True)
     tlmPortElements.append(readDecl)
     writeCode = ''
     if model.endswith('LT'):
@@ -374,11 +374,11 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n this->' + alias.alias + ' = datum;\nreturn;\n}\n'
     writeBody = cxx_writer.Code(swapDEndianessCode + writeMemAliasCode + checkWatchPointCode + writeCode)
     datumParam = cxx_writer.Parameter('datum', archDWordType)
-    writeDecl = cxx_writer.Method('write_dword', writeBody, cxx_writer.voidType, 'pu', [addressParam, datumParam], noException = True)
+    writeDecl = cxx_writer.Method('write_dword', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
     tlmPortElements.append(writeDecl)
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + checkWatchPointCode + writeCode)
     datumParam = cxx_writer.Parameter('datum', archWordType)
-    writeDecl = cxx_writer.Method('write_word', writeBody, cxx_writer.voidType, 'pu', [addressParam, datumParam], inline = True, noException = True)
+    writeDecl = cxx_writer.Method('write_word', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], inline = True, noException = True)
     tlmPortElements.append(writeDecl)
     datumParam = cxx_writer.Parameter('datum', archHWordType)
     writeMemAliasCode = swapEndianessDefine
@@ -391,7 +391,7 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archHWordType) + ' *)&' + alias.alias + '_temp) + 1) = (' + str(archHWordType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
     writeMemAliasCode += '#endif\n'
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + checkWatchPointCode + writeCode)
-    writeDecl = cxx_writer.Method('write_half', writeBody, cxx_writer.voidType, 'pu', [addressParam, datumParam], noException = True)
+    writeDecl = cxx_writer.Method('write_half', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
     tlmPortElements.append(writeDecl)
     datumParam = cxx_writer.Parameter('datum', archByteType)
     writeMemAliasCode = swapEndianessDefine
@@ -408,7 +408,7 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '*)&' + alias.alias + '_temp) + 3) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
     writeMemAliasCode += '#endif\n'
     writeBody = cxx_writer.Code(writeMemAliasCode + checkWatchPointCode + writeCode)
-    writeDecl = cxx_writer.Method('write_byte', writeBody, cxx_writer.voidType, 'pu', [addressParam, datumParam], noException = True)
+    writeDecl = cxx_writer.Method('write_byte', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
     tlmPortElements.append(writeDecl)
 
     readCode1 = """tlm::tlm_generic_payload trans;
@@ -425,17 +425,17 @@ def getCPPExternalPorts(self, model, namespace):
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(' + str(self.wordSize*2) + ');\ntrans.set_streaming_width(' + str(self.wordSize*2) + ');\n' + str(archDWordType) + ' datum = 0;\n' + readCode2 + swapDEndianessCode + 'return datum;')
     readBody.addInclude('common/report.hpp')
     readBody.addInclude('tlm.h')
-    readDecl = cxx_writer.Method('read_dword_dbg', readBody, archDWordType, 'pu', [addressParam], noException = True)
+    readDecl = cxx_writer.Method('read_dword_dbg', readBody, archDWordType, 'public', [addressParam], noException = True)
     tlmPortElements.append(readDecl)
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(' + str(self.wordSize) + ');\ntrans.set_streaming_width(' + str(self.wordSize) + ');\n' + str(archWordType) + ' datum = 0;\n' + readCode2 + swapEndianessCode + 'return datum;')
-    readDecl = cxx_writer.Method('read_word_dbg', readBody, archWordType, 'pu', [addressParam], noException = True)
+    readDecl = cxx_writer.Method('read_word_dbg', readBody, archWordType, 'public', [addressParam], noException = True)
     tlmPortElements.append(readDecl)
     readMemAliasCode = ''
     for alias in self.memAlias:
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archHWordType) + ')' + alias.alias + '_temp;\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archHWordType) + ' *)&(' + alias.alias + '_temp)) + 1);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(' + str(self.wordSize/2) + ');\ntrans.set_streaming_width(' + str(self.wordSize/2) + ');\n' + str(archHWordType) + ' datum = 0;\n' + readCode2 + swapEndianessCode + 'return datum;')
-    readDecl = cxx_writer.Method('read_half_dbg', readBody, archHWordType, 'pu', [addressParam], noException = True)
+    readDecl = cxx_writer.Method('read_half_dbg', readBody, archHWordType, 'public', [addressParam], noException = True)
     tlmPortElements.append(readDecl)
     readMemAliasCode = ''
     for alias in self.memAlias:
@@ -444,7 +444,7 @@ def getCPPExternalPorts(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 2);\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 3);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(1);\ntrans.set_streaming_width(1);\n' + str(archByteType) + ' datum = 0;\n' + readCode2 + 'return datum;')
-    readDecl = cxx_writer.Method('read_byte_dbg', readBody, archByteType, 'pu', [addressParam], noException = True)
+    readDecl = cxx_writer.Method('read_byte_dbg', readBody, archByteType, 'public', [addressParam], noException = True)
     tlmPortElements.append(readDecl)
     writeCode1 = """tlm::tlm_generic_payload trans;
         trans.set_address(address);
@@ -458,11 +458,11 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n this->' + alias.alias + ' = datum;\nreturn;\n}\n'
     writeBody = cxx_writer.Code(swapDEndianessCode + writeMemAliasCode + writeCode1 + 'trans.set_data_length(' + str(self.wordSize*2) + ');\ntrans.set_streaming_width(' + str(self.wordSize*2) + ');\n' + writeCode2)
     datumParam = cxx_writer.Parameter('datum', archDWordType)
-    writeDecl = cxx_writer.Method('write_dword_dbg', writeBody, cxx_writer.voidType, 'pu', [addressParam, datumParam], noException = True)
+    writeDecl = cxx_writer.Method('write_dword_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
     tlmPortElements.append(writeDecl)
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + writeCode1 + 'trans.set_data_length(' + str(self.wordSize) + ');\ntrans.set_streaming_width(' + str(self.wordSize) + ');\n' + writeCode2)
     datumParam = cxx_writer.Parameter('datum', archWordType)
-    writeDecl = cxx_writer.Method('write_word_dbg', writeBody, cxx_writer.voidType, 'pu', [addressParam, datumParam], noException = True)
+    writeDecl = cxx_writer.Method('write_word_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
     tlmPortElements.append(writeDecl)
     writeMemAliasCode = swapEndianessDefine
     for alias in self.memAlias:
@@ -475,7 +475,7 @@ def getCPPExternalPorts(self, model, namespace):
     writeMemAliasCode += '#endif\n'
     datumParam = cxx_writer.Parameter('datum', archHWordType)
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + writeCode1 + 'trans.set_data_length(' + str(self.wordSize/2) + ');\ntrans.set_streaming_width(' + str(self.wordSize/2) + ');\n' + writeCode2)
-    writeDecl = cxx_writer.Method('write_half_dbg', writeBody, cxx_writer.voidType, 'pu', [addressParam, datumParam], noException = True)
+    writeDecl = cxx_writer.Method('write_half_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
     tlmPortElements.append(writeDecl)
     writeMemAliasCode = swapEndianessDefine
     for alias in self.memAlias:
@@ -492,34 +492,34 @@ def getCPPExternalPorts(self, model, namespace):
     writeMemAliasCode += '#endif\n'
     datumParam = cxx_writer.Parameter('datum', archByteType)
     writeBody = cxx_writer.Code(writeMemAliasCode + writeCode1 + 'trans.set_data_length(1);\ntrans.set_streaming_width(1);\n' + writeCode2)
-    writeDecl = cxx_writer.Method('write_byte_dbg', writeBody, cxx_writer.voidType, 'pu', [addressParam, datumParam], noException = True)
+    writeDecl = cxx_writer.Method('write_byte_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
     tlmPortElements.append(writeDecl)
 
-    lockDecl = cxx_writer.Method('lock', emptyBody, cxx_writer.voidType, 'pu')
+    lockDecl = cxx_writer.Method('lock', emptyBody, cxx_writer.voidType, 'public')
     tlmPortElements.append(lockDecl)
-    unlockDecl = cxx_writer.Method('unlock', emptyBody, cxx_writer.voidType, 'pu')
+    unlockDecl = cxx_writer.Method('unlock', emptyBody, cxx_writer.voidType, 'public')
     tlmPortElements.append(unlockDecl)
 
     constructorParams.append(cxx_writer.Parameter('port_name', cxx_writer.sc_module_nameType))
     tlmPortInit.append('sc_module(port_name)')
-    initSockAttr = cxx_writer.Attribute('init_socket', tlminitsocketType, 'pu')
+    initSockAttr = cxx_writer.Attribute('init_socket', tlminitsocketType, 'public')
     tlmPortElements.append(initSockAttr)
     constructorCode = 'this->debugger = NULL;\n'
     if model.endswith('LT'):
         if not model.startswith('acc'):
             quantumKeeperType = cxx_writer.Type('tlm_utils::tlm_quantumkeeper', 'tlm_utils/tlm_quantumkeeper.h')
-            quantumKeeperAttribute = cxx_writer.Attribute('quant_keeper', quantumKeeperType.makeRef(), 'pri')
+            quantumKeeperAttribute = cxx_writer.Attribute('quant_keeper', quantumKeeperType.makeRef(), 'private')
             tlmPortElements.append(quantumKeeperAttribute)
             tlmPortInit.append('quant_keeper(quant_keeper)')
             constructorParams.append(cxx_writer.Parameter('quant_keeper', quantumKeeperType.makeRef()))
-        dmi_ptr_validAttribute = cxx_writer.Attribute('dmi_ptr_valid', cxx_writer.boolType, 'pri')
+        dmi_ptr_validAttribute = cxx_writer.Attribute('dmi_ptr_valid', cxx_writer.boolType, 'private')
         tlmPortElements.append(dmi_ptr_validAttribute)
-        dmi_dataAttribute = cxx_writer.Attribute('dmi_data', tlm_dmiType, 'pri')
+        dmi_dataAttribute = cxx_writer.Attribute('dmi_data', tlm_dmiType, 'private')
         tlmPortElements.append(dmi_dataAttribute)
         constructorCode += 'this->dmi_ptr_valid = false;\n'
     else:
         peqType = cxx_writer.TemplateType('tlm_utils::peq_with_cb_and_phase', [TLMMemoryType], 'tlm_utils/peq_with_cb_and_phase.h')
-        tlmPortElements.append(cxx_writer.Attribute('m_peq', peqType, 'pri'))
+        tlmPortElements.append(cxx_writer.Attribute('m_peq', peqType, 'private'))
         tlmPortInit.append('m_peq(this, &TLMMemory::peq_cb)')
         tlmPortInit.append('request_in_progress(NULL)')
         constructorCode += """// Register callbacks for incoming interface method calls.
@@ -531,12 +531,12 @@ def getCPPExternalPorts(self, model, namespace):
     extPortDecl = cxx_writer.ClassDeclaration('TLMMemory', tlmPortElements, [memIfType, cxx_writer.sc_moduleType], namespaces = [namespace])
     extPortDecl.addDocString(brief = 'Port Class', detail = 'Defines the TLM ports used by the core for communicating with other modules.')
     constructorBody = cxx_writer.Code(constructorCode + 'end_module();')
-    publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams + aliasParams, tlmPortInit + aliasInit)
+    publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams + aliasParams, tlmPortInit + aliasInit)
     extPortDecl.addConstructor(publicExtPortConstr)
 
     return extPortDecl
 
-def getGetIRQPorts(self, namespace):
+def getCPPIRQPorts(self, namespace):
     """Returns the classes implementing the interrupt ports; there can
     be two different kind of ports: systemc based or TLM based"""
     TLMWidth = []
@@ -573,11 +573,11 @@ def getGetIRQPorts(self, namespace):
         tagParam = cxx_writer.Parameter('tag', cxx_writer.intType)
         payloadParam = cxx_writer.Parameter('trans', payloadType.makeRef())
         delayParam = cxx_writer.Parameter('delay', cxx_writer.sc_timeType.makeRef())
-        blockTransportDecl = cxx_writer.Method('b_transport', blockTransportBody, cxx_writer.voidType, 'pu', [tagParam, payloadParam, delayParam])
+        blockTransportDecl = cxx_writer.Method('b_transport', blockTransportBody, cxx_writer.voidType, 'public', [tagParam, payloadParam, delayParam])
         tlmPortElements.append(blockTransportDecl)
 
         debugTransportBody = cxx_writer.Code(blockTransportCode + 'return trans.get_data_length();')
-        debugTransportDecl = cxx_writer.Method('transport_dbg', debugTransportBody, cxx_writer.uintType, 'pu', [tagParam, payloadParam])
+        debugTransportDecl = cxx_writer.Method('transport_dbg', debugTransportBody, cxx_writer.uintType, 'public', [tagParam, payloadParam])
         tlmPortElements.append(debugTransportDecl)
 
         nblockTransportCode = """THROW_EXCEPTION("Method not yet implemented.");
@@ -587,14 +587,14 @@ def getGetIRQPorts(self, namespace):
         nblockTransportBody.addInclude('common/report.hpp')
         sync_enumType = cxx_writer.Type('tlm::tlm_sync_enum', 'tlm.h')
         phaseParam = cxx_writer.Parameter('phase', cxx_writer.Type('tlm::tlm_phase').makeRef())
-        nblockTransportDecl = cxx_writer.Method('nb_transport_fw', nblockTransportBody, sync_enumType, 'pu', [tagParam, payloadParam, phaseParam, delayParam])
+        nblockTransportDecl = cxx_writer.Method('nb_transport_fw', nblockTransportBody, sync_enumType, 'public', [tagParam, payloadParam, phaseParam, delayParam])
         tlmPortElements.append(nblockTransportDecl)
 
-        socketAttr = cxx_writer.Attribute('target_socket', tlmsocketType, 'pu')
+        socketAttr = cxx_writer.Attribute('target_socket', tlmsocketType, 'public')
         tlmPortElements.append(socketAttr)
         from isa import resolveBitType
         widthType = resolveBitType('BIT<' + str(width) + '>')
-        irqSignalAttr = cxx_writer.Attribute('irq_signal', widthType.makeRef(), 'pu')
+        irqSignalAttr = cxx_writer.Attribute('irq_signal', widthType.makeRef(), 'public')
         tlmPortElements.append(irqSignalAttr)
         constructorCode = ''
         tlmPortInit = []
@@ -609,7 +609,7 @@ def getGetIRQPorts(self, namespace):
         constructorCode += 'this->target_socket.register_nb_transport_fw(this, &TLMIntrPort_' + str(width) + '::nb_transport_fw);\n'
         irqPortDecl = cxx_writer.ClassDeclaration('TLMIntrPort_' + str(width), tlmPortElements, [cxx_writer.sc_moduleType], namespaces = [namespace])
         constructorBody = cxx_writer.Code(constructorCode + 'end_module();')
-        publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams, tlmPortInit)
+        publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams, tlmPortInit)
         irqPortDecl.addConstructor(publicExtPortConstr)
         classes.append(irqPortDecl)
     for width in SyscWidth:
@@ -619,11 +619,11 @@ def getGetIRQPorts(self, namespace):
         systemcPortElements = []
         sensitiveMethodCode = 'this->irq_signal = this->irq_received_signal.read();'
         sensitiveMethodBody = cxx_writer.Code(sensitiveMethodCode)
-        sensitiveMethodDecl = cxx_writer.Method('irq_received', sensitiveMethodBody, cxx_writer.voidType, 'pu')
+        sensitiveMethodDecl = cxx_writer.Method('irq_received', sensitiveMethodBody, cxx_writer.voidType, 'public')
         systemcPortElements.append(sensitiveMethodDecl)
-        signalAttr = cxx_writer.Attribute('irq_received_signal', widthSignalType, 'pu')
+        signalAttr = cxx_writer.Attribute('irq_received_signal', widthSignalType, 'public')
         systemcPortElements.append(signalAttr)
-        irqSignalAttr = cxx_writer.Attribute('irq_signal', widthType.makeRef(), 'pu')
+        irqSignalAttr = cxx_writer.Attribute('irq_signal', widthType.makeRef(), 'public')
         tlmPortElements.append(irqSignalAttr)
         constructorCode = ''
         tlmPortInit = []
@@ -636,12 +636,12 @@ def getGetIRQPorts(self, namespace):
         irqPortDecl = cxx_writer.ClassDeclaration('SCIntrPort_' + str(width), systemcPortElements, [cxx_writer.sc_moduleType], namespaces = [namespace])
         irqPortDecl.addDocString(brief = 'Interrupt Port Class', detail = 'Defines both SystemC and TLM ports for convenience.')
         constructorBody = cxx_writer.Code(constructorCode + 'end_module();')
-        publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams, tlmPortInit)
+        publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams, tlmPortInit)
         irqPortDecl.addConstructor(publicExtPortConstr)
         classes.append(irqPortDecl)
     return classes
 
-def getGetPINPorts(self, namespace):
+def getCPPPINPorts(self, namespace):
     """Returns the code implementing pins for communication with external world.
     there are both incoming and outgoing external ports. For the outgoing
     I simply have to declare the port class (like memory ports), for the
@@ -711,19 +711,19 @@ def getGetPINPorts(self, namespace):
         PINWidthType = resolveBitType('BIT<' + str(port.portWidth) + '>')
         addressParam = cxx_writer.Parameter('address', PINWidthType.makeRef().makeConst())
         datumParam = cxx_writer.Parameter('datum', PINWidthType)
-        sendPINDecl = cxx_writer.Method('send_pin_req', sendPINBody, cxx_writer.voidType, 'pu', [addressParam, datumParam], noException = True)
+        sendPINDecl = cxx_writer.Method('send_pin_req', sendPINBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
         pinPortElements.append(sendPINDecl)
 
         constructorParams.append(cxx_writer.Parameter('pin_name', cxx_writer.sc_module_nameType))
         pinPortInit.append('sc_module(pin_name)')
-        initSockAttr = cxx_writer.Attribute('init_socket', tlminitsocketType, 'pu')
+        initSockAttr = cxx_writer.Attribute('init_socket', tlminitsocketType, 'public')
         pinPortInit.append('init_socket(\"init_socket\")')
         pinPortElements.append(initSockAttr)
 
         pinPortDecl = cxx_writer.ClassDeclaration('TLMOutPin_' + str(port.portWidth), pinPortElements, [cxx_writer.sc_moduleType], namespaces = [namespace])
         pinPortDecl.addDocString(brief = 'Pin Class', detail = 'Defines the pins used by the core for communicating with other modules. Outgoing ports call a given interface of another module, while incoming ports need to define the interface to be used by other modules.')
         constructorBody = cxx_writer.Code('end_module();')
-        publicPINPortConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams, pinPortInit)
+        publicPINPortConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams, pinPortInit)
         pinPortDecl.addConstructor(publicPINPortConstr)
         pinClasses.append(pinPortDecl)
 
@@ -739,7 +739,7 @@ def getGetPINPorts(self, namespace):
 
     return pinClasses
 
-def getIRQTests(self, trace, combinedTrace, namespace):
+def getCPPIRQTests(self, trace, combinedTrace, namespace):
     """Returns the code implementing the tests for the interrupts"""
     from processor import extractRegInterval
     from registerWriter import registerType

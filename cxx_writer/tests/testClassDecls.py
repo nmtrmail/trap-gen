@@ -90,9 +90,9 @@ class TestClassDecls(unittest.TestCase):
 
     def testNormalDecl(self):
         intDecl = cxx_writer.intType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public')
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
         classDecl.writeDeclaration(self.writer)
@@ -112,9 +112,9 @@ class TestClassDecls(unittest.TestCase):
 
     def testNormalImpl(self):
         intDecl = cxx_writer.intType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public')
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
         classDecl.writeImplementation(self.writer)
@@ -130,9 +130,9 @@ class TestClassDecls(unittest.TestCase):
     def testTemplateDecl(self):
         intDecl = cxx_writer.intType
         stringDecl = cxx_writer.stringType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public', [], ['std::string()'])
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
         classDecl.addConstructor(publicConstr)
         classDecl.writeDeclaration(self.writer)
@@ -158,9 +158,9 @@ class TestClassDecls(unittest.TestCase):
     def testTemplateImpl(self):
         intDecl = cxx_writer.intType
         stringDecl = cxx_writer.stringType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public', [], ['std::string()'])
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
         classDecl.addConstructor(publicConstr)
         classDecl.writeImplementation(self.writer)
@@ -173,9 +173,9 @@ class TestClassDecls(unittest.TestCase):
     def testStaticAttrsDecl(self):
         intDecl = cxx_writer.intType
         stringDecl = cxx_writer.stringType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri', True, '0')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private', True, '0')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public', [], ['std::string()'])
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar], [stringDecl])
         classDecl.addConstructor(publicConstr)
         classDecl.writeDeclaration(self.writer)
@@ -195,9 +195,9 @@ class TestClassDecls(unittest.TestCase):
 
     def testStaticAttrsImpl(self):
         intDecl = cxx_writer.intType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri', True, '0')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private', True, '0')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public', [], ['std::string()'])
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
         classDecl.writeImplementation(self.writer)
@@ -216,9 +216,9 @@ class TestClassDecls(unittest.TestCase):
         intDecl = cxx_writer.intType
         stringDecl = cxx_writer.stringType
         module_nameDecl = cxx_writer.sc_module_nameType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('end_module();')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [cxx_writer.Parameter('name', module_nameDecl)], ['std::string()'])
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public', [cxx_writer.Parameter('name', module_nameDecl)], ['std::string()'])
         classDecl = cxx_writer.SCModule('MyClass', [privateVar], [stringDecl])
         classDecl.addConstructor(publicConstr)
         classDecl.writeDeclaration(self.writer)
@@ -241,9 +241,9 @@ class TestClassDecls(unittest.TestCase):
         intDecl = cxx_writer.intType
         stringDecl = cxx_writer.stringType
         module_nameDecl = cxx_writer.sc_module_nameType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('end_module();')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [cxx_writer.Parameter('name', module_nameDecl)], ['std::string()', 'sc_module(name)'])
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public', [cxx_writer.Parameter('name', module_nameDecl)], ['std::string()', 'sc_module(name)'])
         classDecl = cxx_writer.SCModule('MyClass', [privateVar], [stringDecl])
         classDecl.addConstructor(publicConstr)
         classDecl.writeImplementation(self.writer)
@@ -261,8 +261,8 @@ class TestClassDecls(unittest.TestCase):
     def testInlineMethodDecl(self):
         intDecl = cxx_writer.intType
         emptyBody = cxx_writer.Code('')
-        inlineMethod = cxx_writer.Method('pippo', emptyBody, intDecl, 'pri', [], False, True)
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        inlineMethod = cxx_writer.Method('pippo', emptyBody, intDecl, 'private', [], False, True)
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public')
         classDecl = cxx_writer.ClassDeclaration('MyClass', [inlineMethod])
         classDecl.addConstructor(publicConstr)
         classDecl.writeDeclaration(self.writer)
@@ -285,8 +285,8 @@ class TestClassDecls(unittest.TestCase):
     def testInlineMethodImpl(self):
         intDecl = cxx_writer.intType
         emptyBody = cxx_writer.Code('')
-        inlineMethod = cxx_writer.Method('pippo', emptyBody, intDecl, 'pri', [], False, True)
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        inlineMethod = cxx_writer.Method('pippo', emptyBody, intDecl, 'private', [], False, True)
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public')
         classDecl = cxx_writer.ClassDeclaration('MyClass', [inlineMethod])
         classDecl.addConstructor(publicConstr)
         classDecl.writeImplementation(self.writer)

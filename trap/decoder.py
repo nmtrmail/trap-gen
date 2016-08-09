@@ -154,8 +154,8 @@ class SplitFunction:
                 if i !=  None:
                     ret_val += str(i)
                 else:
-                    retVal += '-'
-            return retVal
+                    ret_val += '-'
+            return ret_val
         if self.table:
             for i in reversed(self.table):
                 if i !=  0:
@@ -314,7 +314,7 @@ class decoderCreator:
                 else:
                     return '// Invalid pattern\nreturn ' + str(self.instrNum) + ';\n'
         if self.decodingTree.out_degree(subtree) != 2:
-            raise Exception('subtree ' + str(subtree) + ' should have two out edges, while it has ' + str(self.decodingTree.out_degree(subtree)))
+            raise Exception('Invalid number of out edges ' + str(self.decodingTree.out_degree(subtree)) + ' for subtree ' + str(subtree) + ', expected two.')
         if nxVersion < 0.99:
             outEdges = self.decodingTree.edges(subtree)
         else:
@@ -443,10 +443,10 @@ class decoderCreator:
         import cxx_writer
         from isa import resolveBitType
         # OK: now I simply have to go over the decoding tree
-        if self.rootNote.splitFunction.pattern:
-            codeString = self.createPatternDecoder(self.rootNote)
+        if self.rootNode.splitFunction.pattern:
+            codeString = self.createPatternDecoder(self.rootNode)
         else:
-            codeString = self.createTableDecoder(self.rootNote)
+            codeString = self.createTableDecoder(self.rootNode)
         codeString += '// Invalid pattern\nreturn '
         if self.invalid_instr:
             codeString += str(self.invalid_instr.id)
@@ -455,23 +455,23 @@ class decoderCreator:
         codeString += ';\n'
         code = cxx_writer.Code(codeString)
         parameters = [cxx_writer.Parameter('instr_code', fetchSizeType)]
-        decodeMethod = cxx_writer.Method('decode', code, cxx_writer.intType, 'pu', parameters, const = True, noException = True)
+        decodeMethod = cxx_writer.Method('decode', code, cxx_writer.intType, 'public', parameters, const = True, noException = True)
         decodeClass = cxx_writer.ClassDeclaration('Decoder', [decodeMethod], namespaces = [namespace])
         decodeClass.addDocString(brief = 'Decoder Class', detail = 'Implements the state-machine that decodes an instruction string and returns an ID specifying the instruction.')
 
         # Here I declare the type which shall be contained in the cache
         if instructionCache:
             emptyBody = cxx_writer.Code('')
-            IntructionTypePtr = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"').makePointer()
-            instrAttr = cxx_writer.Attribute('instr', IntructionTypePtr, 'pu')
-            countAttr = cxx_writer.Attribute('count', cxx_writer.uintType, 'pu')
+            InstructionTypePtr = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"').makePointer()
+            instrAttr = cxx_writer.Attribute('instr', InstructionTypePtr, 'public')
+            countAttr = cxx_writer.Attribute('count', cxx_writer.uintType, 'public')
             cacheTypeElements = [instrAttr, countAttr]
             cacheType = cxx_writer.ClassDeclaration('CacheElem', cacheTypeElements, namespaces = [namespace])
-            instrParam = cxx_writer.Parameter('instr', IntructionTypePtr)
+            instrParam = cxx_writer.Parameter('instr', InstructionTypePtr)
             countParam = cxx_writer.Parameter('count', cxx_writer.uintType)
-            cacheTypeConstr = cxx_writer.Constructor(emptyBody, 'pu', [instrParam, countParam], ['instr(instr)', 'count(count)'])
+            cacheTypeConstr = cxx_writer.Constructor(emptyBody, 'public', [instrParam, countParam], ['instr(instr)', 'count(count)'])
             cacheType.addConstructor(cacheTypeConstr)
-            emptyCacheTypeConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['instr(NULL)', 'count(1)'])
+            emptyCacheTypeConstr = cxx_writer.Constructor(emptyBody, 'public', [], ['instr(NULL)', 'count(1)'])
             cacheType.addConstructor(emptyCacheTypeConstr)
 
         if instructionCache:
@@ -479,7 +479,7 @@ class decoderCreator:
         else:
             return [decodeClass]
 
-    def getCPPTests(self, namespace = ''):
+    def getCPPDecoderTests(self, namespace = ''):
         """Creates the tests for the decoder; I normally create the
         tests with boost_test_framework.
         What I have to do is feeding all the instruction patterns
@@ -824,9 +824,9 @@ class decoderCreator:
         Note how the algorithm is implemented in a recursive way
         Now I have to compute the starting node of the decoding tree;
         it will contain all the instructions"""
-        self.rootNote = DecodingNode(self.instrPattern)
-        self.decodingTree.add_node(self.rootNote)
-        self.computeDecoderRec(self.rootNote)
+        self.rootNode = DecodingNode(self.instrPattern)
+        self.decodingTree.add_node(self.rootNode)
+        self.computeDecoderRec(self.rootNode)
 
     def computeDecoderRec(self, subtree):
         """Given the subtree recursively computes the decodes for

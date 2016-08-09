@@ -53,9 +53,11 @@ class DumpElement:
         self.name = name
         self.docbrief = ''
         self.docdetail = ''
+
     def addDocString(self, brief, detail):
         self.docbrief = brief
         self.docdetail = detail
+
     def printDocString(self, writer, detail = True):
       if self.docbrief == '' and self.docdetail == '': return
       if detail and self.docdetail != '':
@@ -65,6 +67,7 @@ class DumpElement:
           writer.write('*/\n')
       else:
           writer.write('/// ' + self.docbrief + '\n')
+
     def __str__(self):
         try:
             stringWriter = Writer.StringWriter()
@@ -85,15 +88,15 @@ class Define:
         else:
             self.includes = includes
 
-    def writeImplementation(self, writer):
-        pass
-
     def writeDeclaration(self, writer):
         #for namespace in self.namespaces:
         #    writer.write('namespace ' + namespace + ' {\n')
         writer.write(self.defineStr + '\n')
         #for namespace in self.namespaces:
         #    writer.write('} // namespace ' + namespace + '\n')
+
+    def writeImplementation(self, writer):
+        pass
 
     def getIncludes(self):
         return self.includes
@@ -105,11 +108,11 @@ class UseNamespace:
     def __init__(self, namespace):
         self.namespace = namespace
 
-    def writeImplementation(self, writer):
-        writer.write('using namespace ' + self.namespace + ';\n')
-
     def writeDeclaration(self, writer):
         self.writeImplementation(writer)
+
+    def writeImplementation(self, writer):
+        writer.write('using namespace ' + self.namespace + ';\n')
 
     def getIncludes(self):
         return []
@@ -134,11 +137,13 @@ class Type(DumpElement):
         newType = copy.deepcopy(self)
         newType.modifiers.append('*')
         return newType
+
     def makeRef(self):
         import copy
         newType = copy.deepcopy(self)
         newType.modifiers.append('&')
         return newType
+
     def makeNormal(self):
         import copy
         newType = copy.deepcopy(self)
@@ -147,11 +152,13 @@ class Type(DumpElement):
         else:
             newType.modifiers.pop()
             return newType
+
     def makeConst(self):
         import copy
         newType = copy.deepcopy(self)
         newType.const = True
         return newType
+
     def removeConst(self):
         import copy
         newType = copy.deepcopy(self)
@@ -178,7 +185,7 @@ class Type(DumpElement):
         return typeStr
 
 class TemplateType(Type):
-    """Represents a templated type; this is use for variable declaration, function parameter declaration ..."""
+    """Represents a templated type; this is use for variable declaration, function parameter declaration..."""
 
     def __init__(self, name, template = [], includes = [], const = False):
         Type.__init__(self, name, includes, const)
@@ -192,19 +199,25 @@ class TemplateType(Type):
         self.modifiers = []
         Type.writeDeclaration(self, writer)
         if self.template:
-            writtenTempl = 0
             writer.write('<')
+            index = 1
             for i in self.template:
-                writtenTempl += 1
                 try:
                     i.writeDeclaration(writer)
                 except AttributeError:
                     writer.write(str(i))
-                if writtenTempl < len(self.template):
+                # Very bizarre case where both template parameters were of the
+                # same type, so Python created only one object, hence this test
+                # returned true for the first parameter! Note that the built-in
+                # index() does not work either because it returns the index of
+                # the FIRST item, which is again wrong for repeated items.
+                #if i != self.template[-1]:
+                if index < len(self.template):
                     writer.write(', ')
                 # Avoid >> in nested templates
-                if isinstance(i, TemplateType):
+                elif isinstance(i, TemplateType):
                     writer.write(' ')
+                index = index + 1
             writer.write('>')
         for i in currentModifiers:
             writer.write(i)
@@ -227,11 +240,16 @@ class TemplateType(Type):
         typeStr = Type.__str__(self)
         if self.template:
             typeStr += '<'
+            index = 1
             for i in self.template:
                 typeStr += str(i)
-                if i != self.template[-1]:
+                if index < len(self.template):
                     typeStr += ', '
-            typeStr += ' >'
+                # Avoid >> in nested templates
+                elif isinstance(i, TemplateType):
+                    writer.write(' ')
+                index = index + 1
+            typeStr += '>'
         for i in currentModifiers:
             typeStr += i
         return typeStr
@@ -302,13 +320,6 @@ class Parameter(DumpElement):
         self.restrict = restrict
         self.initValue = initValue
 
-    def writeImplementation(self, writer):
-        self.type.writeDeclaration(writer)
-        if self.input:
-            if self.restrict:
-                writer.write(' restrict')
-            writer.write(' ' + self.name)
-
     def writeDeclaration(self, writer):
         self.type.writeDeclaration(writer)
         if self.input:
@@ -317,6 +328,13 @@ class Parameter(DumpElement):
             writer.write(' ' + self.name)
             if self.initValue:
                 writer.write(' = ' + self.initValue)
+
+    def writeImplementation(self, writer):
+        self.type.writeDeclaration(writer)
+        if self.input:
+            if self.restrict:
+                writer.write(' restrict')
+            writer.write(' ' + self.name)
 
     def getIncludes(self):
         return copy.copy(self.type.getIncludes())
@@ -383,8 +401,6 @@ class Variable(DumpElement):
 
     def __str__(self):
         varStr = ''
-        if self.docbrief:
-            varStr += self.docbrief
         if self.static:
             varStr += 'static '
         varStr += str(self.varType) + ' ' + self.name
@@ -405,6 +421,15 @@ class Function(DumpElement):
         self.template = template
         self.static = static
         self.inline = inline
+        # Indicates whether the implementation should be written in the header
+        # or not. This should be overwritten by derived classes.
+        # 0: no body in header (declaration only); 1: pure; 2: empty body; 3: body in header
+        if not self.body.code:
+            self.headerBody = 2
+        elif self.template or self.inline:
+            self.headerBody = 3
+        else:
+            self.headerBody = 0
         self.namespaces = namespaces
         self.noException = noException
 
@@ -452,22 +477,21 @@ class Function(DumpElement):
             pass
         if self.noException:
             writer.write(' throw()', indent = indent, split = ',')
-        if self.template or self.inline:
+        if self.headerBody == 3: # body in header
             writer.write(' {\n', indent = indent, split = ',')
             self.body.writeImplementation(writer)
             writer.write('} // ' + self.name + '()\n\n')
-        else:
-            try:
-                if self.pure:
-                    writer.write(' = 0', indent = indent, split = ',')
-            except AttributeError:
-                pass
-            writer.write(';\n', indent = indent, split = ',')
+        elif self.headerBody == 2: # empty body
+            writer.write(' {}\n')
+        elif self.headerBody == 1: # pure
+            writer.write(' = 0;\n')
+        else: # no body in header
+            writer.write(';\n')
         #for namespace in self.namespaces:
         #    writer.write('} // namespace ' + namespace + '\n')
 
     def writeImplementation(self, writer):
-        if self.template or self.inline:
+        if self.template or self.inline or not self.body.code:
             return
         if self.docbrief:
             self.printDocString(writer)

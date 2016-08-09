@@ -147,7 +147,7 @@ class FileDumper:
             writer.write('#include <' + include + '>\n')
         writer.write('\n')
         for define in defines:
-           writer.write(define + '\n')
+           writer.write(define)
         writer.write('\n')
         # Now I simply have to print in order all the members
         namespaces = []
@@ -177,7 +177,7 @@ class FileDumper:
             else:
                 try:
                     member.writeImplementation(writer)
-                    if isinstance(member, Function) or isinstance(member, Operator) or isinstance(member, ClassDeclaration) or isinstance(member, SCModule):
+                    if (isinstance(member, Function) and member.body.code) or (isinstance(member, Operator)  and member.body.code) or isinstance(member, ClassDeclaration) or isinstance(member, SCModule):
                         printOnFile('', fileHnd)
                         writer.writeFill('*')
                     printOnFile('', fileHnd)

@@ -212,12 +212,16 @@ class RegisterIterator {
  *
  * 3.Declaring an observer interface for attaching/detaching callbacks. This is
  *   mostly already done in scireg_region_if.
- *
- * Note that if we did not have RegisterBank, most of this interface could be
- * moved to Register instead.
  */
 template <typename DATATYPE, typename CHILDTYPE>
 class RegisterInterface
+// TODO: This inheritance leads to two RegisterAbstraction objects relating to a
+// Register, one via inheritance, the other via delegation. The inheritance is
+// obviously only artificial for saving on typing. I could either:
+// - Break it, put the access functions in RegisterInterface and the abstraction-
+//   specific ones in Register.
+// - Keep it, and come up with brand new pattern to automate delegation from
+//   Register -> Abstraction.
 : public RegisterAbstraction<DATATYPE> {
   /// @name Types
   /// @{
@@ -245,16 +249,6 @@ class RegisterInterface
 
   /// @} Traversal Methods
   /// --------------------------------------------------------------------------
-  /// @name Access and Modification Methods
-  /// @{
-
-  public:
-  virtual const DATATYPE read() = 0;
-
-  virtual bool write(const DATATYPE&) = 0;
-
-  /// @} Access and Modification Methods
-  /// --------------------------------------------------------------------------
   /// @name Observer Methods
   /// @{
 
@@ -270,7 +264,10 @@ class RegisterInterface
   /// sc_object style print() of field value.
   virtual void print(std::ostream& os) const = 0;
 
-  virtual std::ostream& operator<<(std::ostream& os) const = 0;
+  friend inline std::ostream& operator<<(std::ostream& os, const RegisterInterface& obj) {
+    obj.print(os);
+    return os;
+  }
 
   /// @} Information and Helper Methods
   /// --------------------------------------------------------------------------

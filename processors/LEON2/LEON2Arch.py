@@ -159,12 +159,12 @@ processor.addRegister(yReg)
 # Program Counter
 pcReg = trap.Register('PC', 32)
 pcReg.setDefaultValue('ENTRY_POINT')
-pcReg.setWbStageOrder({'decode': ['fetch'], 'wb': ['decode']})
+pcReg.setWbStageOrder({'fetch': ['decode'], 'decode': ['wb']})
 processor.addRegister(pcReg)
 # Program Counter
 npcReg = trap.Register('NPC', 32)
 npcReg.setDefaultValue(('ENTRY_POINT', 4))
-npcReg.setWbStageOrder({'decode': ['fetch'], 'wb': ['decode']})
+npcReg.setWbStageOrder({'fetch': ['decode'], 'decode': ['wb']})
 processor.addRegister(npcReg)
 # Processor Configuration Register: contains informations on the processor
 # configuration (num reg win, etc.)
@@ -316,10 +316,5 @@ abi.setReturnCallInstr([(LEON2Isa.restore_imm_Instr, LEON2Isa.restore_reg_Instr,
 processor.setABI(abi)
 
 # Finally we can dump the processor on file
-if standalone:
-    processor.write(folder = destFolderName, models = ['funcLT'], tests = False)
-else:
-    processor.write(folder = destFolderName, models = ['funcLT'], tests = False)
-    #processor.write(folder = destFolderName, models = ['funcLT', 'funcAT'], tests = False)
-    #processor.write(folder = destFolderName, models = ['accLT', 'funcLT', 'funcAT'], tests = True)
-    #processor.write(folder = destFolderName, models = ['accLT', 'funcLT', 'funcAT'], trace = True, combinedTrace = True)
+#processor.write(folder = destFolderName, models = ['funcLT'], tests = True)
+processor.write(folder = destFolderName, models = ['accAT', 'funcLT'], trace = True)

@@ -985,12 +985,12 @@ class GDBStub : public ToolsIf<IssueWidth>, public MemoryToolsIf<IssueWidth>, pu
           resp.message = "\nInstruction history buffer length too large, expected <=1000.\n\n";
         }
         // Print the history.
-        boost::circular_buffer<HistoryInstrType>& history_queue = processor->get_history();
+        boost::circular_buffer<HistoryInstrType>& history_instr_queue = processor->get_history();
         std::vector<std::string> history_vec;
-        boost::circular_buffer<HistoryInstrType>::const_reverse_iterator history_queue_it, history_queue_end;
+        boost::circular_buffer<HistoryInstrType>::const_reverse_iterator history_instr_queue_it, history_instr_queue_end;
         unsigned history_read = 0;
-        for (history_read = 0, history_queue_it = history_queue.rbegin(), history_queue_end = history_queue.rend(); history_queue_it != history_queue_end && history_read < history_len; history_queue_it++, history_read++) {
-          history_vec.push_back(history_queue_it->get_mnemonic());
+        for (history_read = 0, history_instr_queue_it = history_instr_queue.rbegin(), history_instr_queue_end = history_instr_queue.rend(); history_instr_queue_it != history_instr_queue_end && history_read < history_len; history_instr_queue_it++, history_read++) {
+          history_vec.push_back(history_instr_queue_it->get_mnemonic());
         }
         resp.message += "\nAddress\t\tname\t\t\tmnemonic\t\tcycle\n\n";
         std::vector<std::string>::const_reverse_iterator history_vector_it, history_vector_end;

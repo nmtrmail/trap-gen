@@ -58,17 +58,17 @@ def addMemoryMethods(self, memoryElements, methodsCode, methodsAttrs):
     addressParam = cxx_writer.Parameter('address', archWordType.makeRef().makeConst())
     for methName in readMethodNames + readMethodNames_dbg:
         if methName in methodsCode.keys() and methName in methodsAttrs.keys():
-            readDecl = cxx_writer.Method(methName, methodsCode[methName], methodTypes[methName], 'pu', [addressParam], inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], const = len(self.tlmPorts) == 0, noException = 'noexc'  in methodsAttrs[methName])
+            readDecl = cxx_writer.Method(methName, methodsCode[methName], methodTypes[methName], 'public', [addressParam], inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], const = len(self.tlmPorts) == 0, noException = 'noexc'  in methodsAttrs[methName])
             memoryElements.append(readDecl)
     for methName in writeMethodNames + writeMethodNames_dbg:
         if methName in methodsCode.keys() and methName in methodsAttrs.keys():
             datumParam = cxx_writer.Parameter('datum', methodTypes[methName])
-            writeDecl = cxx_writer.Method(methName, methodsCode[methName], cxx_writer.voidType, 'pu', [addressParam, datumParam], inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], noException = 'noexc'  in methodsAttrs[methName])
+            writeDecl = cxx_writer.Method(methName, methodsCode[methName], cxx_writer.voidType, 'public', [addressParam, datumParam], inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], noException = 'noexc'  in methodsAttrs[methName])
             memoryElements.append(writeDecl)
 
     for methName in genericMethodNames:
         if methName in methodsCode.keys() and methName in methodsAttrs.keys():
-            lockDecl = cxx_writer.Method(methName, methodsCode[methName], cxx_writer.voidType, 'pu', inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], noException = 'noexc'  in methodsAttrs[methName])
+            lockDecl = cxx_writer.Method(methName, methodsCode[methName], cxx_writer.voidType, 'public', inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], noException = 'noexc'  in methodsAttrs[methName])
             memoryElements.append(lockDecl)
 
 def getCPPMemoryIf(self, model, namespace):
@@ -124,11 +124,11 @@ def getCPPMemoryIf(self, model, namespace):
         """
         swapEndianessBody = cxx_writer.Code(swapEndianessCode)
         datumParam = cxx_writer.Parameter('datum', cur_type.makeRef())
-        swapEndianessDecl = cxx_writer.Method('swap_endianess', swapEndianessBody, cxx_writer.voidType, 'pu', [datumParam], inline = True, noException = True, const = True)
+        swapEndianessDecl = cxx_writer.Method('swap_endianess', swapEndianessBody, cxx_writer.voidType, 'public', [datumParam], inline = True, noException = True, const = True)
         memoryIfElements.append(swapEndianessDecl)
 
     memoryIfDecl = cxx_writer.ClassDeclaration('MemoryInterface', memoryIfElements, namespaces = [namespace])
-    publicDestr = cxx_writer.Destructor(emptyBody, 'pu', True)
+    publicDestr = cxx_writer.Destructor(emptyBody, 'public', True)
     memoryIfDecl.addDestructor(publicDestr)
     classes.append(memoryIfDecl)
 
@@ -141,7 +141,7 @@ def getCPPMemoryIf(self, model, namespace):
     aliasInit = []
     MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
     if self.memAlias:
-        aliasAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'pri'))
+        aliasAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'private'))
         aliasParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
         aliasInit.append('R(R)')
 
@@ -164,9 +164,9 @@ def getCPPMemoryIf(self, model, namespace):
     swapDEndianessCode += str(archWordType) + ' datum2 = (' + str(archWordType) + ')(datum >> ' + str(self.wordSize*self.byteSize) + ');\nthis->swap_endianess(datum2);\n'
     swapDEndianessCode += 'datum = datum1 | (((' + str(archDWordType) + ')datum2) << ' + str(self.wordSize*self.byteSize) + ');\n#endif\n'
 
-    memoryElements.append(cxx_writer.Attribute('debugger', MemoryToolsIfType.makePointer(), 'pri'))
+    memoryElements.append(cxx_writer.Attribute('debugger', MemoryToolsIfType.makePointer(), 'private'))
     setDebuggerBody = cxx_writer.Code('this->debugger = debugger;')
-    memoryElements.append(cxx_writer.Method('set_debugger', setDebuggerBody, cxx_writer.voidType, 'pu', [cxx_writer.Parameter('debugger', MemoryToolsIfType.makePointer())]))
+    memoryElements.append(cxx_writer.Method('set_debugger', setDebuggerBody, cxx_writer.voidType, 'public', [cxx_writer.Parameter('debugger', MemoryToolsIfType.makePointer())]))
     checkWatchPointCode = """if (this->debugger != NULL) {
         this->debugger->notify_address(address, sizeof(datum));
     }
@@ -261,19 +261,19 @@ def getCPPMemoryIf(self, model, namespace):
             methodsCode[methName] = emptyBody
         addMemoryMethods(self, memoryElements, methodsCode, methodsAttrs)
 
-        arrayAttribute = cxx_writer.Attribute('memory', cxx_writer.charPtrType, 'pri')
+        arrayAttribute = cxx_writer.Attribute('memory', cxx_writer.charPtrType, 'private')
         memoryElements.append(arrayAttribute)
-        sizeAttribute = cxx_writer.Attribute('size', cxx_writer.uintType, 'pri')
+        sizeAttribute = cxx_writer.Attribute('size', cxx_writer.uintType, 'private')
         memoryElements.append(sizeAttribute)
         memoryElements += aliasAttrs
         localMemDecl = cxx_writer.ClassDeclaration('LocalMemory', memoryElements, [memoryIfDecl.getType()], namespaces = [namespace])
         localMemDecl.addDocString(brief = 'Memory Interface Class', detail = 'Interface used by the core to communicate with memory. Defines the required TLM ports.')
         constructorBody = cxx_writer.Code('this->memory = new char[size];\nthis->debugger = NULL;')
         constructorParams = [cxx_writer.Parameter('size', cxx_writer.uintType)]
-        publicMemConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams + aliasParams, ['size(size)'] + aliasInit)
+        publicMemConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams + aliasParams, ['size(size)'] + aliasInit)
         localMemDecl.addConstructor(publicMemConstr)
         destructorBody = cxx_writer.Code('delete [] this->memory;')
-        publicMemDestr = cxx_writer.Destructor(destructorBody, 'pu', True)
+        publicMemDestr = cxx_writer.Destructor(destructorBody, 'public', True)
         localMemDecl.addDestructor(publicMemDestr)
         classes.append(localMemDecl)
     else:
@@ -326,24 +326,24 @@ def getCPPMemoryIf(self, model, namespace):
            this->dump_file.close();
         }
         """)
-        endOfSimDecl = cxx_writer.Method('end_of_simulation', endOfSimBody, cxx_writer.voidType, 'pu')
+        endOfSimDecl = cxx_writer.Method('end_of_simulation', endOfSimBody, cxx_writer.voidType, 'public')
         memoryElements.append(endOfSimDecl)
 
         constructorParams = [cxx_writer.Parameter('size', cxx_writer.uintType)]
         constructorInit = ['size(size)']
 
-        arrayAttribute = cxx_writer.Attribute('memory', cxx_writer.charPtrType, 'pri')
+        arrayAttribute = cxx_writer.Attribute('memory', cxx_writer.charPtrType, 'private')
         memoryElements.append(arrayAttribute)
 
         if not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
-            cycleAttribute = cxx_writer.Attribute('cur_cycle', cxx_writer.uintType.makeRef(), 'pri')
+            cycleAttribute = cxx_writer.Attribute('cur_cycle', cxx_writer.uintType.makeRef(), 'private')
             constructorParams.append(cxx_writer.Parameter('cur_cycle', cxx_writer.uintType.makeRef()))
             constructorInit.append('cur_cycle(cur_cycle)')
             memoryElements.append(cycleAttribute)
 
-        sizeAttribute = cxx_writer.Attribute('size', cxx_writer.uintType, 'pri')
+        sizeAttribute = cxx_writer.Attribute('size', cxx_writer.uintType, 'private')
         memoryElements.append(sizeAttribute)
-        dumpFileAttribute = cxx_writer.Attribute('dump_file', cxx_writer.ofstreamType, 'pri')
+        dumpFileAttribute = cxx_writer.Attribute('dump_file', cxx_writer.ofstreamType, 'private')
         memoryElements.append(dumpFileAttribute)
         memoryElements += aliasAttrs
         if self.memory[3]:
@@ -357,7 +357,7 @@ def getCPPMemoryIf(self, model, namespace):
                 fetchType = registerType
             if fetchType == None and fetchReg in [i.name for i in self.aliasRegs + self.aliasRegBanks]:
                 fetchType = aliasType
-            memoryElements.append(cxx_writer.Attribute(self.memory[3], fetchType.makeRef(), 'pri'))
+            memoryElements.append(cxx_writer.Attribute(self.memory[3], fetchType.makeRef(), 'private'))
             pcRegParam = [cxx_writer.Parameter(self.memory[3], fetchType.makeRef())]
             pcRegInit = [self.memory[3] + '(' + self.memory[3] + ')']
         localMemDecl = cxx_writer.ClassDeclaration('LocalMemory', memoryElements, [memoryIfDecl.getType()], namespaces = [namespace])
@@ -369,7 +369,7 @@ def getCPPMemoryIf(self, model, namespace):
                 THROW_EXCEPTION("Cannot open file memoryDump.dmp for writing.");
             }
         """)
-        publicMemConstr = cxx_writer.Constructor(constructorBody, 'pu', constructorParams + aliasParams + pcRegParam, constructorInit + aliasInit + pcRegInit)
+        publicMemConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams + aliasParams + pcRegParam, constructorInit + aliasInit + pcRegInit)
         localMemDecl.addConstructor(publicMemConstr)
         destructorBody = cxx_writer.Code("""delete [] this->memory;
         if (this->dump_file) {
@@ -377,7 +377,7 @@ def getCPPMemoryIf(self, model, namespace):
            this->dump_file.close();
         }
         """)
-        publicMemDestr = cxx_writer.Destructor(destructorBody, 'pu', True)
+        publicMemDestr = cxx_writer.Destructor(destructorBody, 'public', True)
         localMemDecl.addDestructor(publicMemDestr)
         classes.append(localMemDecl)
 

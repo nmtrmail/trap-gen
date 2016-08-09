@@ -46,90 +46,30 @@ def getCPPIf(self, model, namespace):
     if not self.abi:
         return
 
-    if model.startswith('acc'):
-        regWriteCode = '.write_all'
-        regReadCode = ''
-    else:
-        regWriteCode = '.write_force'
-        regReadCode = '.read_force()'
+    regWriteCode = '.write_force'
+    regReadCode = '.read_force()'
 
     wordType = self.bitSizes[1]
     includes = wordType.getIncludes()
-    pipeRegisterType = cxx_writer.Type('PipelineRegister', '#include \"registers.hpp\"')
+    pipeRegisterType = cxx_writer.Type('PipelineRegister', includes = '#include \"registers.hpp\"')
 
     instrHistType = cxx_writer.Type('HistoryInstrType', 'modules/instruction.hpp')
     histQueueType = cxx_writer.TemplateType('boost::circular_buffer', [instrHistType], 'boost/circular_buffer.hpp')
 
-    ifClassElements = []
-    initElements = []
-    baseInstrConstrParams = []
+    abiMembers = []
+    abiCtorInit = []
+    abiCtorParams = []
 
     ####################################################
     # Lets first of all declare the variables and the attributes;
     # they are mainly references to the corresponding elements
     # of the processor or of the pipeline stage
     ####################################################
-    progLimitAttr = cxx_writer.Attribute('PROGRAM_LIMIT', wordType.makeRef(), 'pri')
-    ifClassElements.append(progLimitAttr)
-    baseInstrConstrParams.append(cxx_writer.Parameter('PROGRAM_LIMIT', wordType.makeRef()))
-    initElements.append('PROGRAM_LIMIT(PROGRAM_LIMIT)')
-    memIfType = cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"')
-    for mem_name in self.abi.memories.keys():
-        ifClassElements.append(cxx_writer.Attribute(mem_name, memIfType.makeRef(), 'pri'))
-        baseInstrConstrParams.append(cxx_writer.Parameter(mem_name, memIfType.makeRef()))
-        initElements.append(mem_name + '(' + mem_name + ')')
-    if (self.regs or self.regBanks):
-        from registerWriter import registerContainerType
-        ifClassElements.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'pri'))
-        baseInstrConstrParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
-        initElements.append('R(R)')
-    # TODO
-    '''
-    if model.startswith('acc'):
-        curRegBType = pipeRegisterType
-        for reg in self.regs:
-            attribute = cxx_writer.Attribute(reg.name, curRegBType.makeRef(), 'pri')
-            baseInstrConstrParams.append(cxx_writer.Parameter(reg.name, curRegBType.makeRef()))
-            initElements.append(reg.name + '(' + reg.name + ')')
-            ifClassElements.append(attribute)
-        for regB in self.regBanks:
-            if (regB.constValue and len(regB.constValue) < regB.numRegs)  or ((regB.delay and len(regB.delay) < regB.numRegs) and not model.startswith('acc')):
-                if model.startswith('acc'):
-                    curRegBType = pipeRegisterType.makePointer()
-                else:
-                    curRegBType = resourceType[regB.name].makeRef()
-            else:
-                if model.startswith('acc'):
-                    curRegBType = pipeRegisterType.makePointer()
-                else:
-                    curRegBType = resourceType[regB.name]
-            attribute = cxx_writer.Attribute(regB.name, curRegBType, 'pri')
-            baseInstrConstrParams.append(cxx_writer.Parameter(regB.name, curRegBType))
-            initElements.append(regB.name + '(' + regB.name + ')')
-            ifClassElements.append(attribute)
-        for alias in self.aliasRegs:
-            attribute = cxx_writer.Attribute(alias.name, resourceType[alias.name].makeRef(), 'pri')
-            baseInstrConstrParams.append(cxx_writer.Parameter(alias.name, resourceType[alias.name].makeRef()))
-            initElements.append(alias.name + '(' + alias.name + ')')
-            ifClassElements.append(attribute)
-        for aliasB in self.aliasRegBanks:
-            attribute = cxx_writer.Attribute(aliasB.name, resourceType[aliasB.name].makePointer(), 'pri')
-            baseInstrConstrParams.append(cxx_writer.Parameter(aliasB.name, resourceType[aliasB.name].makePointer()))
-            initElements.append(aliasB.name + '(' + aliasB.name + ')')
-            ifClassElements.append(attribute)'''
-    attribute = cxx_writer.Attribute('instr_executing', cxx_writer.boolType.makeRef(), 'pri')
-    baseInstrConstrParams.append(cxx_writer.Parameter('instr_executing', cxx_writer.boolType.makeRef()))
-    initElements.append('instr_executing(instr_executing)')
-    ifClassElements.append(attribute)
-    if self.systemc:
-        attribute = cxx_writer.Attribute('instr_end_event', cxx_writer.sc_eventType.makeRef(), 'pri')
-        baseInstrConstrParams.append(cxx_writer.Parameter('instr_end_event', cxx_writer.sc_eventType.makeRef()))
-        initElements.append('instr_end_event(instr_end_event)')
-        ifClassElements.append(attribute)
-    instHistoryQueueAttr = cxx_writer.Attribute('history_queue', histQueueType.makeRef(), 'pri')
-    ifClassElements.append(instHistoryQueueAttr)
-    baseInstrConstrParams.append(cxx_writer.Parameter('history_queue', histQueueType.makeRef()))
-    initElements.append('history_queue(history_queue)')
+    from procWriter import abiAttrs
+    for attr in abiAttrs:
+        abiMembers.append(attr)
+        abiCtorParams.append(cxx_writer.Parameter(attr.name, attr.varType))
+        abiCtorInit.append(attr.name + '(' + attr.name + ')')
 
     ###############################################################
     # Now lets move to the actual implementation of the methods which
@@ -139,50 +79,50 @@ def getCPPIf(self, model, namespace):
         endianessCode = cxx_writer.Code('return false;')
     else:
         endianessCode = cxx_writer.Code('return true;')
-    endianessMethod = cxx_writer.Method('is_little_endian', endianessCode, cxx_writer.boolType, 'pu', noException = True, const = True)
-    ifClassElements.append(endianessMethod)
+    endianessMethod = cxx_writer.Method('is_little_endian', endianessCode, cxx_writer.boolType, 'public', noException = True, const = True)
+    abiMembers.append(endianessMethod)
 
     # Here are the methods used to discriminate when an instruction is executing or not
     if self.abi.procIdCode:
         processorIDCode = cxx_writer.Code('return (' + self.abi.procIdCode + ');\n')
-        processorIDMethod = cxx_writer.Method('get_id', processorIDCode, cxx_writer.intType, 'pu', noException = True, const = True)
-        ifClassElements.append(processorIDMethod)
+        processorIDMethod = cxx_writer.Method('get_id', processorIDCode, cxx_writer.intType, 'public', noException = True, const = True)
+        abiMembers.append(processorIDMethod)
     instrExecutingCode = cxx_writer.Code('return this->instr_executing;')
-    instrExecutingMethod = cxx_writer.Method('is_executing_instr', instrExecutingCode, cxx_writer.boolType, 'pu', noException = True, const = True)
-    ifClassElements.append(instrExecutingMethod)
+    instrExecutingMethod = cxx_writer.Method('is_executing_instr', instrExecutingCode, cxx_writer.boolType, 'public', noException = True, const = True)
+    abiMembers.append(instrExecutingMethod)
     if self.systemc:
         waitInstrEndCode = cxx_writer.Code('if (this->instr_executing) {\nwait(this->instr_end_event);\n}\n')
         waitInstrEndCode.addInclude('systemc.h')
     else:
         waitInstrEndCode = cxx_writer.Code('while(this->instr_executing) {\n;\n}\n')
-    waitInstrEndMethod = cxx_writer.Method('wait_instr_end', waitInstrEndCode, cxx_writer.voidType, 'pu', noException = True, const = True)
-    ifClassElements.append(waitInstrEndMethod)
+    waitInstrEndMethod = cxx_writer.Method('wait_instr_end', waitInstrEndCode, cxx_writer.voidType, 'public', noException = True, const = True)
+    abiMembers.append(waitInstrEndMethod)
 
     if self.abi.preCallCode:
-        ifClassElements.append(cxx_writer.Method('pre_call', cxx_writer.Code(self.abi.preCallCode), cxx_writer.voidType, 'pu', noException = True))
+        abiMembers.append(cxx_writer.Method('pre_call', cxx_writer.Code(self.abi.preCallCode), cxx_writer.voidType, 'public', noException = True))
     if self.abi.postCallCode:
-        ifClassElements.append(cxx_writer.Method('post_call', cxx_writer.Code(self.abi.postCallCode), cxx_writer.voidType, 'pu', noException = True))
+        abiMembers.append(cxx_writer.Method('post_call', cxx_writer.Code(self.abi.postCallCode), cxx_writer.voidType, 'public', noException = True))
     if self.abi.returnCallReg:
         returnCallCode = ''
         for returnReg in self.abi.returnCallReg:
             returnCallCode += returnReg[0] + regWriteCode + '(' + returnReg[1] + ' + ' + str(returnReg[2]) + ');\n'
-        ifClassElements.append(cxx_writer.Method('return_from_call', cxx_writer.Code(returnCallCode), cxx_writer.voidType, 'pu', noException = True))
+        abiMembers.append(cxx_writer.Method('return_from_call', cxx_writer.Code(returnCallCode), cxx_writer.voidType, 'public', noException = True))
 
     # Here is the code for recognizing if we are in the routine entry or
     # exit; we behave like a state machine,moving to the beginning when
     # an instruction out of the sequence is met
-    entryStateAttribute = cxx_writer.Attribute('routine_entry_state', cxx_writer.intType, 'pri')
-    ifClassElements.append(entryStateAttribute)
-    exitStateAttribute = cxx_writer.Attribute('routine_exit_state', cxx_writer.intType, 'pri')
-    ifClassElements.append(exitStateAttribute)
-    exitValueAttribute = cxx_writer.Attribute('exit_value', cxx_writer.uintType, 'pri')
-    ifClassElements.append(exitValueAttribute)
+    entryStateAttribute = cxx_writer.Attribute('routine_entry_state', cxx_writer.intType, 'private')
+    abiMembers.append(entryStateAttribute)
+    exitStateAttribute = cxx_writer.Attribute('routine_exit_state', cxx_writer.intType, 'private')
+    abiMembers.append(exitStateAttribute)
+    exitValueAttribute = cxx_writer.Attribute('exit_value', cxx_writer.uintType, 'private')
+    abiMembers.append(exitValueAttribute)
     vector_strType = cxx_writer.TemplateType('std::vector', [cxx_writer.stringType], 'vector')
     vector_v_strType = cxx_writer.TemplateType('std::vector', [vector_strType], 'vector')
-    entrySequenceAttribute = cxx_writer.Attribute('routine_entry_sequence', vector_v_strType, 'pri')
-    ifClassElements.append(entrySequenceAttribute)
-    exitSequenceAttribute = cxx_writer.Attribute('routine_exit_sequence', vector_v_strType, 'pri')
-    ifClassElements.append(exitSequenceAttribute)
+    entrySequenceAttribute = cxx_writer.Attribute('routine_entry_sequence', vector_v_strType, 'private')
+    abiMembers.append(entrySequenceAttribute)
+    exitSequenceAttribute = cxx_writer.Attribute('routine_exit_sequence', vector_v_strType, 'private')
+    abiMembers.append(exitSequenceAttribute)
     routineStatesInit = """this->routine_exit_state = 0;
     this->routine_entry_state = 0;
     std::vector<std::string> temp_vec;
@@ -227,8 +167,8 @@ def getCPPIf(self, model, namespace):
     return false;
     """
     isRoutineEntryCode = cxx_writer.Code(isRoutineEntryBody)
-    isRoutineEntryMethod = cxx_writer.Method('is_routine_entry', isRoutineEntryCode, cxx_writer.boolType, 'pu', [baseInstrParam], noException = True)
-    ifClassElements.append(isRoutineEntryMethod)
+    isRoutineEntryMethod = cxx_writer.Method('is_routine_entry', isRoutineEntryCode, cxx_writer.boolType, 'public', [baseInstrParam], noException = True)
+    abiMembers.append(isRoutineEntryMethod)
     isRoutineExitBody = """std::vector<std::string> next_names = this->routine_exit_sequence[this->routine_exit_state];
     std::vector<std::string>::const_iterator names_it, names_end;
     std::string cur_name = instr->get_name();
@@ -246,8 +186,8 @@ def getCPPIf(self, model, namespace):
     return false;
     """
     isRoutineExitCode = cxx_writer.Code(isRoutineExitBody)
-    isRoutineExitMethod = cxx_writer.Method('is_routine_exit', isRoutineExitCode, cxx_writer.boolType, 'pu', [baseInstrParam], noException = True)
-    ifClassElements.append(isRoutineExitMethod)
+    isRoutineExitMethod = cxx_writer.Method('is_routine_exit', isRoutineExitCode, cxx_writer.boolType, 'public', [baseInstrParam], noException = True)
+    abiMembers.append(isRoutineExitMethod)
 
     # Here I add the methods mecessary to save and restore the complete
     # processor status (useful, for example, to implement hardware context-switches,
@@ -289,8 +229,8 @@ def getCPPIf(self, model, namespace):
                     getStateBody += '*((' + str(regWType.makePointer()) + ')cur_state_temp) = ' + regB.name + '[' + str(i) + ']' + regReadCode + ';\ncur_state_temp += ' + str(regB.bitWidth/self.byteSize) + ';\n'
     getStateBody += 'return cur_state;'
     getStateCode = cxx_writer.Code(getStateBody)
-    getStateMethod = cxx_writer.Method('get_state', getStateCode, cxx_writer.ucharPtrType, 'pu', noException = True, const = True)
-    ifClassElements.append(getStateMethod)
+    getStateMethod = cxx_writer.Method('get_state', getStateCode, cxx_writer.ucharPtrType, 'public', noException = True, const = True)
+    abiMembers.append(getStateMethod)
     setStateBody = 'unsigned char* cur_state_temp = state;\n'
     for reg in self.regs:
         if not reg.name in self.abi.stateIgnoreRegs:
@@ -307,20 +247,20 @@ def getCPPIf(self, model, namespace):
                     setStateBody += regB.name + '[' + str(i) + ']' + regWriteCode + '(*((' + str(regWType.makePointer()) + ')cur_state_temp));\ncur_state_temp += ' + str(regB.bitWidth/self.byteSize) + ';\n'
     setStateCode = cxx_writer.Code(setStateBody)
     stateParam = cxx_writer.Parameter('state', cxx_writer.ucharPtrType)
-    setStateMethod = cxx_writer.Method('set_state', setStateCode, cxx_writer.voidType, 'pu', [stateParam], noException = True)
-    ifClassElements.append(setStateMethod)
+    setStateMethod = cxx_writer.Method('set_state', setStateCode, cxx_writer.voidType, 'public', [stateParam], noException = True)
+    abiMembers.append(setStateMethod)
 
     exitValueCode = cxx_writer.Code('this->exit_value = value;')
     exitValueParam = cxx_writer.Parameter('value', wordType)
-    exitValueMethod = cxx_writer.Method('set_exit_value', exitValueCode, cxx_writer.voidType, 'pu', [exitValueParam], noException = True)
-    ifClassElements.append(exitValueMethod)
+    exitValueMethod = cxx_writer.Method('set_exit_value', exitValueCode, cxx_writer.voidType, 'public', [exitValueParam], noException = True)
+    abiMembers.append(exitValueMethod)
     exitValueCode = cxx_writer.Code('return this->exit_value;')
-    exitValueMethod = cxx_writer.Method('get_exit_value', exitValueCode, wordType, 'pu', noException = True)
-    ifClassElements.append(exitValueMethod)
+    exitValueMethod = cxx_writer.Method('get_exit_value', exitValueCode, wordType, 'public', noException = True)
+    abiMembers.append(exitValueMethod)
 
     codeLimitCode = cxx_writer.Code('return this->PROGRAM_LIMIT;')
-    codeLimitMethod = cxx_writer.Method('get_code_limit', codeLimitCode, wordType, 'pu')
-    ifClassElements.append(codeLimitMethod)
+    codeLimitMethod = cxx_writer.Method('get_code_limit', codeLimitCode, wordType, 'public')
+    abiMembers.append(codeLimitMethod)
 
     for elem in [self.abi.LR, self.abi.PC, self.abi.SP, self.abi.FP, self.abi.RetVal]:
         if not elem:
@@ -331,14 +271,14 @@ def getCPPIf(self, model, namespace):
         readElemBody += ';'
         readElemCode = cxx_writer.Code(readElemBody)
         readElemCode.addInclude(includes)
-        readElemMethod = cxx_writer.Method('read_' + self.abi.name[elem], readElemCode, wordType, 'pu', noException = True, const = True)
-        ifClassElements.append(readElemMethod)
+        readElemMethod = cxx_writer.Method('read_' + self.abi.name[elem], readElemCode, wordType, 'public', noException = True, const = True)
+        abiMembers.append(readElemMethod)
         setElemBody = elem + regWriteCode + '(new_value);'
         setElemCode = cxx_writer.Code(setElemBody)
         setElemCode.addInclude(includes)
         setElemParam = cxx_writer.Parameter('new_value', wordType.makeRef().makeConst())
-        setElemMethod = cxx_writer.Method('set_' + self.abi.name[elem], setElemCode, cxx_writer.voidType, 'pu', [setElemParam], noException = True)
-        ifClassElements.append(setElemMethod)
+        setElemMethod = cxx_writer.Method('set_' + self.abi.name[elem], setElemCode, cxx_writer.voidType, 'public', [setElemParam], noException = True)
+        abiMembers.append(setElemMethod)
     vectorType = cxx_writer.TemplateType('std::vector', [wordType], 'vector')
     readArgsBody = str(vectorType) + ' args;\n'
     for arg in self.abi.args:
@@ -349,8 +289,8 @@ def getCPPIf(self, model, namespace):
     readArgsBody += 'return args;\n'
     readArgsCode = cxx_writer.Code(readArgsBody)
     readArgsCode.addInclude(includes)
-    readArgsMethod = cxx_writer.Method('read_args', readArgsCode, vectorType, 'pu', noException = True, const = True)
-    ifClassElements.append(readArgsMethod)
+    readArgsMethod = cxx_writer.Method('read_args', readArgsCode, vectorType, 'public', noException = True, const = True)
+    abiMembers.append(readArgsMethod)
     setArgsBody = 'if (args.size() > ' + str(len(self.abi.args)) + ') {\nTHROW_EXCEPTION(\"Too many arguments for processor ABI, given \" << args.size() << \", expected up to ' + str(len(self.abi.args)) + ' .\");\n}\n'
     setArgsBody += str(vectorType) + '::const_iterator arg_it = args.begin(), arg_end = args.end();\n'
     for arg in self.abi.args:
@@ -361,8 +301,8 @@ def getCPPIf(self, model, namespace):
         setArgsBody += ');\narg_it++;\n}\n'
     setArgsCode = cxx_writer.Code(setArgsBody)
     setArgsParam = cxx_writer.Parameter('args', vectorType.makeRef().makeConst())
-    setArgsMethod = cxx_writer.Method('set_args', setArgsCode, cxx_writer.voidType, 'pu', [setArgsParam], noException = True)
-    ifClassElements.append(setArgsMethod)
+    setArgsMethod = cxx_writer.Method('set_args', setArgsCode, cxx_writer.voidType, 'public', [setArgsParam], noException = True)
+    abiMembers.append(setArgsMethod)
     maxGDBId = 0
     readGDBRegBody = 'switch(gdb_id) {\n'
     sortedGDBRegs = sorted(self.abi.regCorrespondence.items(), lambda x,y: cmp(x[1], y[1]))
@@ -378,11 +318,11 @@ def getCPPIf(self, model, namespace):
     readGDBRegCode = cxx_writer.Code(readGDBRegBody)
     readGDBRegCode.addInclude(includes)
     readGDBRegParam = cxx_writer.Parameter('gdb_id', cxx_writer.uintType.makeRef().makeConst())
-    readGDBRegMethod = cxx_writer.Method('read_gdb_reg', readGDBRegCode, wordType, 'pu', [readGDBRegParam], noException = True, const = True)
-    ifClassElements.append(readGDBRegMethod)
+    readGDBRegMethod = cxx_writer.Method('read_gdb_reg', readGDBRegCode, wordType, 'public', [readGDBRegParam], noException = True, const = True)
+    abiMembers.append(readGDBRegMethod)
     nGDBRegsCode = cxx_writer.Code('return ' + str(maxGDBId + 1) + ';')
-    nGDBRegsMethod = cxx_writer.Method('num_gdb_regs', nGDBRegsCode, cxx_writer.uintType, 'pu', noException = True, const = True)
-    ifClassElements.append(nGDBRegsMethod)
+    nGDBRegsMethod = cxx_writer.Method('num_gdb_regs', nGDBRegsCode, cxx_writer.uintType, 'public', noException = True, const = True)
+    abiMembers.append(nGDBRegsMethod)
     setGDBRegBody = 'switch(gdb_id) {\n'
     for reg, gdbId in sortedGDBRegs:
         setGDBRegBody += 'case ' + str(gdbId) + ': {\n'
@@ -393,8 +333,8 @@ def getCPPIf(self, model, namespace):
     setGDBRegCode.addInclude(includes)
     setGDBRegParam1 = cxx_writer.Parameter('new_value', wordType.makeRef().makeConst())
     setGDBRegParam2 = cxx_writer.Parameter('gdb_id', cxx_writer.uintType.makeRef().makeConst())
-    setGDBRegMethod = cxx_writer.Method('set_gdb_reg', setGDBRegCode, cxx_writer.voidType, 'pu', [setGDBRegParam1, setGDBRegParam2], noException = True)
-    ifClassElements.append(setGDBRegMethod)
+    setGDBRegMethod = cxx_writer.Method('set_gdb_reg', setGDBRegCode, cxx_writer.voidType, 'public', [setGDBRegParam1, setGDBRegParam2], noException = True)
+    abiMembers.append(setGDBRegMethod)
     readMemBody = ''
     if not self.abi.memories:
         readMemBody += 'THROW_EXCEPTION(\"No memory accessible from the ABI or processor ' + self.name + '.\");'
@@ -408,8 +348,8 @@ def getCPPIf(self, model, namespace):
             readMemBody += ' {\nTHROW_EXCEPTION(\"Address \" << std::hex << address << \" out of range.\");\n}'
     readMemCode = cxx_writer.Code(readMemBody)
     readMemParam1 = cxx_writer.Parameter('address', wordType.makeRef().makeConst())
-    readMemMethod = cxx_writer.Method('read_mem', readMemCode, wordType, 'pu', [readMemParam1])
-    ifClassElements.append(readMemMethod)
+    readMemMethod = cxx_writer.Method('read_mem', readMemCode, wordType, 'public', [readMemParam1])
+    abiMembers.append(readMemMethod)
 
     readByteMemBody = ''
     if not self.abi.memories:
@@ -424,8 +364,8 @@ def getCPPIf(self, model, namespace):
             readByteMemBody += ' {\nTHROW_EXCEPTION(\"Address \" << std::hex << address << \" out of range.\");\n}'
     readByteMemCode = cxx_writer.Code(readByteMemBody)
     readByteMemParam = cxx_writer.Parameter('address', wordType.makeRef().makeConst())
-    readByteMemMethod = cxx_writer.Method('read_char_mem', readByteMemCode, cxx_writer.ucharType, 'pu', [readByteMemParam])
-    ifClassElements.append(readByteMemMethod)
+    readByteMemMethod = cxx_writer.Method('read_char_mem', readByteMemCode, cxx_writer.ucharType, 'public', [readByteMemParam])
+    abiMembers.append(readByteMemMethod)
 
     writeMemBody = ''
     if not self.abi.memories:
@@ -442,8 +382,8 @@ def getCPPIf(self, model, namespace):
     writeMemCode.addInclude('common/report.hpp')
     writeMemParam1 = cxx_writer.Parameter('address', wordType.makeRef().makeConst())
     writeMemParam2 = cxx_writer.Parameter('datum', wordType)
-    writeMemMethod = cxx_writer.Method('write_mem', writeMemCode, cxx_writer.voidType, 'pu', [writeMemParam1, writeMemParam2])
-    ifClassElements.append(writeMemMethod)
+    writeMemMethod = cxx_writer.Method('write_mem', writeMemCode, cxx_writer.voidType, 'public', [writeMemParam1, writeMemParam2])
+    abiMembers.append(writeMemMethod)
     writeMemBody = ''
     if not self.abi.memories:
         writeMemBody += 'THROW_EXCEPTION(\"No memory accessible from the ABI or processor ' + self.name + '.\");'
@@ -458,19 +398,19 @@ def getCPPIf(self, model, namespace):
     writeMemCode = cxx_writer.Code(writeMemBody)
     writeMemParam1 = cxx_writer.Parameter('address', wordType.makeRef().makeConst())
     writeMemParam2 = cxx_writer.Parameter('datum', cxx_writer.ucharType)
-    writeMemMethod = cxx_writer.Method('write_char_mem', writeMemCode, cxx_writer.voidType, 'pu', [writeMemParam1, writeMemParam2])
-    ifClassElements.append(writeMemMethod)
+    writeMemMethod = cxx_writer.Method('write_char_mem', writeMemCode, cxx_writer.voidType, 'public', [writeMemParam1, writeMemParam2])
+    abiMembers.append(writeMemMethod)
 
-    getInstructionHistoryCode = cxx_writer.Code('return this->history_queue;')
-    getInstructionHistoryMethod = cxx_writer.Method('get_history', getInstructionHistoryCode, histQueueType.makeRef(), 'pu')
-    ifClassElements.append(getInstructionHistoryMethod)
+    getInstructionHistoryCode = cxx_writer.Code('return this->history_instr_queue;')
+    getInstructionHistoryMethod = cxx_writer.Method('get_history', getInstructionHistoryCode, histQueueType.makeRef(), 'public')
+    abiMembers.append(getInstructionHistoryMethod)
 
     ABIIfType = cxx_writer.TemplateType('ABIIf', [wordType], 'modules/abi_if.hpp')
-    ifClassDecl = cxx_writer.ClassDeclaration('Interface', ifClassElements, [ABIIfType], namespaces = [namespace])
+    ifClassDecl = cxx_writer.ClassDeclaration('Interface', abiMembers, [ABIIfType], namespaces = [namespace])
     ifClassDecl.addDocString(brief = 'Interface Class', detail = 'Creates the interface used by TRAP-Gen tools to access the processor core.')
-    publicIfConstr = cxx_writer.Constructor(cxx_writer.Code(routineStatesInit), 'pu', baseInstrConstrParams, initElements)
+    publicIfConstr = cxx_writer.Constructor(cxx_writer.Code(routineStatesInit), 'public', abiCtorParams, abiCtorInit)
     emptyBody = cxx_writer.Code('')
-    opDestr = cxx_writer.Destructor(emptyBody, 'pu', True)
+    opDestr = cxx_writer.Destructor(emptyBody, 'public', True)
     ifClassDecl.addDestructor(opDestr)
     ifClassDecl.addConstructor(publicIfConstr)
     return ifClassDecl

@@ -164,7 +164,7 @@ class RegisterField
   }
 
   const DATATYPE read() {
-    execute_callbacks(scireg_ns::SCIREG_READ_ACCESS, 0, this->size());
+    execute_callbacks(scireg_ns::SCIREG_READ_ACCESS, this->m_lowpos, this->size());
     return this->read_dbg();
   }
 
@@ -279,11 +279,6 @@ class RegisterField
   /// sc_object style print() of field value.
   void print(std::ostream& os) const {
     os << std::hex << std::showbase << this->read_dbg() << std::dec;
-  }
-
-  std::ostream& operator<<(std::ostream& os) const {
-    os << std::hex << std::showbase << this->read_dbg() << std::dec;
-    return os;
   }
 
   protected:

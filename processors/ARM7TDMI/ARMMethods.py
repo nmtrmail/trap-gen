@@ -277,98 +277,98 @@ if(cond != 0xE){
         case 0x0:{
             // EQ
             if (CPSR[CPSR_Z] == 0x0){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0x1:{
             // NE
             if (CPSR[CPSR_Z] != 0x0){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0x2:{
             // CS/HS
             if (CPSR[CPSR_C] == 0x0){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0x3:{
             // CC/LO
             if (CPSR[CPSR_C] != 0x0){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0x4:{
             // MI
             if (CPSR[CPSR_N] == 0x0){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0x5:{
             // PL
             if (CPSR[CPSR_N] != 0x0){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0x6:{
             // VS
             if (CPSR[CPSR_V] == 0x0){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0x7:{
             // VC
             if (CPSR[CPSR_V] != 0x0){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0x8:{
             // HI
             if ((CPSR & 0x60000000) != 0x20000000){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0x9:{
             // LS
             if ((CPSR & 0x60000000) == 0x20000000){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0xA:{
             // GE
             if (CPSR[CPSR_V] != CPSR[CPSR_N]){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0xB:{
             // LT
             if (CPSR[CPSR_V] == CPSR[CPSR_N]){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0xC:{
             // GT
             if ((CPSR[CPSR_Z] != 0x0) || (CPSR[CPSR_V] != CPSR[CPSR_N])){
-                Instruction::annul();
+                annul();
             }
             break;
         }
         case 0xD:{
             // LE
             if ((CPSR[CPSR_Z] == 0x0) && (CPSR[CPSR_V] == CPSR[CPSR_N])){
-                Instruction::annul();
+                annul();
             }
             break;
         }

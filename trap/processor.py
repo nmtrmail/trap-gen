@@ -39,8 +39,12 @@
 ################################################################################
 
 import cxx_writer
-import procWriter, registerWriter, memWriter, interfaceWriter, portsWriter, pipelineWriter, irqWriter, licenses
+import procWriter, pipelineWriter, registerWriter, memWriter, interfaceWriter, portsWriter, irqWriter, licenses
 
+
+################################################################################
+# Globals and Helpers
+################################################################################
 validModels = ['funcLT', 'funcAT', 'accLT', 'accAT']
 
 def extractRegInterval(regBankString):
@@ -64,264 +68,9 @@ def extractRegInterval(regBankString):
     return (int(interval[0]), int(interval[1]))
 
 
-class Register:
-    """Register of a processor. It is identified by (a) the
-    width in bits, (b) the name. It is eventually possible
-    to associate names to the different register fields and
-    then refer to them instead of having to use bit masks"""
-    def __init__(self, name, bitWidth, bitMask = {}):
-        self.name = name
-        self.bitWidth = bitWidth
-        if bitMask:
-            for key, value in bitMask.items():
-                if value[0] > value[1]:
-                    raise Exception('Bit mask start value ' +  str(value[0]) + ' for field ' + key + ' in register ' + self.name + ' is larger than end value ' + str(value[1]) + '.')
-                if value[1] >= bitWidth:
-                    raise Exception('Bit mask size ' + str(value[1]) + ' for field ' + key + ' in register ' + self.name + ' is larger than register size ' + str(bitWidth) + '.')
-                for key1, value1 in bitMask.items():
-                    if key1 != key:
-                        if (value1[0] <= value[0] and value1[1] >= value[0]) or (value1[0] <= value[1] and value1[1] >= value[1]):
-                            raise Exception('Bit mask for field ' + key + ' in register ' + self.name + ' intersects with the mask of field ' + key1 + '.')
-        self.bitMask = bitMask
-        self.defValue = 0
-        self.offset = 0
-        self.constValue = None
-        self.delay = 0
-        self.wbStageOrder = {}
-
-    def setDefaultValue(self, value):
-        if self.defValue:
-            raise Exception('Default value for register ' + self.name +  ' already set.')
-        try:
-            if value > 0:
-                import math
-                if math.log(value, 2) > self.bitWidth:
-                    raise Exception('Default value ' + str(value) + ' of register ' + self.name + ' requires ' + str(int(math.ceil(math.log(value, 2)))) + ' bits, but the register has a width of ' + str(self.bitWidth) + ' bits.')
-        except TypeError:
-            pass
-        self.defValue = value
-
-    def setConst(self, value):
-        if self.delay:
-            raise Exception('Cannot set register ' + self.name + ' as constant because it contains a delay assignment.')
-        self.constValue = value
-
-    def setDelay(self, value):
-        if self.constValue != None:
-            raise Exception('Cannot set a delay assignment for register ' + self.name + ' because it is set as constant.')
-        self.delay = value
-
-    def setOffset(self, value):
-        """TODO: eliminate this restriction"""
-        if self.bitMask:
-            raise Exception('Cannot set offset for register ' + self.name + ' because it uses a bit mask.')
-        self.offset = value
-
-    # This is a map of forwarding paths stage -> stages, so e.g.
-    # {'ID': ['IF'], 'WB': ['REG', 'EX']} means ID forwards to IF and WB
-    # forwards to both REG and EX.
-    def setWbStageOrder(self, order):
-        self.wbStageOrder = order
-
-    def getCPPClass(self, model, regType, namespace):
-        return registerWriter.getCPPRegister(self, model, regType, namespace)
-
-class RegisterBank:
-    """Same thing of a register, it also specifies the
-    number of registers in the bank. In case register
-    fields are specified, they have to be the same for the
-    whole bank"""
-    def __init__(self, name, numRegs, bitWidth, bitMask = {}):
-        self.name = name
-        self.bitWidth = bitWidth
-        totalBits = 0
-        if bitMask:
-            for key, value in bitMask.items():
-                if value[0] > value[1]:
-                    raise Exception('Bit mask start value ' +  str(value[0]) + ' for field ' + key + ' in register bank ' + self.name + ' is larger than end value ' + str(value[1]) + '.')
-                if value[1] >= bitWidth:
-                    raise Exception('Bit mask size ' + str(value[1]) + ' for field ' + key + ' in register bank ' + self.name + ' is larger than register size ' + str(bitWidth) + '.')
-                for key1, value1 in bitMask.items():
-                    if key1 != key:
-                        if (value1[0] <= value[0] and value1[1] >= value[0]) or (value1[0] <= value[1] and value1[1] >= value[1]):
-                            raise Exception('Bit mask of field ' + key + ' in register bank ' + self.name + ' intersects with the mask of field ' + key1 + '.')
-        self.bitMask = bitMask
-        self.numRegs = numRegs
-        self.defValues = [0 for i in range(0, numRegs)]
-        self.offset = 0
-        self.constValue = {}
-        self.delay = {}
-
-    def setConst(self, numReg, value):
-        if self.delay.has_key(numReg):
-            raise Exception('Cannot set register ' + str(numReg) + ' in register bank ' + self.name + ' as constant because it contains a delay assignment.')
-        self.constValue[numReg] = value
-
-    def getConstRegs(self):
-        constRegs = []
-        for key, constVal in self.constValue.items():
-            fakeReg = Register(self.name + '[' + str(key) + ']', self.bitWidth, self.bitMask)
-            fakeReg.setOffset(self.offset)
-            if self.delay.has_key(key):
-                fakeReg.setDelay(self.delay[key])
-            fakeReg.setConst(constVal)
-            constRegs.append(fakeReg)
-        return constRegs
-
-    def setDelay(self, numReg, value):
-        if self.constValue.has_key(numReg):
-            raise Exception('Cannot set a delay assignment for register ' + str(numReg) + ' in register bank ' + self.name + ' because it is set as constant.')
-        if value > 0:
-            self.delay[numReg] = value
-
-    def setGlobalDelay(self, value):
-        if value > 0:
-            for i in range(0, self.numRegs):
-                if self.constValue.has_key(i):
-                    raise Exception('Cannot set a delay assignment for register ' + str(i) + ' in register bank ' + self.name + ' because it is set as constant.')
-                self.delay[i] = value
-
-    def getDelayRegs(self):
-        delayRegs = []
-        for key, delayVal in self.delay.items():
-            fakeReg = Register(self.name + '[' + str(key) + ']', self.bitWidth, self.bitMask)
-            fakeReg.setOffset(self.offset)
-            fakeReg.setDelay(delayVal)
-            if self.constValue.has_key(key):
-                fakeReg.setConst(self.constValue[key])
-            delayRegs.append(fakeReg)
-        return delayRegs
-
-    def setDefaultValues(self, values):
-        for i in range(0, len(self.defValues)):
-            if self.defValues[i]:
-                raise Exception('Default value for register ' + str(i) + ' in register bank' + self.name + ' already set.')
-            try:
-                if values[i] > 0:
-                    import math
-                    if math.log(values[i], 2) > self.bitWidth:
-                        raise Exception('Default value '  + str(values[i]) + ' of register ' + str(i) + ' in register bank ' + self.name + ' requires ' + str(int(math.ceil(math.log(values[i], 2)))) + ' bits, but the register has a width of ' + str(self.bitWidth) + ' bits.')
-            except TypeError:
-                pass
-        if len(values) != self.numRegs:
-            raise Exception('The number of initialization values for register bank ' + self.name + ' does not match the number of registers.')
-        self.defValues = values
-
-    def setDefaultValue(self, value, position):
-        if position < 0 or position >= self.numRegs:
-            raise Exception('Cannot set initialization value for register ' + position + ' in register bank ' + self.name + '. Index out of range.')
-        if self.defValues[position]:
-            raise Exception('Default value for register ' + str(position) + ' in register bank' + self.name + ' already set.')
-        try:
-            if value > 0:
-                import math
-                if math.log(value, 2) > self.bitWidth:
-                    raise Exception('Default value ' + str(value) + ' of register ' + str(position) + ' in register bank ' + self.name + ' requires ' + str(int(math.ceil(math.log(value, 2)))) + 'bits, but the register has a width of ' + str(self.bitWidth) + ' bits.')
-        except TypeError:
-            pass
-        self.defValues[position] = value
-
-class AliasRegister:
-    """Alias for a register of the processor;
-    actually this is a pointer to a register; this pointer
-    might be updated during program execution to point to
-    the right register; updating it is responsibility of
-    the programmer; it is also possible to directly specify
-    a target for the alias"""
-    # TODO: it might be a good idea to introduce 0 offset aliases: they are aliases
-    # for which it is not possible to use any offset by which are much faster than
-    # normal aliases at runtime
-    # Update: @see runtime/modules/register/register_alias.hpp
-    def __init__(self, name, initAlias, offset = 0):
-        self.name = name
-        # I make sure that there is just one registers specified for
-        # the alias
-        index = extractRegInterval(initAlias)
-        if index:
-            if index[0] != index[1]:
-                raise Exception('Cannot specify an interval of more than one register in ' + initAlias + ' when aliasing a single register.')
-        self.initAlias = initAlias
-        self.offset = offset
-        self.defValue = None
-        self.isFixed = False
-
-    def setDefaultValue(self, value):
-        self.defValue = value
-
-    def setFixed(self):
-        self.isFixed = True
-
-class MemoryAlias:
-    """Alias for a register through a memory address: by reading and writing to the
-    memory address we actually read/write to the register"""
-    def __init__(self, address, alias):
-        self.address = address
-        self.alias = alias
-
-class AliasRegBank:
-    """Alias for a register of the processor;
-    actually this is a pointer to a register; this pointer
-    might be updated during program execution to point to
-    the right register; updating it is responsibility of
-    the programmer; it is also possible to directly specify
-    a target for the alias: in this case the alias is fixed"""
-    def __init__(self, name, numRegs, initAlias):
-        self.name = name
-        self.numRegs = numRegs
-        # Now I have to make sure that the registers specified for the
-        # alias have the same lenght of the alias width
-        if isinstance(initAlias, str):
-            index = extractRegInterval(initAlias)
-            # Part of a register bank or alias register bank.
-            if index:
-                if index[1] - index[0] + 1 != numRegs:
-                    raise Exception('Alias register bank ' + str(initAlias) + ' contains ' + str(index[1]-index[0]+1) + ' registers but the aliased register bank contains ' + str(numRegs) + ' registers.')
-            # Single register or alias register.
-            else:
-                if numRegs > 1:
-                    raise Exception('Alias register bank ' + str(initAlias) + ' contains one register but the aliased register bank contains ' + str(numRegs) + ' registers.')
-        # List of registers, alias registers, register banks or alias register banks.
-        else:
-            totalRegs = 0
-            for i in initAlias:
-                index = extractRegInterval(i)
-                if index:
-                    totalRegs += index[1] - index[0] + 1
-                else:
-                    totalRegs += 1
-            if totalRegs != numRegs:
-                raise Exception('Alias register bank ' + str(initAlias) + ' contains ' + str(totalregs) + ' registers but the aliased register bank contains ' + str(numRegs) + ' registers.')
-        self.initAlias = initAlias
-        self.defValues = [None for i in range(0, numRegs)]
-        self.offsets = {}
-        self.fixedIndices = []
-        self.checkGroup = False
-
-    def setCheckGroup(self):
-        self.checkGroup = True
-
-    def setFixed(self, indices):
-        for index in indices:
-            if index >= self.numRegs:
-                raise Exception('Cannot set fixed index ' + str(index) + ' for alias register bank ' + self.name + '. Index out of range.')
-        for i in range(0, len(self.fixedIndices) - 1):
-            if self.fixedIndices[i] > self.fixedIndices[i + 1]:
-                raise Exception('Indices specified for alias register bank ' + self.name + ' are not in ascending order.')
-        self.fixedIndices = indices
-
-    def setOffset(self, regId, offset):
-        self.offsets[regId] = offset
-
-    def setDefaultValues(self, values):
-        if len(values) != self.numRegs:
-            raise Exception('The number of initialization values for alias register bank ' + self.name + ' does not match the number of registers.')
-        self.defValues = values
-
-    def setDefaultValue(self, value, position):
-        if position < 0 or position >= self.numRegs:
-            raise Exception('Cannot set initialization value for register ' + position + ' in alias register bank ' + self.name + '. Index out of range.')
-        self.defValues[position] = value
-
+################################################################################
+# Processor
+################################################################################
 class Processor:
     """
     Defined by (a) name (b) endianess (c) wordsize (in terms of
@@ -344,6 +93,14 @@ class Processor:
     functional processor in case a local memory is used (in case TLM ports
     are used the systemc parameter is not taken into account)
     """
+
+    #---------------------------------------------------------------------------
+    ## @name Initialization and Configuration
+    #  @{
+
+    # ..........................................................................
+    # Processor Configuration
+
     def __init__(self, name, version, systemc = True, coprocessor = False, instructionCache = True, fastFetch = False, externalClock = False, cacheLimit = 256):
         if coprocessor:
             raise Exception('Generation of co-processors not yet supported.')
@@ -407,38 +164,6 @@ class Processor:
         self.banner = banner
         self.license = license.lower()
 
-    def setTLMMem(self, mem_size, memLatency, sparse = False):
-        """the memory latency is exrepssed in us"""
-        self.tlmFakeMemProperties = (mem_size, memLatency, sparse)
-
-    def setPreProcMacro(self, wafOption, macro):
-        self.preProcMacros.append( (wafOption, macro) )
-
-    def setISA(self, isa):
-        self.isa = isa
-
-    def setMemory(self, name, mem_size, debug = False, program_counter = ''):
-        for name, isFetch in self.tlmPorts.items():
-            if isFetch:
-                raise Exception('Cannot specify internal memory for fetching instructions since an external fetch port ' + name + ' is already set.')
-        self.memory = (name, mem_size, debug, program_counter)
-
-    def addTLMPort(self, portName, fetch = False):
-        """Note that for the TLM port, if only one is specified and the it is the
-        port for the fetch, another port called portName + '_fetch' will be automatically
-        instantiated. the port called portName can be, instead, used for accessing normal
-        data"""
-        if not self.systemc:
-            raise Exception('Cannot use TLM ports if SystemC is not enabled.')
-        if fetch and self.memory:
-            raise Exception('Cannot specify port ' + portName + ' as a fetch port since the internal memory is already set for fetching instructions.')
-        for name,isFetch  in self.tlmPorts.items():
-            if name == portName:
-                raise Exception('Port ' + portName + ' already exists.')
-            if fetch and isFetch:
-                raise Exception('Cannot specify port ' + portName + ' as a fetch port since port ' + name + ' is already set as a fetch port.')
-        self.tlmPorts[portName] = fetch
-
     def setBigEndian(self):
         self.isBigEndian = True
 
@@ -449,15 +174,23 @@ class Processor:
         self.wordSize = wordSize
         self.byteSize = byteSize
 
-    def addDefine(self, define, includes = []):
-        self.defines.append(cxx_writer.Define(define + '\n', includes = includes))
+    # ..........................................................................
+    # Instruction Set Architecture Configuration
 
-    def addParameter(self, name, varType, default):
-        for i in self.parameters:
-            if i.name == name:
-                raise Exception('Parameter ' + name + ' already exists in processor ' + self.name + '.')
-        parameter = cxx_writer.Parameter(name, type = varType, initValue = default)
-        self.parameters.append(parameter)
+    def setISA(self, isa):
+        self.isa = isa
+
+    # ..........................................................................
+    # Pipeline Configuration
+
+    def addPipeStage(self, pipe):
+        for i in self.pipes:
+            if i.name == pipe.name:
+                raise Exception('Pipeline stage ' + pipe.name + ' already exists in processor ' + self.name + '.')
+        self.pipes.append(pipe)
+
+    # ..........................................................................
+    # Storage Configuration
 
     def addRegister(self, reg):
         for i in self.regs:
@@ -519,50 +252,6 @@ class Processor:
                 raise Exception('Alias register bank ' + alias.name + ' conflicts with alias register bank ' + i.name + ' in processor ' + self.name + '.')
         self.aliasRegBanks.append(alias)
 
-    def setABI(self, abi):
-        if self.coprocessor:
-            print ('Warning: No need to set an ABI for coprocessor ' + self.name + '.')
-        self.abi = abi
-
-    def addPipeStage(self, pipe):
-        for i in self.pipes:
-            if i.name == pipe.name:
-                raise Exception('Pipeline stage ' + pipe.name + ' already exists in processor ' + self.name + '.')
-        self.pipes.append(pipe)
-
-    def setBeginOperation(self, code):
-        """if is an instance of cxx_writer.CustomCode,
-        containing the code for the behavior
-        If no begin operation is specified, the default
-        values for the registers are used"""
-        self.startup = code
-
-    def setEndOperation(self, code):
-        """if is an instance of cxx_writer.CustomCode,
-        containing the code for the behavior
-        If no end operation is specified, nothing
-        is done"""
-        self.shutdown = code
-
-    def setResetOperation(self, code):
-        """if is an instance of cxx_writer.CustomCode,
-        containing the code for the behavior
-        if no reset operation is specified, the
-        begin operation is called"""
-        self.reset = code
-
-    def addIrq(self, irq):
-        for i in self.irqs:
-            if i.name == irq.name:
-                raise Exception('Interrupt port ' + i.name + ' already exists in processor ' + self.name + '.')
-        self.irqs.append(irq)
-
-    def addPin(self, pin):
-        for i in self.pins:
-            if i.name == pin.name:
-                raise Exception('External pin ' + i.name + ' already exists in processor ' + self.name + '.')
-        self.pins.append(pin)
-
     def setFetchRegister(self, fetchReg,  offset = 0):
         """Sets the correspondence between the fetch address
         and a register inside the processor"""
@@ -591,6 +280,143 @@ class Processor:
 
     def addMemAlias(self, memAlias):
         self.memAlias.append(memAlias)
+
+    def setMemory(self, name, mem_size, debug = False, program_counter = ''):
+        for name, isFetch in self.tlmPorts.items():
+            if isFetch:
+                raise Exception('Cannot specify internal memory for fetching instructions since an external fetch port ' + name + ' is already set.')
+        self.memory = (name, mem_size, debug, program_counter)
+
+    def setTLMMem(self, mem_size, memLatency, sparse = False):
+        """the memory latency is exrepssed in us"""
+        self.tlmFakeMemProperties = (mem_size, memLatency, sparse)
+
+    # ..........................................................................
+    # Interface Configuration
+
+    def addIrq(self, irq):
+        for i in self.irqs:
+            if i.name == irq.name:
+                raise Exception('Interrupt port ' + i.name + ' already exists in processor ' + self.name + '.')
+        self.irqs.append(irq)
+
+    def addPin(self, pin):
+        for i in self.pins:
+            if i.name == pin.name:
+                raise Exception('External pin ' + i.name + ' already exists in processor ' + self.name + '.')
+        self.pins.append(pin)
+
+    def addTLMPort(self, portName, fetch = False):
+        """Note that for the TLM port, if only one is specified and the it is the
+        port for the fetch, another port called portName + '_fetch' will be automatically
+        instantiated. the port called portName can be, instead, used for accessing normal
+        data"""
+        if not self.systemc:
+            raise Exception('Cannot use TLM ports if SystemC is not enabled.')
+        if fetch and self.memory:
+            raise Exception('Cannot specify port ' + portName + ' as a fetch port since the internal memory is already set for fetching instructions.')
+        for name,isFetch  in self.tlmPorts.items():
+            if name == portName:
+                raise Exception('Port ' + portName + ' already exists.')
+            if fetch and isFetch:
+                raise Exception('Cannot specify port ' + portName + ' as a fetch port since port ' + name + ' is already set as a fetch port.')
+        self.tlmPorts[portName] = fetch
+
+    def setABI(self, abi):
+        if self.coprocessor:
+            print ('Warning: No need to set an ABI for coprocessor ' + self.name + '.')
+        self.abi = abi
+
+    # ..........................................................................
+    # Behavior Configuration
+
+    def addDefine(self, define, includes = []):
+        self.defines.append(cxx_writer.Define(define + '\n', includes = includes))
+
+    def setPreProcMacro(self, wafOption, macro):
+        self.preProcMacros.append( (wafOption, macro) )
+
+    def addParameter(self, name, varType, default):
+        for i in self.parameters:
+            if i.name == name:
+                raise Exception('Parameter ' + name + ' already exists in processor ' + self.name + '.')
+        parameter = cxx_writer.Parameter(name, type = varType, initValue = default)
+        self.parameters.append(parameter)
+
+    def setBeginOperation(self, code):
+        """if is an instance of cxx_writer.CustomCode,
+        containing the code for the behavior
+        If no begin operation is specified, the default
+        values for the registers are used"""
+        self.startup = code
+
+    def setEndOperation(self, code):
+        """if is an instance of cxx_writer.CustomCode,
+        containing the code for the behavior
+        If no end operation is specified, nothing
+        is done"""
+        self.shutdown = code
+
+    def setResetOperation(self, code):
+        """if is an instance of cxx_writer.CustomCode,
+        containing the code for the behavior
+        if no reset operation is specified, the
+        begin operation is called"""
+        self.reset = code
+
+    ## @} Initialization and Configuration
+    #---------------------------------------------------------------------------
+    ## @name Checks
+    #  @{
+
+    # ..........................................................................
+    # Pipeline Checks
+
+    def checkPipeStages(self):
+        for instrName, instr in self.isa.instructions.items():
+            for stage, beh in instr.prebehaviors.items():
+                if not stage in [i.name for i in self.pipes]:
+                    raise Exception('Pipeline stage ' + stage + ' specified for behavior ' + beh.name + ' in instruction ' + instrName + ' does not exist.')
+            for stage, beh in instr.postbehaviors.items():
+                if not stage in [i.name for i in self.pipes]:
+                    raise Exception('Pipeline stage ' + stage + ' specified for behavior ' + beh.name + ' in instruction ' + instrName + ' does not exist.')
+            for stage in instr.code.keys():
+                if not stage in [i.name for i in self.pipes]:
+                    raise Exception('Pipeline stage ' + stage + ' specified for code in instruction ' + instrName + ' does not exist.')
+        for method in self.isa.methods:
+            if not method.stage in [i.name for i in self.pipes]:
+                raise Exception('Pipeline stage ' + stage + ' specified for method ' + method.name + ' does not exist.')
+
+        fetchStage = False
+        checkHazardStage = False
+        wbStage = False
+        for pipeStage in self.pipes:
+            if pipeStage.fetch:
+                if fetchStage:
+                    raise Exception('Cannot have more than one pipeline stage for fetching instructions.')
+                else:
+                    fetchStage = True
+            if pipeStage.checkHazard:
+                checkHazardStage = True
+            if pipeStage.wb or pipeStage.endHazard:
+                wbStage = True
+            for fromStage in pipeStage.wbStageOrder:
+                if fromStage not in self.pipes + [pipe.name for pipe in self.pipes]:
+                    raise Exception('Cannot set write-back order for pipe stage ' + pipeStage.name + '. Pipeline stage ' + fromStage + ' does not exist.')
+        if (wbStage and not checkHazardStage) or (not wbStage and checkHazardStage):
+            raise Exception('Both writeback and check hazards stages must be specified.')
+
+    def checkPipeRegs(self):
+        for reg in self.regs:
+            for fromStage, toStages in reg.wbStageOrder.iteritems():
+                if fromStage not in self.pipes + [pipe.name for pipe in self.pipes]:
+                    raise Exception('Cannot set write-back order for register ' + reg.name + '. Pipeline stage ' + fromStage + ' does not exist.')
+                for toStage in toStages:
+                    if toStage not in self.pipes + [pipe.name for pipe in self.pipes]:
+                        raise Exception('Cannot set write-back order for register ' + reg.name + '. Pipeline stage ' + toStage + ' does not exist.')
+
+    # ..........................................................................
+    # Storage Checks
 
     def isRegExisting(self, name, index = None):
         if index:
@@ -622,114 +448,6 @@ class Processor:
                 return True
         return False
 
-    #def setWBOrder(self, regName, order):
-        #for i in order:
-            #if not i in [curPipe.name for curPipe in self.pipes]:
-                #raise Exception('Pipeline stage ' + i + ' specified for write back of register ' + regName + ' does not exist.')
-        #order = list(order)
-        #for curPipe in self.pipes:
-            #if not curPipe.name in order:
-                #order.append(curPipe.name)
-        #self.regOrder[regName] = order
-
-    def checkPipeStages(self):
-        for instrName, instr in self.isa.instructions.items():
-            for stage, beh in instr.prebehaviors.items():
-                if not stage in [i.name for i in self.pipes]:
-                    raise Exception('Pipeline stage ' + stage + ' specified for behavior ' + beh.name + ' in instruction ' + instrName + ' does not exist.')
-            for stage, beh in instr.postbehaviors.items():
-                if not stage in [i.name for i in self.pipes]:
-                    raise Exception('Pipeline stage ' + stage + ' specified for behavior ' + beh.name + ' in instruction ' + instrName + ' does not exist.')
-            for stage in instr.code.keys():
-                if not stage in [i.name for i in self.pipes]:
-                    raise Exception('Pipeline stage ' + stage + ' specified for code in instruction ' + instrName + ' does not exist.')
-        wbStage = False
-        checkHazardStage = False
-        for pipeStage in self.pipes:
-            if pipeStage.wb:
-                wbStage = True
-            if pipeStage.checkHazard:
-                checkHazardStage = True
-        if (wbStage and not checkHazardStage) or (not wbStage and checkHazardStage):
-            raise Exception('Both writeback and check hazards stages must be specified.')
-        for method in self.isa.methods:
-            if not method.stage in [i.name for i in self.pipes]:
-                raise Exception('Pipeline stage ' + stage + ' specified for method ' + method.name + ' does not exist.')
-
-    def checkMemRegisters(self):
-        if not self.memory and not self.tlmPorts:
-            raise Exception('Please specify either an internal memory (using setMemory()) or a TLM memory port (using addTLMPort()).')
-        if not self.fetchReg:
-            raise Exception('Please specify a fetch register using setFetchRegister() (usually the PC).')
-        for memAliasReg in self.memAlias:
-            index = extractRegInterval(memAliasReg.alias)
-            if index:
-                # I'm aliasing part of a register bank or another alias:
-                # I check that it exists and that I am still within
-                # boundaries
-                regName = memAliasReg.alias[:memAliasReg.alias.find('[')]
-                if self.isRegExisting(regName, index) is None:
-                    raise Exception('Cannot set memory alias for register ' + memAliasReg.alias + ' at address ' + memAliasReg.address + '. Register does not exist.')
-            else:
-                # Single register or alias: I check that it exists
-                if self.isRegExisting(memAliasReg.alias) is None:
-                    raise Exception('Cannot set memory alias for register ' + memAliasReg.alias + ' at address ' + memAliasReg.address + '. Register does not exist.')
-        if self.memory and self.memory[3]:
-            index = extractRegInterval(self.memory[3])
-            if index:
-                # I'm aliasing part of a register bank or another alias:
-                # I check that it exists and that I am still within
-                # boundaries
-                regName = self.memory[3][:self.memory[3].find('[')]
-                if self.isRegExisting(regName, index) is None:
-                    raise Exception('Cannot set register ' + self.memory[3] + ' as the program counter. Register does not exist in local memory.')
-            else:
-                # Single register or alias: I check that it exists
-                if self.isRegExisting(self.memory[3]) is None:
-                    raise Exception('Cannot set register ' + self.memory[3] + ' as the program counter. Register does not exist in local memory.')
-
-    def checkTestRegs(self):
-        """We check that the registers specified in the tests exist"""
-        outPinPorts = []
-        for pinPort in self.pins:
-            if not pinPort.inbound:
-                outPinPorts.append(pinPort.name)
-
-        for instr in self.isa.instructions.values():
-            for test in instr.tests:
-                # Now I check the existence of the instruction fields
-                for name, elemValue in test[0].items():
-                    if not instr.machineCode.bitLen.has_key(name):
-                        raise Exception('Field ' + name + ' in test of instruction ' + instr.name + ' does not exist in the machine code.')
-                for resource, value in test[1].items():
-                    # Now I check the existence of the global resources
-                    brackIndex = resource.find('[')
-                    memories = self.tlmPorts.keys()
-                    if self.memory:
-                        memories.append(self.memory[0])
-                    if not (brackIndex > 0 and resource[:brackIndex] in memories):
-                        index = extractRegInterval(resource)
-                        if index:
-                            resourceName = resource[:brackIndex]
-                            if self.isRegExisting(resourceName, index) is None:
-                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
-                        else:
-                            if self.isRegExisting(resource) is None:
-                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
-                for resource, value in test[2].items():
-                    brackIndex = resource.find('[')
-                    memories = self.tlmPorts.keys()
-                    if self.memory:
-                        memories.append(self.memory[0])
-                    if not (brackIndex > 0 and (resource[:brackIndex] in memories or resource[:brackIndex] in outPinPorts)):
-                        index = extractRegInterval(resource)
-                        if index:
-                            resourceName = resource[:brackIndex]
-                            if self.isRegExisting(resourceName, index) is None:
-                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
-                        else:
-                            if self.isRegExisting(resource) is None:
-                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
     def checkAliases(self):
         """checks that the declared aliases actually refer to
         existing registers"""
@@ -830,6 +548,38 @@ class Processor:
                 except AttributeError:
                     pass
 
+    def checkMemRegisters(self):
+        if not self.memory and not self.tlmPorts:
+            raise Exception('Please specify either an internal memory (using setMemory()) or a TLM memory port (using addTLMPort()).')
+        if not self.fetchReg:
+            raise Exception('Please specify a fetch register using setFetchRegister() (usually the PC).')
+        for memAliasReg in self.memAlias:
+            index = extractRegInterval(memAliasReg.alias)
+            if index:
+                # I'm aliasing part of a register bank or another alias:
+                # I check that it exists and that I am still within
+                # boundaries
+                regName = memAliasReg.alias[:memAliasReg.alias.find('[')]
+                if self.isRegExisting(regName, index) is None:
+                    raise Exception('Cannot set memory alias for register ' + memAliasReg.alias + ' at address ' + memAliasReg.address + '. Register does not exist.')
+            else:
+                # Single register or alias: I check that it exists
+                if self.isRegExisting(memAliasReg.alias) is None:
+                    raise Exception('Cannot set memory alias for register ' + memAliasReg.alias + ' at address ' + memAliasReg.address + '. Register does not exist.')
+        if self.memory and self.memory[3]:
+            index = extractRegInterval(self.memory[3])
+            if index:
+                # I'm aliasing part of a register bank or another alias:
+                # I check that it exists and that I am still within
+                # boundaries
+                regName = self.memory[3][:self.memory[3].find('[')]
+                if self.isRegExisting(regName, index) is None:
+                    raise Exception('Cannot set register ' + self.memory[3] + ' as the program counter. Register does not exist in local memory.')
+            else:
+                # Single register or alias: I check that it exists
+                if self.isRegExisting(self.memory[3]) is None:
+                    raise Exception('Cannot set register ' + self.memory[3] + ' as the program counter. Register does not exist in local memory.')
+
     def checkISARegs(self):
         """Checks that registers declared in the instruction encoding and the ISA really exists"""
         architecturalNames = [archElem.name for archElem in self.regs + self.regBanks + self.aliasRegs + self.aliasRegBanks]
@@ -888,6 +638,60 @@ class Processor:
                 newInRegs[stage] = regs
             instruction.specialInRegs = newInRegs
 
+    def checkTestRegs(self):
+        """We check that the registers specified in the tests exist"""
+        outPinPorts = []
+        for pinPort in self.pins:
+            if not pinPort.inbound:
+                outPinPorts.append(pinPort.name)
+
+        for instr in self.isa.instructions.values():
+            for test in instr.tests:
+                # Now I check the existence of the instruction fields
+                for name, elemValue in test[0].items():
+                    if not instr.machineCode.bitLen.has_key(name):
+                        raise Exception('Field ' + name + ' in test of instruction ' + instr.name + ' does not exist in the machine code.')
+                for resource, value in test[1].items():
+                    # Now I check the existence of the global resources
+                    brackIndex = resource.find('[')
+                    memories = self.tlmPorts.keys()
+                    if self.memory:
+                        memories.append(self.memory[0])
+                    if not (brackIndex > 0 and resource[:brackIndex] in memories):
+                        index = extractRegInterval(resource)
+                        if index:
+                            resourceName = resource[:brackIndex]
+                            if self.isRegExisting(resourceName, index) is None:
+                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
+                        else:
+                            if self.isRegExisting(resource) is None:
+                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
+                for resource, value in test[2].items():
+                    brackIndex = resource.find('[')
+                    memories = self.tlmPorts.keys()
+                    if self.memory:
+                        memories.append(self.memory[0])
+                    if not (brackIndex > 0 and (resource[:brackIndex] in memories or resource[:brackIndex] in outPinPorts)):
+                        index = extractRegInterval(resource)
+                        if index:
+                            resourceName = resource[:brackIndex]
+                            if self.isRegExisting(resourceName, index) is None:
+                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
+                        else:
+                            if self.isRegExisting(resource) is None:
+                                raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
+
+    # ..........................................................................
+    # Interface Checks
+
+    def checkIRQPorts(self):
+        """So far I only have to check that the stages of the IRQ operations are existing"""
+        stageNames = [i.name for i in self.pipes]
+        for irq in self.irqs:
+            for stage in irq.operation.keys():
+                if not stage in stageNames:
+                    raise Exception('Pipeline stage ' + stage + ' specified for interrupt ' + irq.name + ' does not exist.')
+
     def checkABI(self):
         """checks that the registers specified for the ABI interface
         refer to existing registers"""
@@ -935,75 +739,10 @@ class Processor:
             print('Warning: "returnCallInstr" or "callInstr" not specified in the ABI. The profiler may give incorrect results.')
         ################# TODO: check also the memories #######################
 
-    def checkIRQPorts(self):
-        """So far I only have to check that the stages of the IRQ operations are existing"""
-        stageNames = [i.name for i in self.pipes]
-        for irq in self.irqs:
-            for stage in irq.operation.keys():
-                if not stage in stageNames:
-                    raise Exception('Pipeline stage ' + stage + ' specified for interrupt ' + irq.name + ' does not exist.')
-
-    def getCPPRegisters(self, trace, combinedTrace, model, namespace):
-        """This method creates all the classes necessary for declaring
-        the registers: in particular the register base class
-        and all the classes for the different bitwidths"""
-        return registerWriter.getCPPRegisters(self, trace, combinedTrace, model, namespace)
-
-    def getCPPPipelineReg(self, trace, combinedTrace, namespace):
-        return registerWriter.getCPPPipelineReg(self, trace, combinedTrace, namespace)
-
-    def getCPPProc(self, model, trace, combinedTrace, namespace):
-        """creates the class describing the processor"""
-        return procWriter.getCPPProc(self, model, trace, combinedTrace, namespace)
-
-    def getCPPMemoryIf(self, model, namespace):
-        """creates the class describing the processor"""
-        return memWriter.getCPPMemoryIf(self, model, namespace)
-
-    def getCPPIf(self, model, namespace):
-        """creates the interface which is used by the tools
-        to access the processor core"""
-        return interfaceWriter.getCPPIf(self, model, namespace)
-
-    def getCPPExternalPorts(self, model, namespace):
-        """creates the processor external ports used for the
-        communication with the external world (the memory port
-        is not among this ports, it is treated separately)"""
-        return portsWriter.getCPPExternalPorts(self, model, namespace)
-
-    def getTestMainCode(self):
-        """Returns the code for the file which contains the main
-        routine for the execution of the tests.
-        actually it is nothing but a file which includes
-        boost/test/auto_unit_test.hpp and defines
-        BOOST_AUTO_TEST_MAIN and BOOST_TEST_DYN_LINK"""
-        return procWriter.getTestMainCode(self)
-
-    def getMainCode(self, model, namespace):
-        """Returns the code which instantiate the processor
-        in order to execute simulations"""
-        return procWriter.getMainCode(self, model, namespace)
-
-    def getGetIRQPorts(self, namespace):
-        """Returns the code implementing the interrupt ports"""
-        return portsWriter.getGetIRQPorts(self, namespace)
-
-    def getGetIRQInstr(self, model, trace, combinedTrace, namespace):
-        """Returns the code implementing the fake interrupt instruction"""
-        return irqWriter.getGetIRQInstr(self, model, trace, namespace)
-
-    def getGetPINPorts(self, namespace):
-        """Returns the code implementing the PIN ports"""
-        return portsWriter.getGetPINPorts(self, namespace)
-
-    def getIRQTests(self, trace, combinedTrace, namespace):
-        """Returns the code implementing the tests for the
-        interrupt lines"""
-        return portsWriter.getIRQTests(self, trace, combinedTrace, namespace)
-
-    def getGetPipelineStages(self, trace, combinedTrace, model, namespace):
-        """Returns the code implementing the pipeline stages"""
-        return pipelineWriter.getGetPipelineStages(self, trace, combinedTrace, model, namespace)
+    ## @} Checks
+    #---------------------------------------------------------------------------
+    ## @name Model Generation
+    #  @{
 
     def write(self, folder = '', models = validModels, namespace = '', dumpDecoderName = '', trace = False, combinedTrace = False, forceDecoderCreation = False, tests = True, memPenaltyFactor = 4):
         """Ok: this method does two things: first of all it performs all
@@ -1011,25 +750,39 @@ class Processor:
         coherent. Second it actually calls the write method of the
         processor components (registers, instructions, etc.) to create
         the code of the simulator"""
+
         print ('\tCreating processor model ' + self.name + '...')
         print ('\t\tChecking the consistency of the specification...')
-        if ('funcAT' in models or 'accAT' in models or 'accLT' in models) and not self.tlmPorts:
-            raise Exception('TLM ports are required for all models other than funcLT. Please specify at least one TLM port.')
+
+        # ..........................................................................
+        # Checks
+
+        # Instruction Set Architecture Checks
         self.isa.computeCoding()
         self.isa.checkCoding()
+
+        # Pipeline Checks
+        self.checkPipeStages()
+        self.checkPipeRegs()
+
+        # Storage Checks
         self.checkAliases()
         self.checkMemRegisters()
-        self.checkPipeStages()
+        self.checkISARegs()
+        self.isa.checkRegisters(extractRegInterval, self.isRegExisting)
         self.checkTestRegs()
+
+        # Interface Checks
+        if ('funcAT' in models or 'accAT' in models or 'accLT' in models) and not self.tlmPorts:
+            raise Exception('TLM ports are required for all models other than funcLT. Please specify at least one TLM port.')
+        self.checkIRQPorts()
         if self.abi:
             self.checkABI()
-        self.isa.checkRegisters(extractRegInterval, self.isRegExisting)
-        self.checkISARegs()
-        self.checkIRQPorts()
 
-        # OK, checks done. Now I can start calling the write methods to
-        # actually create the ISS code
-        # First of all we have to create the decoder
+        # ..........................................................................
+        # Model Generation
+
+        # Decoder Model Generation
         from isa import resolveBitType
         import decoder, os
         import cxx_writer
@@ -1089,7 +842,9 @@ class Processor:
                 forceDecoderCreation = True
         if dumpDecoderName:
             dec.printDecoder(dumpDecoderName)
+
         mainFolder = cxx_writer.Folder(os.path.expanduser(os.path.expandvars(folder)))
+
         for model in models:
             # Here I add the define code, defining the type of the current model;
             # such define code has to be added to each created header file
@@ -1101,238 +856,253 @@ class Processor:
             # Now I also set the processor class name: note that even if each model has a
             # separate namespace, some buggy dynamic linkers complain, so we must also
             # use separate names for the processor class
-            procWriter.processor_name = 'Core' + self.name + model[-2:]
+            procWriter.processor_name = 'Core' + self.name + model[0].upper() + model[1:]
 
             print ('\t\tCreating ' + model + ' implementation...')
             if not model in validModels:
                 raise Exception('Invalid model ' + model + '.')
             if not namespace:
-                namespace = 'core_' + self.name.lower() + '_' + model[-2:].lower()
+                namespace = 'core_' + self.name.lower() + '_' + model.lower()
             namespaceUse = cxx_writer.UseNamespace(namespace)
             namespaceTrapUse = cxx_writer.UseNamespace('trap')
-            decClasses = dec.getCPPClass(self.bitSizes[1], self.instructionCache, namespace)
-            implFileDec = cxx_writer.FileDumper('decoder.cpp', False)
-            headFileDec = cxx_writer.FileDumper('decoder.hpp', True)
-            headFileDec.addMember(defCode)
-            implFileDec.addMember(namespaceUse)
-            for i in decClasses:
-                implFileDec.addMember(i)
-                headFileDec.addMember(i)
-            implFileDec.addInclude('#include \"decoder.hpp\"')
-            RegClasses = self.getCPPRegisters(trace, combinedTrace, model, namespace)
-            ProcClass = self.getCPPProc(model, trace, combinedTrace, namespace)
-            if self.abi:
-                IfClass = self.getCPPIf(model, namespace)
-            if model.startswith('acc'):
-                pipeClass = self.getGetPipelineStages(trace, combinedTrace, model, namespace)
-            MemClass = self.getCPPMemoryIf(model, namespace)
-            ExternalIf = self.getCPPExternalPorts(model, namespace)
-            PINClasses = []
-            if self.pins:
-                PINClasses += self.getGetPINPorts(namespace)
-            ISAClasses = self.isa.getCPPClasses(self, model, trace, combinedTrace, namespace)
-            IRQClasses = []
-            if self.irqs:
-                IRQClasses += self.getGetIRQPorts(namespace)
-                ISAClasses += self.getGetIRQInstr(model, trace, combinedTrace, namespace)
-            # Ok, now that we have all the classes it is time to write
-            # them to file
+
             curFolder = cxx_writer.Folder(os.path.join(folder, model))
             mainFolder.addSubFolder(curFolder)
-            implFileRegs = cxx_writer.FileDumper('registers.cpp', False)
-            implFileRegs.addInclude('#include \"registers.hpp\"')
-            headFileRegs = cxx_writer.FileDumper('registers.hpp', True)
-            headFileRegs.addMember(defCode)
-            headFileRegs.addMember(self.defines)
-            headFileRegs.addMember(registerWriter.getCPPRegisterDefines(self))
-            headFileRegs.addMember(registerWriter.getCPPRegisterFields(self))
-            implFileRegs.addMember(namespaceUse)
-            implFileRegs.addMember(RegClasses)
-            headFileRegs.addMember(RegClasses)
-            implFileProc = cxx_writer.FileDumper('processor.cpp', False)
-            headFileProc = cxx_writer.FileDumper('processor.hpp', True)
-            implFileProc.addMember(namespaceUse)
-            implFileProc.addMember(namespaceTrapUse)
-            implFileProc.addMember(ProcClass)
-            headFileProc.addMember(defCode)
-            headFileProc.addMember(namespaceTrapUse)
-            headFileProc.addMember(ProcClass)
-            implFileProc.addInclude('#include \"processor.hpp\"')
-            if model.startswith('acc'):
-                implFilePipe = cxx_writer.FileDumper('pipeline.cpp', False)
-                headFilePipe = cxx_writer.FileDumper('pipeline.hpp', True)
-                headFilePipe.addMember(defCode)
-                implFilePipe.addMember(namespaceUse)
-                implFilePipe.addMember(namespaceTrapUse)
-                headFilePipe.addMember(namespaceTrapUse)
-                for i in pipeClass:
-                    implFilePipe.addMember(i)
-                    headFilePipe.addMember(i)
-                implFilePipe.addInclude('#include \"pipeline.hpp\"')
-            implFileInstr = cxx_writer.FileDumper('instructions.cpp', False)
-            headFileInstr = cxx_writer.FileDumper('instructions.hpp', True)
-            headFileInstr.addMember(defCode)
-            implFileInstr.addMember(namespaceUse)
-            for i in ISAClasses:
-                implFileInstr.addMember(i)
-                headFileInstr.addMember(i)
-            if self.abi:
-                implFileIf = cxx_writer.FileDumper('interface.cpp', False)
-                implFileIf.addInclude('#include \"interface.hpp\"')
-                headFileIf = cxx_writer.FileDumper('interface.hpp', True)
-                headFileIf.addMember(defCode)
-                implFileIf.addMember(namespaceUse)
-                implFileIf.addMember(namespaceTrapUse)
-                headFileIf.addMember(namespaceTrapUse)
-                implFileIf.addMember(IfClass)
-                headFileIf.addMember(IfClass)
-            implFileMem = cxx_writer.FileDumper('memory.cpp', False)
-            implFileMem.addInclude('#include \"memory.hpp\"')
-            headFileMem = cxx_writer.FileDumper('memory.hpp', True)
-            headFileMem.addMember(defCode)
-            implFileMem.addMember(namespaceUse)
-            implFileMem.addMember(namespaceTrapUse)
-            headFileMem.addMember(namespaceTrapUse)
-            for i in MemClass:
-                implFileMem.addMember(i)
-                headFileMem.addMember(i)
-            if ExternalIf:
-                implFileExt = cxx_writer.FileDumper('externalPorts.cpp', False)
-                implFileExt.addInclude('#include \"externalPorts.hpp\"')
-                headFileExt = cxx_writer.FileDumper('externalPorts.hpp', True)
-                headFileExt.addMember(defCode)
-                implFileExt.addMember(namespaceUse)
-                implFileExt.addMember(ExternalIf)
-                headFileExt.addMember(ExternalIf)
-            if self.irqs:
-                implFileIRQ = cxx_writer.FileDumper('irqPorts.cpp', False)
-                implFileIRQ.addInclude('#include \"irqPorts.hpp\"')
-                headFileIRQ = cxx_writer.FileDumper('irqPorts.hpp', True)
-                headFileIRQ.addMember(defCode)
-                implFileIRQ.addMember(namespaceUse)
-                for i in IRQClasses:
-                    implFileIRQ.addMember(i)
-                    headFileIRQ.addMember(i)
-            if self.pins:
-                implFilePIN = cxx_writer.FileDumper('externalPins.cpp', False)
-                implFilePIN.addInclude('#include \"externalPins.hpp\"')
-                headFilePIN = cxx_writer.FileDumper('externalPins.hpp', True)
-                headFilePIN.addMember(defCode)
-                implFilePIN.addMember(namespaceUse)
-                for i in PINClasses:
-                    implFilePIN.addMember(i)
-                    headFilePIN.addMember(i)
-            mainFile = cxx_writer.FileDumper('main.cpp', False)
-            mainCode = self.getMainCode(model, namespace)
-            mainFile.addMember(mainCode)
-            hmainFile = cxx_writer.FileDumper('main.hpp', True)
-            mainFile.addInclude('#include \"main.hpp\"')
-            hmainFile.addMember(mainCode)
 
+            # Decoder Model Generation
+            decoderClasses = dec.getCPPClass(self.bitSizes[1], self.instructionCache, namespace)
+            decoderHeadFile = cxx_writer.FileDumper('decoder.hpp', True)
+            decoderHeadFile.addMember(defCode)
+            decoderImplFile = cxx_writer.FileDumper('decoder.cpp', False)
+            decoderImplFile.addInclude('#include \"decoder.hpp\"')
+            decoderImplFile.addMember(namespaceUse)
+            for i in decoderClasses:
+                decoderHeadFile.addMember(i)
+                decoderImplFile.addMember(i)
+            curFolder.addHeader(decoderHeadFile)
+            curFolder.addCode(decoderImplFile)
+
+            # Register Model Generation
+            registerClasses = registerWriter.getCPPRegisters(self, trace, combinedTrace, model, namespace)
+            registerHeadFile = cxx_writer.FileDumper('registers.hpp', True)
+            registerHeadFile.addMember(defCode)
+            registerHeadFile.addMember(self.defines)
+            registerHeadFile.addMember(registerWriter.getCPPRegisterDefines(self))
+            registerHeadFile.addMember(registerWriter.getCPPRegisterFields(self))
+            registerHeadFile.addMember(registerClasses)
+            registerImplFile = cxx_writer.FileDumper('registers.cpp', False)
+            registerImplFile.addInclude('#include \"registers.hpp\"')
+            registerImplFile.addMember(namespaceUse)
+            registerImplFile.addMember(registerClasses)
+            curFolder.addHeader(registerHeadFile)
+            curFolder.addCode(registerImplFile)
+
+            # Processor Model Generation
+            processorClass = procWriter.getCPPProcessor(self, model, trace, combinedTrace, namespace)
+            processorHeadFile = cxx_writer.FileDumper('processor.hpp', True)
+            processorHeadFile.addMember(defCode)
+            processorHeadFile.addMember(namespaceTrapUse)
+            processorHeadFile.addMember(processorClass)
+            processorImplFile = cxx_writer.FileDumper('processor.cpp', False)
+            processorImplFile.addInclude('#include \"processor.hpp\"')
+            processorImplFile.addMember(namespaceUse)
+            processorImplFile.addMember(namespaceTrapUse)
+            processorImplFile.addMember(processorClass)
+            curFolder.addHeader(processorHeadFile)
+            curFolder.addCode(processorImplFile)
+
+            # Instruction Set Architecture Model Generation
+            instrClasses = self.isa.getCPPInstructions(self, model, trace, combinedTrace, namespace)
+            if self.irqs:
+                instrClasses += irqWriter.getCPPIRQInstr(self, model, trace, namespace)
+            instrHeadFile = cxx_writer.FileDumper('instructions.hpp', True)
+            instrHeadFile.addMember(defCode)
+            instrImplFile = cxx_writer.FileDumper('instructions.cpp', False)
+            instrImplFile.addMember(namespaceUse)
+            for i in instrClasses:
+                instrHeadFile.addMember(i)
+                instrImplFile.addMember(i)
+            curFolder.addHeader(instrHeadFile)
+            curFolder.addCode(instrImplFile)
+
+            # Pipeline Model Generation
+            if model.startswith('acc'):
+                pipelineClasses = pipelineWriter.getCPPPipeline(self, trace, combinedTrace, model, namespace)
+                pipelineHeadFile = cxx_writer.FileDumper('pipeline.hpp', True)
+                pipelineHeadFile.addMember(defCode)
+                pipelineHeadFile.addMember(namespaceTrapUse)
+                pipelineImplFile = cxx_writer.FileDumper('pipeline.cpp', False)
+                pipelineImplFile.addInclude('#include \"pipeline.hpp\"')
+                pipelineImplFile.addMember(namespaceUse)
+                pipelineImplFile.addMember(namespaceTrapUse)
+                for i in pipelineClasses:
+                    pipelineHeadFile.addMember(i)
+                    pipelineImplFile.addMember(i)
+                curFolder.addHeader(pipelineHeadFile)
+                curFolder.addCode(pipelineImplFile)
+
+            # Memory Model Generation
+            memoryClasses = memWriter.getCPPMemoryIf(self, model, namespace)
+            memoryHeadFile = cxx_writer.FileDumper('memory.hpp', True)
+            memoryHeadFile.addMember(defCode)
+            memoryHeadFile.addMember(namespaceTrapUse)
+            memoryImplFile = cxx_writer.FileDumper('memory.cpp', False)
+            memoryImplFile.addInclude('#include \"memory.hpp\"')
+            memoryImplFile.addMember(namespaceUse)
+            memoryImplFile.addMember(namespaceTrapUse)
+            for i in memoryClasses:
+                memoryHeadFile.addMember(i)
+                memoryImplFile.addMember(i)
+            curFolder.addHeader(memoryHeadFile)
+            curFolder.addCode(memoryImplFile)
+
+            # Interface Model Generation
+            if self.irqs:
+                irqClasses = portsWriter.getCPPIRQPorts(self, namespace)
+                if irqClasses:
+                    irqHeadFile = cxx_writer.FileDumper('irqPorts.hpp', True)
+                    irqHeadFile.addMember(defCode)
+                    irqImplFile = cxx_writer.FileDumper('irqPorts.cpp', False)
+                    irqImplFile.addInclude('#include \"irqPorts.hpp\"')
+                    irqImplFile.addMember(namespaceUse)
+                    for i in irqClasses:
+                        irqHeadFile.addMember(i)
+                        irqImplFile.addMember(i)
+                    curFolder.addHeader(irqHeadFile)
+                    curFolder.addCode(irqImplFile)
+
+            if self.pins:
+                pinClasses = portsWriter.getCPPPINPorts(self, namespace)
+                if pinClasses:
+                    pinHeadFile = cxx_writer.FileDumper('externalPins.hpp', True)
+                    pinHeadFile.addMember(defCode)
+                    pinImplFile = cxx_writer.FileDumper('externalPins.cpp', False)
+                    pinImplFile.addInclude('#include \"externalPins.hpp\"')
+                    pinImplFile.addMember(namespaceUse)
+                    for i in pinClasses:
+                        pinHeadFile.addMember(i)
+                        pinImplFile.addMember(i)
+                    curFolder.addHeader(pinHeadFile)
+                    curFolder.addCode(pinImplFile)
+
+            portClasses = portsWriter.getCPPExternalPorts(self, model, namespace)
+            if portClasses:
+                portHeadFile = cxx_writer.FileDumper('externalPorts.hpp', True)
+                portHeadFile.addMember(defCode)
+                portHeadFile.addMember(portClasses)
+                portImplFile = cxx_writer.FileDumper('externalPorts.cpp', False)
+                portImplFile.addInclude('#include \"externalPorts.hpp\"')
+                portImplFile.addMember(namespaceUse)
+                portImplFile.addMember(portClasses)
+                curFolder.addHeader(portHeadFile)
+                curFolder.addCode(portImplFile)
+
+            if self.abi:
+                abiClasses = interfaceWriter.getCPPIf(self, model, namespace)
+                abiHeadFile = cxx_writer.FileDumper('interface.hpp', True)
+                abiHeadFile.addMember(defCode)
+                abiHeadFile.addMember(namespaceTrapUse)
+                abiHeadFile.addMember(abiClasses)
+                abiImplFile = cxx_writer.FileDumper('interface.cpp', False)
+                abiImplFile.addInclude('#include \"interface.hpp\"')
+                abiImplFile.addMember(namespaceUse)
+                abiImplFile.addMember(namespaceTrapUse)
+                abiImplFile.addMember(abiClasses)
+                curFolder.addHeader(abiHeadFile)
+                curFolder.addCode(abiImplFile)
+
+            # Platform Generation
+            mainCode = procWriter.getCPPMain(self, model, namespace)
+            mainHeadFile = cxx_writer.FileDumper('main.hpp', True)
+            mainHeadFile.addMember(mainCode)
+            mainImplFile = cxx_writer.FileDumper('main.cpp', False)
+            mainImplFile.addInclude('#include \"main.hpp\"')
+            mainImplFile.addMember(mainCode)
+            curFolder.addHeader(mainHeadFile)
+            curFolder.addCode(mainImplFile)
+
+            # Testbench Generation
             if (model == 'funcLT') and (not self.systemc) and tests:
                 testFolder = cxx_writer.Folder('tests')
                 curFolder.addSubFolder(testFolder)
-                mainTestFile = cxx_writer.FileDumper('main.cpp', False)
-                mainTestFile.addInclude('#include \"main.hpp\"')
-                hmainTestFile = cxx_writer.FileDumper('main.hpp', True)
-                decTestsFile = cxx_writer.FileDumper('decoderTests.cpp', False)
-                decTestsFile.addInclude('#include \"decoderTests.hpp\"')
-                mainTestFile.addInclude('#include \"decoderTests.hpp\"')
-                hdecTestsFile = cxx_writer.FileDumper('decoderTests.hpp', True)
-                decTests = dec.getCPPTests(namespace)
-                decTestsFile.addMember(decTests)
-                hdecTestsFile.addMember(decTests)
-                irqTests = self.getIRQTests(trace, combinedTrace, namespace)
-                if irqTests:
-                    irqTestsFile = cxx_writer.FileDumper('irqTests.cpp', False)
-                    irqTestsFile.addInclude('#include \"irqTests.hpp\"')
-                    if PINClasses:
-                        irqTestsFile.addInclude('modules/pin_target.hpp')
-                        irqTestsFile.addInclude('externalPins.hpp')
-                    mainTestFile.addInclude('#include \"irqTests.hpp\"')
-                    hirqTestsFile = cxx_writer.FileDumper('irqTests.hpp', True)
-                    irqTestsFile.addMember(namespaceUse)
-                    irqTestsFile.addMember(namespaceTrapUse)
-                    irqTestsFile.addMember(irqTests)
-                    hirqTestsFile.addMember(irqTests)
-                    testFolder.addCode(irqTestsFile)
-                    testFolder.addHeader(hirqTestsFile)
-                testFolder.addCode(decTestsFile)
-                testFolder.addHeader(hdecTestsFile)
-                ISATests = self.isa.getCPPTests(self, model, trace, combinedTrace, namespace)
-                testPerFile = 100
-                numTestFiles = len(ISATests)/testPerFile
-                for i in range(0, numTestFiles):
-                    ISATestsFile = cxx_writer.FileDumper('isaTests' + str(i) + '.cpp', False)
-                    ISATestsFile.addInclude('#include \"isaTests' + str(i) + '.hpp\"')
-                    if PINClasses:
-                        ISATestsFile.addInclude('modules/pin_target.hpp')
-                        ISATestsFile.addInclude('externalPins.hpp')
-                    mainTestFile.addInclude('#include \"isaTests' + str(i) + '.hpp\"')
-                    hISATestsFile = cxx_writer.FileDumper('isaTests' + str(i) + '.hpp', True)
-                    ISATestsFile.addMember(namespaceUse)
-                    ISATestsFile.addMember(namespaceTrapUse)
-                    ISATestsFile.addMember(ISATests[testPerFile*i:testPerFile*(i+1)])
-                    hISATestsFile.addMember(ISATests[testPerFile*i:testPerFile*(i+1)])
-                    testFolder.addCode(ISATestsFile)
-                    testFolder.addHeader(hISATestsFile)
-                if testPerFile*numTestFiles < len(ISATests):
-                    ISATestsFile = cxx_writer.FileDumper('isaTests' + str(numTestFiles) + '.cpp', False)
-                    ISATestsFile.addInclude('#include \"isaTests' + str(numTestFiles) + '.hpp\"')
-                    if PINClasses:
-                        ISATestsFile.addInclude('modules/pin_target.hpp')
-                        ISATestsFile.addInclude('externalPins.hpp')
-                    mainTestFile.addInclude('#include \"isaTests' + str(numTestFiles) + '.hpp\"')
-                    hISATestsFile = cxx_writer.FileDumper('isaTests' + str(numTestFiles) + '.hpp', True)
-                    ISATestsFile.addMember(namespaceUse)
-                    ISATestsFile.addMember(namespaceTrapUse)
-                    ISATestsFile.addMember(ISATests[testPerFile*numTestFiles:])
-                    hISATestsFile.addMember(ISATests[testPerFile*numTestFiles:])
-                    testFolder.addCode(ISATestsFile)
-                    testFolder.addHeader(hISATestsFile)
 
-                mainTest = self.getTestMainCode()
-                mainTestFile.addMember(mainTest)
-                hmainTestFile.addMember(mainTest)
-                testFolder.addCode(mainTestFile)
-                testFolder.addHeader(hmainTestFile)
+                mainTests = procWriter.getCPPTestMain(self)
+                mainTestHeadFile = cxx_writer.FileDumper('main.hpp', True)
+                mainTestImplFile = cxx_writer.FileDumper('main.cpp', False)
+                mainTestImplFile.addInclude('#include \"main.hpp\"')
+                mainTestImplFile.addMember(mainTests)
+                mainTestHeadFile.addMember(mainTests)
+                testFolder.addHeader(mainTestHeadFile)
+                testFolder.addCode(mainTestImplFile)
                 testFolder.addUseLib(os.path.split(curFolder.path)[-1] + '_objs')
-            curFolder.addHeader(headFileInstr)
-            curFolder.addCode(implFileInstr)
-            curFolder.addHeader(headFileRegs)
-            curFolder.addCode(implFileRegs)
-            curFolder.addHeader(headFileProc)
-            curFolder.addCode(implFileProc)
-            if model.startswith('acc'):
-                curFolder.addHeader(headFilePipe)
-                curFolder.addCode(implFilePipe)
-            if self.abi:
-                curFolder.addHeader(headFileIf)
-                curFolder.addCode(implFileIf)
-            curFolder.addHeader(headFileDec)
-            curFolder.addCode(implFileDec)
-            curFolder.addHeader(headFileMem)
-            curFolder.addCode(implFileMem)
-            if ExternalIf:
-                curFolder.addHeader(headFileExt)
-                curFolder.addCode(implFileExt)
-            if IRQClasses:
-                curFolder.addHeader(headFileIRQ)
-                curFolder.addCode(implFileIRQ)
-            if PINClasses:
-                curFolder.addHeader(headFilePIN)
-                curFolder.addCode(implFilePIN)
-            curFolder.addCode(mainFile)
-            curFolder.addHeader(hmainFile)
-            curFolder.setMain(mainFile.name)
+
+                decoderTests = dec.getCPPDecoderTests(namespace)
+                decoderTestHeadFile = cxx_writer.FileDumper('decoderTests.hpp', True)
+                decoderTestHeadFile.addMember(decoderTests)
+                decoderTestImplFile = cxx_writer.FileDumper('decoderTests.cpp', False)
+                decoderTestImplFile.addInclude('#include \"decoderTests.hpp\"')
+                decoderTestImplFile.addMember(decoderTests)
+                mainTestImplFile.addInclude('#include \"decoderTests.hpp\"')
+                testFolder.addHeader(decoderTestHeadFile)
+                testFolder.addCode(decoderTestImplFile)
+
+                isaTests = self.isa.getCPPInstrTests(self, model, trace, combinedTrace, namespace)
+                testsPerFile = 100
+                numTestFiles = len(isaTests)/testsPerFile
+                for i in range(0, numTestFiles):
+                    isaTestHeadFile = cxx_writer.FileDumper('isaTests' + str(i) + '.hpp', True)
+                    isaTestHeadFile.addMember(isaTests[testsPerFile*i:testsPerFile*(i+1)])
+                    isaTestImplFile = cxx_writer.FileDumper('isaTests' + str(i) + '.cpp', False)
+                    isaTestImplFile.addInclude('#include \"isaTests' + str(i) + '.hpp\"')
+                    if pinClasses:
+                        isaTestImplFile.addInclude('modules/pin_target.hpp')
+                        isaTestImplFile.addInclude('externalPins.hpp')
+                    isaTestImplFile.addMember(namespaceUse)
+                    isaTestImplFile.addMember(namespaceTrapUse)
+                    isaTestImplFile.addMember(isaTests[testsPerFile*i:testsPerFile*(i+1)])
+                    mainTestImplFile.addInclude('#include \"isaTests' + str(i) + '.hpp\"')
+                    testFolder.addHeader(isaTestHeadFile)
+                    testFolder.addCode(isaTestImplFile)
+                if testsPerFile*numTestFiles < len(isaTests):
+                    isaTestHeadFile = cxx_writer.FileDumper('isaTests' + str(numTestFiles) + '.hpp', True)
+                    isaTestHeadFile.addMember(isaTests[testsPerFile*numTestFiles:])
+                    isaTestImplFile = cxx_writer.FileDumper('isaTests' + str(numTestFiles) + '.cpp', False)
+                    isaTestImplFile.addInclude('#include \"isaTests' + str(numTestFiles) + '.hpp\"')
+                    if pinClasses:
+                        isaTestImplFile.addInclude('modules/pin_target.hpp')
+                        isaTestImplFile.addInclude('externalPins.hpp')
+                    isaTestImplFile.addMember(namespaceUse)
+                    isaTestImplFile.addMember(namespaceTrapUse)
+                    isaTestImplFile.addMember(isaTests[testsPerFile*numTestFiles:])
+                    mainTestImplFile.addInclude('#include \"isaTests' + str(numTestFiles) + '.hpp\"')
+                    testFolder.addHeader(isaTestHeadFile)
+                    testFolder.addCode(isaTestImplFile)
+
+                irqTests = portsWriter.getCPPIRQTests(self, trace, combinedTrace, namespace)
+                if irqTests:
+                    irqTestHeadFile = cxx_writer.FileDumper('irqTests.hpp', True)
+                    irqTestHeadFile.addMember(irqTests)
+                    irqTestImplFile = cxx_writer.FileDumper('irqTests.cpp', False)
+                    irqTestImplFile.addInclude('#include \"irqTests.hpp\"')
+                    if pinClasses:
+                        irqTestImplFile.addInclude('modules/pin_target.hpp')
+                        irqTestImplFile.addInclude('externalPins.hpp')
+                    irqTestImplFile.addMember(namespaceUse)
+                    irqTestImplFile.addMember(namespaceTrapUse)
+                    irqTestImplFile.addMember(irqTests)
+                    mainTestImplFile.addInclude('#include \"irqTests.hpp\"')
+                    testFolder.addHeader(irqTestHeadFile)
+                    testFolder.addCode(irqTestImplFile)
+
+            curFolder.setMain(mainImplFile.name)
             curFolder.create()
             if (model == 'funcLT') and (not self.systemc) and tests:
                 testFolder.create(configure = False, tests = True)
             print ('\t\tProcessor model successfully created in folder ' + os.path.expanduser(os.path.expandvars(folder)))
             namespace = ''
-        # We create and print the main folder and also add a configuration
-        # part to the wscript
+
         mainFolder.create(configure = True, tests = (not self.systemc) and tests, projectName = self.name, version = self.version, customOptions = self.preProcMacros)
+
         if forceDecoderCreation:
             try:
                 import pickle
@@ -1346,6 +1116,23 @@ class Processor:
             except:
                 pass
 
+    ## @} Code Generation
+    #---------------------------------------------------------------------------
+
+
+################################################################################
+# Pipeline Model
+################################################################################
+# TODO: The whole pipeline model needs an overhaul. The syntax for specifying
+# write-back paths is not ideal. Check applicability of ideas in E. Harcourt and
+# J. Perconti, "A SystemC Library for Specifying Pipeline Abstractions,"
+# Microprocessors and Microsystems, vol. 38, no. 1, pp. 76-81, Feb. 2014.
+# Additionally, we cannot model microarchitectural features such as:
+# - Out-of-order instruction issue
+# - Wide pipelines (multi-issue)
+# - Branch prediction
+# - Speculative prefetching
+# - VLIW
 class PipeStage:
     """Identified by (a) name (b) optional, if it is wb,
     the stage where the hazards are checked or where the
@@ -1353,10 +1140,17 @@ class PipeStage:
     information which can be overridden by each instruction"""
     def __init__(self, name):
         self.name = name
-        self.wb = False
+        self.fetch = False
         self.checkHazard = False
+        # TODO: Cannot see any difference between endHazard and wb. One should go, methinks.
         self.endHazard = False
+        self.wb = False
         self.checkUnknown = False
+        self.wbStageOrder = []
+        self.operation = ''
+
+    def setFetchPC(self):
+        self.fetch = True
 
     def setWriteBack(self):
         self.wb = True
@@ -1370,56 +1164,283 @@ class PipeStage:
     def setCheckUnknownInstr(self):
         self.checkUnknown = True
 
-class Coprocessor:
-    """Specifies the presence of a specific coprocessor; in particular
-    it specifies what are the instructions of the ISA (already defined
-    instructions) which are coprocessor instructions and for each of
-    them it specifies what is the co-processor method which must be called
-    note that also the necessary include file must be provided.
-    it also specifies the bits which identify if the instruction if
-    for this coprocessor or not.
-    Alternatively a custom behavior can be provided, which will be
-    executed instead of the method call.
-    Note that the coprocessor name must be given: the processor will
-    contain a variable with this name; this variable will have to
-    be initialized to the instance of the coprocessor (by calling a
-    special method addCoprocessor ....) Note that the coprocessor
-    might need to access the Integer unit to read or set some registers.
-    This can either be done by passing a reference to the Ingeter Unit
-    registers to the coprocessor at construction or by using the custom
-    behavior in each co-processor instruction"""
-    # TODO: an accurate interface is also needed. This means that
-    # we need to define control signals and pins for the communication
-    # between the processor and the coprocessor
-    def __init__(self, name, type):
-        """Specifies the name of the coprocessor variable in the
-        processor. It also specifies its type"""
+    # This is a list of forwarding paths, so e.g. ['ID', 'EX'], means this stage
+    # is fed back from both ID and EX, where ID is given precedence.
+    def setWbStageOrder(self, order):
+        self.wbStageOrder = order
+
+    def setOperation(self, code):
+        self.operation = code
+
+
+################################################################################
+# Storage Models: Registers, Aliases, Register Banks and Memory
+################################################################################
+class Register:
+    """Register of a processor. It is identified by (a) the
+    width in bits, (b) the name. It is eventually possible
+    to associate names to the different register fields and
+    then refer to them instead of having to use bit masks"""
+    def __init__(self, name, bitWidth, bitMask = {}):
         self.name = name
-        self.type = type
-        self.isa = {}
+        self.bitWidth = bitWidth
+        if bitMask:
+            for key, value in bitMask.items():
+                if value[0] > value[1]:
+                    raise Exception('Bit mask start value ' +  str(value[0]) + ' for field ' + key + ' in register ' + self.name + ' is larger than end value ' + str(value[1]) + '.')
+                if value[1] >= bitWidth:
+                    raise Exception('Bit mask size ' + str(value[1]) + ' for field ' + key + ' in register ' + self.name + ' is larger than register size ' + str(bitWidth) + '.')
+                for key1, value1 in bitMask.items():
+                    if key1 != key:
+                        if (value1[0] <= value[0] and value1[1] >= value[0]) or (value1[0] <= value[1] and value1[1] >= value[1]):
+                            raise Exception('Bit mask for field ' + key + ' in register ' + self.name + ' intersects with the mask of field ' + key1 + '.')
+        self.bitMask = bitMask
+        self.defValue = 0
+        self.offset = 0
+        self.constValue = None
+        self.delay = 0
+        self.wbStageOrder = {}
 
-    def addIsaCustom(self, name, code, idBits):
-        """Specifies that ISA instruction with name name
-        is a co-processor instruction and that
-        custom code is provided if the instruction is for
-        this coprocessor. idBits specifies what it the
-        value of the bits which specify if the instruction
-        is for this co-processor or not"""
-        if self.isa.has_key(name):
-            raise Exception('Instruction ' + name + ' already assigned to coprocessor ' + self.name + '.')
-        self.isa[name] = (idBits, code)
+    def setDefaultValue(self, value):
+        if self.defValue:
+            raise Exception('Default value for register ' + self.name +  ' already set.')
+        try:
+            if value > 0:
+                import math
+                if math.log(value, 2) > self.bitWidth:
+                    raise Exception('Default value ' + str(value) + ' of register ' + self.name + ' requires ' + str(int(math.ceil(math.log(value, 2)))) + ' bits, but the register has a width of ' + str(self.bitWidth) + ' bits.')
+        except TypeError:
+            pass
+        self.defValue = value
 
-    def addIsaCall(self, name, functionName, idBits):
-        """Specifies that ISA instruction with name name
-        is a co-processor instruction and that
-        a function call is provided if the instruction is for
-        this coprocessor. idBits specifies what it the
-        value of the bits which specify if the instruction
-        is for this co-processor or not"""
-        if self.isa.has_key(name):
-            raise Exception('Instruction ' + name + ' already assigned to coprocessor ' + self.name + '.')
-        self.isa[name] = (idBits, functionName)
+    def setConst(self, value):
+        if self.delay:
+            raise Exception('Cannot set register ' + self.name + ' as constant because it contains a delay assignment.')
+        self.constValue = value
 
+    def setDelay(self, value):
+        if self.constValue != None:
+            raise Exception('Cannot set a delay assignment for register ' + self.name + ' because it is set as constant.')
+        self.delay = value
+
+    def setOffset(self, value):
+        """TODO: eliminate this restriction"""
+        if self.bitMask:
+            raise Exception('Cannot set offset for register ' + self.name + ' because it uses a bit mask.')
+        self.offset = value
+
+    # This is a map of forwarding paths stage -> stages, so e.g.
+    # {'IF': ['ID', 'EX'], 'EX': ['WB']} means IF is fed back from both
+    # ID and EX, where ID is given precedence, while WB feeds back to EX.
+    def setWbStageOrder(self, order):
+        self.wbStageOrder = order
+
+class RegisterBank:
+    """Same thing of a register, it also specifies the
+    number of registers in the bank. In case register
+    fields are specified, they have to be the same for the
+    whole bank"""
+    def __init__(self, name, numRegs, bitWidth, bitMask = {}):
+        self.name = name
+        self.bitWidth = bitWidth
+        totalBits = 0
+        if bitMask:
+            for key, value in bitMask.items():
+                if value[0] > value[1]:
+                    raise Exception('Bit mask start value ' +  str(value[0]) + ' for field ' + key + ' in register bank ' + self.name + ' is larger than end value ' + str(value[1]) + '.')
+                if value[1] >= bitWidth:
+                    raise Exception('Bit mask size ' + str(value[1]) + ' for field ' + key + ' in register bank ' + self.name + ' is larger than register size ' + str(bitWidth) + '.')
+                for key1, value1 in bitMask.items():
+                    if key1 != key:
+                        if (value1[0] <= value[0] and value1[1] >= value[0]) or (value1[0] <= value[1] and value1[1] >= value[1]):
+                            raise Exception('Bit mask of field ' + key + ' in register bank ' + self.name + ' intersects with the mask of field ' + key1 + '.')
+        self.bitMask = bitMask
+        self.numRegs = numRegs
+        self.defValues = [0 for i in range(0, numRegs)]
+        self.offset = 0
+        self.constValue = {}
+        self.delay = {}
+        self.wbStageOrder = {}
+
+    def setConst(self, numReg, value):
+        if self.delay.has_key(numReg):
+            raise Exception('Cannot set register ' + str(numReg) + ' in register bank ' + self.name + ' as constant because it contains a delay assignment.')
+        self.constValue[numReg] = value
+
+    def getConstRegs(self):
+        constRegs = []
+        for key, constVal in self.constValue.items():
+            fakeReg = Register(self.name + '[' + str(key) + ']', self.bitWidth, self.bitMask)
+            fakeReg.setOffset(self.offset)
+            if self.delay.has_key(key):
+                fakeReg.setDelay(self.delay[key])
+            fakeReg.setConst(constVal)
+            constRegs.append(fakeReg)
+        return constRegs
+
+    def setDelay(self, numReg, value):
+        if self.constValue.has_key(numReg):
+            raise Exception('Cannot set a delay assignment for register ' + str(numReg) + ' in register bank ' + self.name + ' because it is set as constant.')
+        if value > 0:
+            self.delay[numReg] = value
+
+    def setGlobalDelay(self, value):
+        if value > 0:
+            for i in range(0, self.numRegs):
+                if self.constValue.has_key(i):
+                    raise Exception('Cannot set a delay assignment for register ' + str(i) + ' in register bank ' + self.name + ' because it is set as constant.')
+                self.delay[i] = value
+
+    def getDelayRegs(self):
+        delayRegs = []
+        for key, delayVal in self.delay.items():
+            fakeReg = Register(self.name + '[' + str(key) + ']', self.bitWidth, self.bitMask)
+            fakeReg.setOffset(self.offset)
+            fakeReg.setDelay(delayVal)
+            if self.constValue.has_key(key):
+                fakeReg.setConst(self.constValue[key])
+            delayRegs.append(fakeReg)
+        return delayRegs
+
+    def setDefaultValues(self, values):
+        for i in range(0, len(self.defValues)):
+            if self.defValues[i]:
+                raise Exception('Default value for register ' + str(i) + ' in register bank' + self.name + ' already set.')
+            try:
+                if values[i] > 0:
+                    import math
+                    if math.log(values[i], 2) > self.bitWidth:
+                        raise Exception('Default value '  + str(values[i]) + ' of register ' + str(i) + ' in register bank ' + self.name + ' requires ' + str(int(math.ceil(math.log(values[i], 2)))) + ' bits, but the register has a width of ' + str(self.bitWidth) + ' bits.')
+            except TypeError:
+                pass
+        if len(values) != self.numRegs:
+            raise Exception('The number of initialization values for register bank ' + self.name + ' does not match the number of registers.')
+        self.defValues = values
+
+    def setDefaultValue(self, value, position):
+        if position < 0 or position >= self.numRegs:
+            raise Exception('Cannot set initialization value for register ' + position + ' in register bank ' + self.name + '. Index out of range.')
+        if self.defValues[position]:
+            raise Exception('Default value for register ' + str(position) + ' in register bank' + self.name + ' already set.')
+        try:
+            if value > 0:
+                import math
+                if math.log(value, 2) > self.bitWidth:
+                    raise Exception('Default value ' + str(value) + ' of register ' + str(position) + ' in register bank ' + self.name + ' requires ' + str(int(math.ceil(math.log(value, 2)))) + 'bits, but the register has a width of ' + str(self.bitWidth) + ' bits.')
+        except TypeError:
+            pass
+        self.defValues[position] = value
+
+    def setWbStageOrder(self, numReg, order):
+        if numReg < 0 or numReg >= self.numRegs:
+            raise Exception('Cannot set write-back order for register ' + numReg + ' in register bank ' + self.name + '. Index out of range.')
+        self.wbStageOrder[numReg] = order
+
+class AliasRegister:
+    """Alias for a register of the processor;
+    actually this is a pointer to a register; this pointer
+    might be updated during program execution to point to
+    the right register; updating it is responsibility of
+    the programmer; it is also possible to directly specify
+    a target for the alias"""
+    # TODO: it might be a good idea to introduce 0 offset aliases: they are aliases
+    # for which it is not possible to use any offset by which are much faster than
+    # normal aliases at runtime
+    # Update: @see runtime/modules/register/register_alias.hpp
+    def __init__(self, name, initAlias, offset = 0):
+        self.name = name
+        # I make sure that there is just one registers specified for
+        # the alias
+        index = extractRegInterval(initAlias)
+        if index:
+            if index[0] != index[1]:
+                raise Exception('Cannot specify an interval of more than one register in ' + initAlias + ' when aliasing a single register.')
+        self.initAlias = initAlias
+        self.offset = offset
+        self.defValue = None
+        self.isFixed = False
+
+    def setDefaultValue(self, value):
+        self.defValue = value
+
+    def setFixed(self):
+        self.isFixed = True
+
+class AliasRegBank:
+    """Alias for a register of the processor;
+    actually this is a pointer to a register; this pointer
+    might be updated during program execution to point to
+    the right register; updating it is responsibility of
+    the programmer; it is also possible to directly specify
+    a target for the alias: in this case the alias is fixed"""
+    def __init__(self, name, numRegs, initAlias):
+        self.name = name
+        self.numRegs = numRegs
+        # Now I have to make sure that the registers specified for the
+        # alias have the same lenght of the alias width
+        if isinstance(initAlias, str):
+            index = extractRegInterval(initAlias)
+            # Part of a register bank or alias register bank.
+            if index:
+                if index[1] - index[0] + 1 != numRegs:
+                    raise Exception('Alias register bank ' + str(initAlias) + ' contains ' + str(index[1]-index[0]+1) + ' registers but the aliased register bank contains ' + str(numRegs) + ' registers.')
+            # Single register or alias register.
+            else:
+                if numRegs > 1:
+                    raise Exception('Alias register bank ' + str(initAlias) + ' contains one register but the aliased register bank contains ' + str(numRegs) + ' registers.')
+        # List of registers, alias registers, register banks or alias register banks.
+        else:
+            totalRegs = 0
+            for i in initAlias:
+                index = extractRegInterval(i)
+                if index:
+                    totalRegs += index[1] - index[0] + 1
+                else:
+                    totalRegs += 1
+            if totalRegs != numRegs:
+                raise Exception('Alias register bank ' + str(initAlias) + ' contains ' + str(totalregs) + ' registers but the aliased register bank contains ' + str(numRegs) + ' registers.')
+        self.initAlias = initAlias
+        self.defValues = [None for i in range(0, numRegs)]
+        self.offsets = {}
+        self.fixedIndices = []
+        self.checkGroup = False
+
+    def setCheckGroup(self):
+        self.checkGroup = True
+
+    def setFixed(self, indices):
+        for index in indices:
+            if index >= self.numRegs:
+                raise Exception('Cannot set fixed index ' + str(index) + ' for alias register bank ' + self.name + '. Index out of range.')
+        for i in range(0, len(self.fixedIndices) - 1):
+            if self.fixedIndices[i] > self.fixedIndices[i + 1]:
+                raise Exception('Indices specified for alias register bank ' + self.name + ' are not in ascending order.')
+        self.fixedIndices = indices
+
+    def setOffset(self, regId, offset):
+        self.offsets[regId] = offset
+
+    def setDefaultValues(self, values):
+        if len(values) != self.numRegs:
+            raise Exception('The number of initialization values for alias register bank ' + self.name + ' does not match the number of registers.')
+        self.defValues = values
+
+    def setDefaultValue(self, value, position):
+        if position < 0 or position >= self.numRegs:
+            raise Exception('Cannot set initialization value for register ' + position + ' in alias register bank ' + self.name + '. Index out of range.')
+        self.defValues[position] = value
+
+class MemoryAlias:
+    """Alias for a register through a memory address: by reading and writing to the
+    memory address we actually read/write to the register"""
+    def __init__(self, address, alias):
+        self.address = address
+        self.alias = alias
+
+
+################################################################################
+# Interface Models: Interrupts, Ports, Pins and ABI
+################################################################################
 class Interrupt:
     """Specifies an interrupt port for the processor.
     Note that I will render both systemc and TLM ports as systemc
@@ -1641,3 +1662,59 @@ class ABI:
                 if (savedAddr[0] <= addr[0] and savedAddr[1] >= addr[0]) or (savedAddr[0] <= addr[1] and savedAddr[1] >= addr[1]):
                     raise Exception('Address range overlap between memories ' + name + ' and ' + memory + '.')
         self.memories[memory] = addr
+
+
+################################################################################
+# Coprocessor Model
+################################################################################
+class Coprocessor:
+    """Specifies the presence of a specific coprocessor; in particular
+    it specifies what are the instructions of the ISA (already defined
+    instructions) which are coprocessor instructions and for each of
+    them it specifies what is the co-processor method which must be called
+    note that also the necessary include file must be provided.
+    it also specifies the bits which identify if the instruction if
+    for this coprocessor or not.
+    Alternatively a custom behavior can be provided, which will be
+    executed instead of the method call.
+    Note that the coprocessor name must be given: the processor will
+    contain a variable with this name; this variable will have to
+    be initialized to the instance of the coprocessor (by calling a
+    special method addCoprocessor ....) Note that the coprocessor
+    might need to access the Integer unit to read or set some registers.
+    This can either be done by passing a reference to the Ingeter Unit
+    registers to the coprocessor at construction or by using the custom
+    behavior in each co-processor instruction"""
+    # TODO: an accurate interface is also needed. This means that
+    # we need to define control signals and pins for the communication
+    # between the processor and the coprocessor
+    def __init__(self, name, type):
+        """Specifies the name of the coprocessor variable in the
+        processor. It also specifies its type"""
+        self.name = name
+        self.type = type
+        self.isa = {}
+
+    def addIsaCustom(self, name, code, idBits):
+        """Specifies that ISA instruction with name name
+        is a co-processor instruction and that
+        custom code is provided if the instruction is for
+        this coprocessor. idBits specifies what it the
+        value of the bits which specify if the instruction
+        is for this co-processor or not"""
+        if self.isa.has_key(name):
+            raise Exception('Instruction ' + name + ' already assigned to coprocessor ' + self.name + '.')
+        self.isa[name] = (idBits, code)
+
+    def addIsaCall(self, name, functionName, idBits):
+        """Specifies that ISA instruction with name name
+        is a co-processor instruction and that
+        a function call is provided if the instruction is for
+        this coprocessor. idBits specifies what it the
+        value of the bits which specify if the instruction
+        is for this co-processor or not"""
+        if self.isa.has_key(name):
+            raise Exception('Instruction ' + name + ' already assigned to coprocessor ' + self.name + '.')
+        self.isa[name] = (idBits, functionName)
+
+################################################################################

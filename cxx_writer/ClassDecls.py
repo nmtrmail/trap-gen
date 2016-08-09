@@ -47,7 +47,7 @@ class ClassMember:
     class, i.e. attributes and methods"""
 
     def __init__(self, visibility, name):
-        if not visibility in ['pri', 'pro', 'pu']:
+        if not visibility in ['private', 'protected', 'public']:
             raise Exception('Invalid visibility attribute ' + str(visibility) + ' for member ' + name + '.')
         self.visibility = visibility
 
@@ -66,9 +66,20 @@ class Method(ClassMember, Function):
         if self.pure:
             self.virtual = True
         self.const = const
+        # Indicates whether the implementation should be written in the header
+        # or not. This should be overwritten by derived classes.
+        # 0: no body in header (declaration only); 1: pure; 2: empty body; 3: body in header
+        if self.pure:
+            self.headerBody = 1
+        elif not self.body.code:
+            self.headerBody = 2
+        elif self.template or self.inline:
+            self.headerBody = 3
+        else:
+            self.headerBody = 0
 
     def writeImplementation(self, writer, className = '', namespaces = []):
-        if self.inline or self.pure:
+        if self.headerBody:
             return
         if self.docbrief:
             self.printDocString(writer)
@@ -115,9 +126,20 @@ class MemberOperator(ClassMember, Operator):
         if self.pure:
             self.virtual = True
         self.const = const
+        # Indicates whether the implementation should be written in the header
+        # or not. This should be overwritten by derived classes.
+        # 0: no body in header (declaration only); 1: pure; 2: empty body; 3: body in header
+        if self.pure:
+            self.headerBody = 1
+        elif not self.body.code:
+            self.headerBody = 2
+        elif self.template or self.inline:
+            self.headerBody = 3
+        else:
+            self.headerBody = 0
 
     def writeImplementation(self, writer, className = '', namespaces = []):
-        if self.inline or self.pure:
+        if self.headerBody > 0:
             return
         if self.docbrief:
             self.printDocString(writer)
@@ -156,8 +178,19 @@ class Constructor(ClassMember, Function):
         ClassMember.__init__(self, visibility, 'constructor')
         Function.__init__(self, '', body, Type(''), parameters)
         self.initList = initList
+        # Indicates whether the implementation should be written in the header
+        # or not. This should be overwritten by derived classes.
+        # 0: no body in header (declaration only); 1: pure; 2: empty body; 3: body in header
+        if not self.body.code and not self.initList:
+            self.headerBody = 2
+        elif self.template or self.inline:
+            self.headerBody = 3
+        else:
+            self.headerBody = 0
 
     def writeImplementation(self, writer, className = '', namespaces = []):
+        if self.headerBody > 0:
+            return
         if self.docbrief:
             self.printDocString(writer)
         for namespace in namespaces:
@@ -196,8 +229,7 @@ class Constructor(ClassMember, Function):
                     writer.write(',\n', indent = indent)
                 else:
                     writer.write(', ', indent = indent, split = ',')
-            else: writer.write(' ')
-        writer.write('{\n', indent = indent, split = ',')
+        writer.write(' {\n', indent = indent, split = ',')
         self.body.writeImplementation(writer)
         writer.write('} // ' + self.name + '()\n')
 
@@ -206,8 +238,19 @@ class Destructor(ClassMember, Function):
         ClassMember.__init__(self, visibility, 'destructor')
         Function.__init__(self, '', body, Type(''), [])
         self.virtual = virtual
+        # Indicates whether the implementation should be written in the header
+        # or not. This should be overwritten by derived classes.
+        # 0: no body in header (declaration only); 1: pure; 2: empty body; 3: body in header
+        if not self.body.code:
+            self.headerBody = 2
+        elif self.template or self.inline:
+            self.headerBody = 3
+        else:
+            self.headerBody = 0
 
     def writeImplementation(self, writer, className = '', namespaces = []):
+        if self.headerBody > 0:
+            return
         if self.docbrief:
             self.printDocString(writer)
         for namespace in namespaces:
@@ -269,18 +312,18 @@ class ClassDeclaration(DumpElement):
         self.innerClasses = []
         # NOTE: I could make this more pythonic by reverting to one members
         # list and sorting it with a lambda over [ctors, methods, data] then
-        # ['pu', 'pro', 'pri'].
+        # ['public', 'protected', 'private'].
         # members.sort(key=methodcaller('member_type', 'visibility_type'))
         # On the other hand, when I'm iterating and printing the members I'll
         # have to constantly check what type I'm currently dealing with.
-        self.ctors = { 'pu': [], 'pro': [], 'pri':  [] }
-        self.methods = { 'pu': [], 'pro': [], 'pri':  [] }
-        self.data = { 'pu': [], 'pro': [], 'pri':  [] }
+        self.ctors = { 'public': [], 'protected': [], 'private':  [] }
+        self.methods = { 'public': [], 'protected': [], 'private':  [] }
+        self.data = { 'public': [], 'protected': [], 'private':  [] }
         for member in members:
             self.addMember(member)
 
     def addMember(self, member):
-        visibility = 'pu'
+        visibility = 'public'
         try:
             visibility = member.visibility
         except AttributeError:
@@ -300,12 +343,12 @@ class ClassDeclaration(DumpElement):
         constructor.name = self.name
         self.ctors[constructor.visibility].append(constructor)
 
-    def addInnerClass(self, innerClass):
-        self.innerClasses.append(innerClass)
-
     def addDestructor(self, destructor):
         destructor.name = '~' + self.name
         self.ctors[destructor.visibility].append(destructor)
+
+    def addInnerClass(self, innerClass):
+        self.innerClasses.append(innerClass)
 
     def addSuperclass(self, superclass):
         self.superclasses.append(superclass)
@@ -350,19 +393,25 @@ class ClassDeclaration(DumpElement):
                     i.writeDeclaration(writer)
             writer.write('/// @} Typedefs, Enums and Subclasses\n')
             writer.writeFill('-')
-        # TODO: I didn't want to break the interface, hence this hack. Perhaps I should though...
-        visibilityStr = {'pu': '\npublic:\n', 'pro': '\nprotected:\n', 'pri': '\nprivate:\n'}
         # Constructors and destructors
-        if self.ctors['pu'] or self.ctors['pro'] or self.ctors['pri']:
+        memberMax = len(self.ctors['public']) + len(self.ctors['protected']) + len(self.ctors['private'])
+        if memberMax > 0:
             memberIdx = 0
-            memberMax = len(self.ctors['pu']) + len(self.ctors['pro']) + len(self.ctors['pri'])
             writer.write('/// @name Constructors and Destructors\n/// @{\n')
-            for i in ['pu', 'pro', 'pri']:
+            for i in ['public', 'protected', 'private']:
                 if self.ctors[i]:
-                    writer.write(visibilityStr[i])
+                    writer.write('\n' + i + ':\n')
                     for j in self.ctors[i]:
                         memberIdx = memberIdx + 1
-                        if self.template:
+                        # writeDeclaration() will generate the function body,
+                        # whereas writeImplementation() will not write anything.
+                        if j.headerBody > 0:
+                            j.writeDeclaration(writer)
+                            writer.write('\n')
+                            if (j.headerBody == 3 and memberIdx < memberMax):
+                                writer.writeFill('.')
+                                writer.write('\n')
+                        elif self.template:
                             j.writeImplementation(writer)
                             writer.write('\n')
                             if (memberIdx < memberMax):
@@ -370,22 +419,25 @@ class ClassDeclaration(DumpElement):
                                 writer.write('\n')
                         else:
                             j.writeDeclaration(writer)
-                            if (memberIdx == memberMax):
-                                writer.write('\n')
-            writer.write('/// @} Constructors and Destructors\n')
+            writer.write('\n/// @} Constructors and Destructors\n')
             writer.writeFill('-')
         # Methods
-        visibility = ''
-        if self.methods['pu'] or self.methods['pro'] or self.methods['pri']:
+        memberMax = len(self.methods['public']) + len(self.methods['protected']) + len(self.methods['private'])
+        if memberMax > 0:
             memberIdx = 0
-            memberMax = len(self.methods['pu']) + len(self.methods['pro']) + len(self.methods['pri'])
             writer.write('/// @name Methods\n/// @{\n')
-            for i in ['pu', 'pro', 'pri']:
+            for i in ['public', 'protected', 'private']:
                 if self.methods[i]:
-                    writer.write(visibilityStr[i])
+                    writer.write('\n' + i + ':\n')
                     for j in self.methods[i]:
                         memberIdx = memberIdx + 1
-                        if self.template and not (j.inline or j.pure):
+                        if j.headerBody > 0:
+                            j.writeDeclaration(writer)
+                            writer.write('\n')
+                            if (j.headerBody == 3 and memberIdx < memberMax):
+                                writer.writeFill('.')
+                                writer.write('\n')
+                        elif self.template:
                             j.writeImplementation(writer)
                             writer.write('\n')
                             if (memberIdx < memberMax):
@@ -393,21 +445,16 @@ class ClassDeclaration(DumpElement):
                                 writer.write('\n')
                         else:
                             j.writeDeclaration(writer)
-                            if (memberIdx == memberMax):
-                                writer.write('\n')
-            writer.write('/// @} Methods\n')
+            writer.write('\n/// @} Methods\n')
             writer.writeFill('-')
         # Data members
-        visibility = ''
-        if self.data['pu'] or self.data['pro'] or self.data['pri']:
-            memberIdx = 0
-            memberMax = len(self.data['pu']) + len(self.data['pro']) + len(self.data['pri'])
+        memberMax = len(self.data['public']) + len(self.data['protected']) + len(self.data['private'])
+        if memberMax > 0:
             writer.write('/// @name Data\n/// @{\n')
-            for i in ['pu', 'pro', 'pri']:
+            for i in ['public', 'protected', 'private']:
                 if self.data[i]:
-                    writer.write(visibilityStr[i])
+                    writer.write('\n' + i + ':\n')
                     for j in self.data[i]:
-                        memberIdx = memberIdx + 1
                         if self.template:
                             try:
                                 j.writeImplementation(writer)
@@ -433,30 +480,33 @@ class ClassDeclaration(DumpElement):
                 i.writeImplementation(writer, namespaces + self.namespaces + [self.name])
             except AttributeError:
                 pass
-        for i in self.ctors['pu'] + self.ctors['pro'] + self.ctors['pri']:
+        for i in [item for sublist in self.ctors.values() for item in sublist]:
             try:
                 i.writeImplementation(writer, self.name, namespaces + self.namespaces)
-                writer.write('\n')
-                writer.writeFill('-')
-                writer.write('\n')
-            except AttributeError:
-                pass
-            except TypeError:
-                i.writeImplementation(writer)
-        for i in self.methods['pu'] + self.methods['pro'] + self.methods['pri']:
-            try:
-                i.writeImplementation(writer, self.name, namespaces + self.namespaces)
-                if not (i.inline or i.pure):
+                if i.headerBody == 0:
                     writer.write('\n')
                     writer.writeFill('-')
                     writer.write('\n')
             except AttributeError:
                 pass
-        for i in self.data['pu'] + self.data['pro'] + self.data['pri']:
+            except TypeError:
+                i.writeImplementation(writer)
+        for i in [item for sublist in self.methods.values() for item in sublist]:
+            try:
+                i.writeImplementation(writer, self.name, namespaces + self.namespaces)
+                if i.headerBody == 0:
+                    writer.write('\n')
+                    writer.writeFill('-')
+                    writer.write('\n')
+            except AttributeError:
+                pass
+        for i in [item for sublist in self.data.values() for item in sublist]:
             try:
                 i.writeImplementation(writer, self.name, namespaces + self.namespaces)
             except AttributeError:
                 pass
+            except TypeError:
+                i.writeImplementation(writer)
 
     def getIncludes(self):
         includes = []
@@ -464,7 +514,7 @@ class ClassDeclaration(DumpElement):
             for j in i.getIncludes():
                 if not j in includes:
                     includes.append(j)
-        for i in self.ctors['pu'] + self.ctors['pro'] + self.ctors['pri'] + self.methods['pu'] + self.methods['pro'] + self.methods['pri'] + self.data['pu'] + self.data['pro'] + self.data['pri']:
+        for i in self.ctors['public'] + self.ctors['protected'] + self.ctors['private'] + self.methods['public'] + self.methods['protected'] + self.methods['private'] + self.data['public'] + self.data['protected'] + self.data['private']:
             for j in i.getIncludes():
                 if not j in includes:
                     includes.append(j)
@@ -478,4 +528,4 @@ class SCModule(ClassDeclaration):
     normal class lies in the presence of defines inside the class declaration"""
     def __init__(self, className, members = [], superclasses = [], template = [], namespaces = []):
         ClassDeclaration.__init__(self, className, members, superclasses + [sc_moduleType], template, [], namespaces)
-        self.ctors['pu'] = [Code('SC_HAS_PROCESS(' + self.name + ');')] + self.ctors['pu']
+        self.data['public'] = [Define('SC_HAS_PROCESS(' + self.name + ');')] + self.data['public']

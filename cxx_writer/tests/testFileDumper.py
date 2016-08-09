@@ -156,9 +156,9 @@ class TestFileDumper(unittest.TestCase):
 
     def testDumpClassHeader(self):
         intDecl = cxx_writer.intType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public')
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
         dumper = cxx_writer.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
@@ -180,9 +180,9 @@ class TestFileDumper(unittest.TestCase):
 
     def testDumpClassImpl(self):
         intDecl = cxx_writer.intType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public')
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
         dumper = cxx_writer.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
@@ -200,9 +200,9 @@ class TestFileDumper(unittest.TestCase):
     def testDumpTemplateClassHeader(self):
         intDecl = cxx_writer.intType
         stringDecl = cxx_writer.stringType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public', [], ['std::string()'])
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
         classDecl.addConstructor(publicConstr)
         dumper = cxx_writer.FileDumper('prova.cpp', True, indentSize = 4, lineWidth = 80)
@@ -230,9 +230,9 @@ class TestFileDumper(unittest.TestCase):
     def testDumpTemplateClassImpl(self):
         intDecl = cxx_writer.intType
         stringDecl = cxx_writer.stringType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu', [], ['std::string()'])
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public', [], ['std::string()'])
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar], [stringDecl], ['T'])
         classDecl.addConstructor(publicConstr)
         dumper = cxx_writer.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)
@@ -255,9 +255,9 @@ class TestFileDumper(unittest.TestCase):
     def testDumpAll(self):
         folder = cxx_writer.Folder('temp')
         intDecl = cxx_writer.intType
-        privateVar = cxx_writer.Attribute('pippo', intDecl, 'pri')
+        privateVar = cxx_writer.Attribute('pippo', intDecl, 'private')
         emptyBody = cxx_writer.Code('')
-        publicConstr = cxx_writer.Constructor(emptyBody, 'pu')
+        publicConstr = cxx_writer.Constructor(emptyBody, 'public')
         classDecl = cxx_writer.ClassDeclaration('MyClass', [privateVar])
         classDecl.addConstructor(publicConstr)
         implFile = cxx_writer.FileDumper('prova.cpp', False, indentSize = 4, lineWidth = 80)

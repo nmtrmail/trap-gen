@@ -734,13 +734,7 @@ class RegisterAlias
 
   /// sc_object style print() of register value.
   void print(std::ostream& os) const {
-    os << std::hex << std::showbase << this->read_dbg() << std::dec;
-    return;
-  }
-
-  std::ostream& operator<<(std::ostream& os) const {
-    os << std::hex << std::showbase << this->read_dbg() << std::dec;
-    return os;
+    this->m_reg->print(os);
   }
 
   /// @} Information and Helper Methods

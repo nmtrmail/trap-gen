@@ -89,7 +89,7 @@ class CodeWriter:
         for line in self.codeBuffer.split('\n')[:-1]:
             line = line.strip()
             # Calculate current nesting level.
-            if ((line.endswith('}') and not line.endswith('@}')) or line.startswith('}')) and self.curIndent >= 1:
+            if self.curIndent >= 1 and (line.startswith('}') or (line.endswith('}') and not line.count('@}') and not line.count('{}'))):
                 self.curIndent -= 1
 
             # Add prefix also after newlines.
