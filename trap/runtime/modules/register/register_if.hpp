@@ -222,6 +222,12 @@ class RegisterInterface
 //   specific ones in Register.
 // - Keep it, and come up with brand new pattern to automate delegation from
 //   Register -> Abstraction.
+//   One possibility is defining a delegate(func_ptr) function as part of
+//   RegisterInterface. Register implements it by doing return this->m_strategy
+//   ->func_ptr(), while Alias implements it as return this->m_reg->func_ptr().
+//   It's elegant, but 1) requires the caller to wrap all abstraction-related
+//   calls inside a delegate() and 2) is difficult to implement with parameters
+//   (but not impossible - boost has a whole lib of higher-order functions).
 : public RegisterAbstraction<DATATYPE> {
   /// @name Types
   /// @{

@@ -65,20 +65,9 @@ def updateAliasCode_decode():
     else:
         modCode = '% ' + str(16*numRegWindows)
 
-    code = """#ifndef ACC_MODEL
-    //Functional model: we simply immediately update the alias
-    for(int i = 8; i < 32; i++){
+    code = """for(int i = 8; i < 32; i++){
         REGS[i].update_alias(WINREGS[(newCwp*16 + i - 8) """ + modCode + """]);
     }
-    #else
-    //Cycle accurate model: we have to update the alias using the pipeline register
-    //We update the aliases for this stage and for all the preceding ones (we are in the
-    //decode stage and we need to update fetch, and decode)
-    for(int i = 8; i < 32; i++){
-        REGS_fetch[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_decode[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-    }
-    #endif
     """
     return code
 
@@ -89,24 +78,9 @@ def updateAliasCode_exception():
     else:
         modCode = '% ' + str(16*numRegWindows)
 
-    code = """#ifndef ACC_MODEL
-    //Functional model: we simply immediately update the alias
-    for(int i = 8; i < 32; i++){
+    code = """for(int i = 8; i < 32; i++){
         REGS[i].update_alias(WINREGS[(newCwp*16 + i - 8) """ + modCode + """]);
     }
-    #else
-    //Cycle accurate model: we have to update the alias using the pipeline register
-    //We update the aliases for this stage and for all the preceding ones (we are in the
-    //execute stage and we need to update fetch, decode, and register read and execute)
-    for(int i = 8; i < 32; i++){
-        REGS_fetch[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_decode[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_regs[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_execute[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_memory[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-        REGS_exception[i].update_alias(WINREGS_pipe[(newCwp*16 + i - 8) """ + modCode + """]);
-    }
-    #endif
     """
     return code
 
@@ -203,7 +177,8 @@ raiseExcCode +=  """
     curPSR = (curPSR & 0xffffffe0) + newCwp;
     PSR = curPSR;
     #ifdef ACC_MODEL
-    PSR_execute = curPSR;
+    // TODO: Write execute stage.
+    PSR = curPSR;
     #endif
     REGS[17] = pcounter;
     REGS[18] = npcounter;

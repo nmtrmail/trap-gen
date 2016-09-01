@@ -176,13 +176,16 @@ PC = 0x1C;""")
 
 # Now it is time to add the pipeline stages
 fetchStage = trap.PipeStage('fetch')
+fetchStage.setFetchStage()
 processor.addPipeStage(fetchStage)
+
 decodeStage = trap.PipeStage('decode')
-decodeStage.setHazard()
+decodeStage.setDecodeStage()
+decodeStage.setRegsStage()
 processor.addPipeStage(decodeStage)
+
 executeStage = trap.PipeStage('execute')
-executeStage.setWriteBack()
-executeStage.setEndHazard()
+executeStage.setWbStage()
 executeStage.setCheckUnknownInstr()
 #executeStage.setCheckTools()
 processor.addPipeStage(executeStage)

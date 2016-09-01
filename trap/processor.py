@@ -388,23 +388,53 @@ class Processor:
                 raise Exception('Pipeline stage ' + stage + ' specified for method ' + method.name + ' does not exist.')
 
         fetchStage = False
-        checkHazardStage = False
-        wbStage = False
+        decodeStage = -1
+        regsStage = -1
+        wbStage = -1
         for pipeStage in self.pipes:
-            if pipeStage.fetch:
+            if pipeStage.fetchStage:
                 if fetchStage:
-                    raise Exception('Cannot have more than one pipeline stage for fetching instructions.')
+                    raise Exception('Cannot have more than one pipeline stage for fetching instructions (<pipe>.setFetchStage()).')
                 else:
                     fetchStage = True
-            if pipeStage.checkHazard:
-                checkHazardStage = True
-            if pipeStage.wb or pipeStage.endHazard:
-                wbStage = True
+            if pipeStage.decodeStage:
+                if decodeStage != -1:
+                    raise Exception('Cannot have more than one pipeline stage for decoding registers (<pipe>.setDecodeStage()).')
+                else:
+                    decodeStage = self.pipes.index(pipeStage)
+            if pipeStage.regsStage:
+                if regsStage != -1:
+                    raise Exception('Cannot have more than one pipeline stage for reading registers (<pipe>.setRegsStage()).')
+                else:
+                    regsStage = self.pipes.index(pipeStage)
+            if pipeStage.wbStage:
+                if wbStage != -1:
+                    raise Exception('Cannot have more than one pipeline stage for writing registers (<pipe>.setWbStage()).')
+                else:
+                    wbStage = self.pipes.index(pipeStage)
             for fromStage in pipeStage.wbStageOrder:
                 if fromStage not in self.pipes + [pipe.name for pipe in self.pipes]:
                     raise Exception('Cannot set write-back order for pipe stage ' + pipeStage.name + '. Pipeline stage ' + fromStage + ' does not exist.')
-        if (wbStage and not checkHazardStage) or (not wbStage and checkHazardStage):
-            raise Exception('Both writeback and check hazards stages must be specified.')
+        if (len(self.pipes) > 1):
+            if not fetchStage:
+                raise Exception('Please specify a fetch stage using <pipe>.setFetchStage().')
+            if decodeStage == -1:
+                raise Exception('Please specify a decode stage using <pipe>.setDecodeStage().')
+            if regsStage == -1:
+                raise Exception('Please specify a read-register stage using <pipe>.setRegsStage().')
+            if wbStage == -1:
+                raise Exception('Please specify a write-back stage using <pipe>.setWbStage().')
+            if (decodeStage < fetchStage):
+                raise Exception('The decode stage cannot occur before the fetch stage.')
+            if (regsStage < decodeStage):
+                raise Exception('The read-register stage cannot occur before the decode stage.')
+            if (wbStage <= regsStage):
+                raise Exception('The write-back stage must occur after the read-register stage.')
+        else:
+            self.pipes[0].fetchStage = True
+            self.pipes[0].decodeStage = True
+            self.pipes[0].regsStage = True
+            self.pipes[0].wbStage = True
 
     def checkPipeRegs(self):
         for reg in self.regs:
@@ -614,12 +644,12 @@ class Processor:
                         raise Exception('Register ' + regName + ' referenced as spcial register in instruction ' + name + ' does not exist.')
             pipeStageName = [i.name for i in self.pipes] + ['default']
             beforeCheck = []
+            regsStageName = 'default'
             wbStageName = 'default'
-            hazardStageName = 'default'
             for i in self.pipes:
-                if i.checkHazard:
-                    hazardStageName = i.name
-                elif i.endHazard:
+                if i.regsStage:
+                    regsStageName = i.name
+                elif i.wbStage:
                     wbStageName = i.name
             newOutRegs = {}
             for stage, regs in instruction.specialOutRegs.items():
@@ -632,7 +662,7 @@ class Processor:
             newInRegs = {}
             for stage, regs in instruction.specialInRegs.items():
                 if stage == 'default':
-                    stage = hazardStageName
+                    stage = regsStageName
                 if not stage in pipeStageName:
                     raise Exception('Stage ' + stage + ' specified for special register of instruction ' + name + ' does not exist.')
                 newInRegs[stage] = regs
@@ -971,6 +1001,7 @@ class Processor:
                     curFolder.addHeader(irqHeadFile)
                     curFolder.addCode(irqImplFile)
 
+            pinClasses = []
             if self.pins:
                 pinClasses = portsWriter.getCPPPINPorts(self, namespace)
                 if pinClasses:
@@ -1026,12 +1057,9 @@ class Processor:
                 testFolder = cxx_writer.Folder('tests')
                 curFolder.addSubFolder(testFolder)
 
-                mainTests = procWriter.getCPPTestMain(self)
                 mainTestHeadFile = cxx_writer.FileDumper('main.hpp', True)
                 mainTestImplFile = cxx_writer.FileDumper('main.cpp', False)
                 mainTestImplFile.addInclude('#include \"main.hpp\"')
-                mainTestImplFile.addMember(mainTests)
-                mainTestHeadFile.addMember(mainTests)
                 testFolder.addHeader(mainTestHeadFile)
                 testFolder.addCode(mainTestImplFile)
                 testFolder.addUseLib(os.path.split(curFolder.path)[-1] + '_objs')
@@ -1094,6 +1122,10 @@ class Processor:
                     testFolder.addHeader(irqTestHeadFile)
                     testFolder.addCode(irqTestImplFile)
 
+                mainTests = procWriter.getCPPTestMain(self)
+                mainTestImplFile.addMember(mainTests)
+                mainTestHeadFile.addMember(mainTests)
+
             curFolder.setMain(mainImplFile.name)
             curFolder.create()
             if (model == 'funcLT') and (not self.systemc) and tests:
@@ -1140,34 +1172,33 @@ class PipeStage:
     information which can be overridden by each instruction"""
     def __init__(self, name):
         self.name = name
-        self.fetch = False
-        self.checkHazard = False
-        # TODO: Cannot see any difference between endHazard and wb. One should go, methinks.
-        self.endHazard = False
-        self.wb = False
+        self.fetchStage = False
+        self.decodeStage = False
+        self.regsStage = False
+        self.wbStage = False
         self.checkUnknown = False
         self.wbStageOrder = []
         self.operation = ''
 
-    def setFetchPC(self):
-        self.fetch = True
+    def setFetchStage(self):
+        self.fetchStage = True
 
-    def setWriteBack(self):
-        self.wb = True
+    def setDecodeStage(self):
+        self.decodeStage = True
 
-    def setHazard(self):
-        self.checkHazard = True
+    def setRegsStage(self):
+        self.regsStage = True
 
-    def setEndHazard(self):
-        self.endHazard = True
-
-    def setCheckUnknownInstr(self):
-        self.checkUnknown = True
+    def setWbStage(self):
+        self.wbStage = True
 
     # This is a list of forwarding paths, so e.g. ['ID', 'EX'], means this stage
     # is fed back from both ID and EX, where ID is given precedence.
     def setWbStageOrder(self, order):
         self.wbStageOrder = order
+
+    def setCheckUnknownInstr(self):
+        self.checkUnknown = True
 
     def setOperation(self, code):
         self.operation = code
@@ -1200,6 +1231,7 @@ class Register:
         self.constValue = None
         self.delay = 0
         self.wbStageOrder = {}
+        self.isGlobal = False
 
     def setDefaultValue(self, value):
         if self.defValue:
@@ -1233,7 +1265,22 @@ class Register:
     # {'IF': ['ID', 'EX'], 'EX': ['WB']} means IF is fed back from both
     # ID and EX, where ID is given precedence, while WB feeds back to EX.
     def setWbStageOrder(self, order):
+        if self.isGlobal:
+            raise Exception('Cannot set write-back order for register ' + self.name + '. Register is set as global and is therefore not pipelined.')
         self.wbStageOrder = order
+
+    # The default behavior in the accurate model is to create one latch per
+    # pipeline stage per register (register renaming). This flag prevents this
+    # behavior and creates only one copy of the register, where all instructions
+    # in the pipeline see the same value. This is often the case for Program
+    # Status Registers for example. There is no read/write race, in that case:
+    # Since the pipeline stages execute in reverse order, the later stages
+    # will write first, which enables earlier stages to read the most recent
+    # value.
+    def setGlobal(self):
+        if self.wbStageOrder:
+            raise Exception('Cannot set register ' + self.name + ' as global (non-pipelined). Register has a pipeline write-back order.')
+        self.isGlobal = True
 
 class RegisterBank:
     """Same thing of a register, it also specifies the
@@ -1261,6 +1308,7 @@ class RegisterBank:
         self.constValue = {}
         self.delay = {}
         self.wbStageOrder = {}
+        self.isGlobal = False
 
     def setConst(self, numReg, value):
         if self.delay.has_key(numReg):
@@ -1334,7 +1382,14 @@ class RegisterBank:
     def setWbStageOrder(self, numReg, order):
         if numReg < 0 or numReg >= self.numRegs:
             raise Exception('Cannot set write-back order for register ' + numReg + ' in register bank ' + self.name + '. Index out of range.')
+        if self.isGlobal:
+            raise Exception('Cannot set write-back order for register ' + numReg + ' in register bank ' + self.name + '. Register is set as global and is therefore not pipelined.')
         self.wbStageOrder[numReg] = order
+
+    def setGlobal(self):
+        if self.wbStageOrder:
+            raise Exception('Cannot set register bank ' + self.name + ' as global (non-pipelined). Register bank has a pipeline write-back order.')
+        self.isGlobal = True
 
 class AliasRegister:
     """Alias for a register of the processor;

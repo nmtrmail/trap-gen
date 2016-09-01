@@ -71,8 +71,7 @@ class Register
   typedef typename RegisterInterface<DATATYPE, RegisterField<DATATYPE> >::child_iterator field_iterator;
   typedef unsigned index_type;
   typedef std::vector<scireg_ns::scireg_callback*> callback_container_type;
-  typedef bool (*clock_cycle_func_t)(DATATYPE*, DATATYPE*, sc_core::sc_time*,
-    sc_core::sc_time*);
+  typedef bool (*clock_cycle_func_t)(DATATYPE*, DATATYPE*, unsigned long long*, unsigned long long*);
 
   /// @name Constructors and Destructors
   /// @{
@@ -91,6 +90,7 @@ class Register
       const DATATYPE& reset_val = (DATATYPE)0,
       unsigned num_pipe_stages = 1,
       clock_cycle_func_t clock_cycle_func = NULL,
+      bool is_global = false,
       const DATATYPE& used_mask = (DATATYPE)~0,
       const DATATYPE& read_mask = (DATATYPE)~0,
       const DATATYPE& write_mask = (DATATYPE)~0)
@@ -123,6 +123,8 @@ class Register
       if (is_const) {
         assert(!(delay || offset));
         this->m_strategy = new RegisterTLMConst<DATATYPE>(this->m_value, this->m_used_mask, this->m_read_mask, this->m_write_mask, this->m_reset_value);
+      } else if (is_global) {
+        this->m_strategy = new RegisterCAGlobal<DATATYPE>(this->m_value, this->m_used_mask, this->m_read_mask, this->m_write_mask, num_pipe_stages);
       } else {
         this->m_strategy = new RegisterCA<DATATYPE>(this->m_value, this->m_used_mask, this->m_read_mask, this->m_write_mask, num_pipe_stages, clock_cycle_func);
       }
@@ -557,17 +559,29 @@ class Register
     this->m_strategy->unset_stage();
   }
 
+  virtual void stall(unsigned stage) {
+    return this->m_strategy->stall(stage);
+  }
+
+  virtual void advance() {
+    return this->m_strategy->advance();
+  }
+
+  virtual void flush(unsigned stage) {
+    return this->m_strategy->flush(stage);
+  }
+
   // Hazard Detection Functions
-  virtual void lock(int stage = -1) {
-    this->m_strategy->lock(stage);
+  virtual unsigned is_locked(unsigned stage, unsigned latency) {
+    return this->m_strategy->is_locked(stage, latency);
   }
 
-  void unlock(int stage = -1, int wb_latency = -1) {
-    this->m_strategy->unlock(stage, wb_latency);
+  virtual bool lock(void* instr, unsigned stage, unsigned latency) {
+    return this->m_strategy->lock(instr, stage, latency);
   }
 
-  bool is_locked(int stage = -1) {
-    this->m_strategy->is_locked();
+  virtual bool unlock(void* instr) {
+    return this->m_strategy->unlock(instr);
   }
 
   /// @} Observer Methods

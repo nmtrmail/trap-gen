@@ -826,7 +826,7 @@ opCodeDec = cxx_writer.Code("""
 #ifdef ACC_MODEL
 for(int i = 0; i < 16; i++){
     if((reg_list & (0x00000001 << i)) != 0){
-        RB[i].lock();
+        RB[i].lock(this, 1 /* in decode */, 1 /* write in execute, 1 cycle ahead */);
     }
 }
 #endif
@@ -3395,7 +3395,7 @@ opCodeDec = cxx_writer.Code("""
 #ifdef ACC_MODEL
 for(int i = 0; i < 16; i++){
     if((reg_list & (0x00000001 << i)) != 0){
-        RB[i].is_locked();
+        RB[i].is_locked(1 /* in decode */, 1 /* read in execute, 1 cycle ahead */);
     }
 }
 #endif

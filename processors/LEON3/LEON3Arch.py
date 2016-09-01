@@ -269,22 +269,29 @@ processor.addPin(irqAckPin)
 
 # Now it is time to add the pipeline stages
 fetchStage = trap.PipeStage('fetch')
+fetchStage.setFetchStage()
 processor.addPipeStage(fetchStage)
+
 decodeStage = trap.PipeStage('decode')
-decodeStage.setHazard()
+decodeStage.setDecodeStage()
 processor.addPipeStage(decodeStage)
+
 regsStage = trap.PipeStage('regs')
+regsStage.setRegsStage()
 processor.addPipeStage(regsStage)
+
 executeStage = trap.PipeStage('execute')
 executeStage.setCheckUnknownInstr()
 processor.addPipeStage(executeStage)
+
 memoryStage = trap.PipeStage('memory')
 processor.addPipeStage(memoryStage)
+
 exceptionStage = trap.PipeStage('exception')
 processor.addPipeStage(exceptionStage)
+
 wbStage = trap.PipeStage('wb')
-wbStage.setWriteBack()
-wbStage.setEndHazard()
+wbStage.setWbStage()
 processor.addPipeStage(wbStage)
 
 # The ABI is necessary to emulate system calls, personalize the GDB stub and,

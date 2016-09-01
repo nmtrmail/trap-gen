@@ -347,7 +347,7 @@ ld_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 isa.addInstruction(ld_reg_Instr)
 opCodeDecode = cxx_writer.Code(ReadNPCDecode + """
 #ifdef ACC_MODEL
-REGS[rd_bit ^ 0x1].lock();
+REGS[rd_bit ^ 0x1].lock(this, 1 /* in decode */, 2 /* write in execute, 2 cycles ahead */);
 #endif
 """)
 flushCode = """#ifdef ACC_MODEL
@@ -382,7 +382,7 @@ else{
     rd = (unsigned)((readValue >> 32) & 0x00000000FFFFFFFFLL);
 }
 #ifdef ACC_MODEL
-unlock_queue[0].push_back(REGS[rd_bit ^ 0x1].get_pipe_reg());
+REGS[rd_bit ^ 0x1].unlock(this);
 #endif
 """)
 ldd_imm_Instr = trap.Instruction('LDD_imm', True, frequency = 6)
@@ -641,7 +641,7 @@ lda_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 isa.addInstruction(lda_reg_Instr)
 opCodeDecode = cxx_writer.Code(ReadNPCDecode + """
 #ifdef ACC_MODEL
-REGS[rd_bit ^ 0x1].lock();
+REGS[rd_bit ^ 0x1].lock(this, 1 /* in decode */, 2 /* write in execute, 2 cycles ahead */);
 #endif
 """)
 opCodeExec = cxx_writer.Code("""
@@ -674,7 +674,7 @@ else{
     rd = (unsigned)((readValue >> 32) & 0x00000000FFFFFFFFLL);
 }
 #ifdef ACC_MODEL
-unlock_queue[0].push_back(REGS[rd_bit ^ 0x1].get_pipe_reg());
+REGS[rd_bit ^ 0x1].unlock(this);
 #endif
 """)
 ldda_reg_Instr = trap.Instruction('LDDA_reg', True, frequency = 1)
@@ -887,7 +887,7 @@ std_imm_Instr.addVariable(('npcounter', 'BIT<32>'))
 std_imm_Instr.addVariable(('notAligned', 'BIT<1>'))
 std_imm_Instr.addVariable(('address', 'BIT<32>'))
 std_imm_Instr.addVariable(('toWrite', 'BIT<64>'))
-std_imm_Instr.addCheckHazardCode('REGS[rd_bit ^ 0x1].is_locked()', 'decode')
+std_imm_Instr.addCheckHazardCode('REGS[rd_bit ^ 0x1].is_locked(1 /* in decode */, 2 /* read in execute, 2 cycles ahead */)', 'decode')
 isa.addInstruction(std_imm_Instr)
 std_reg_Instr = trap.Instruction('STD_reg', True, frequency = 5)
 std_reg_Instr.setMachineCode(mem_format1, {'op3': [0, 0, 0, 1, 1, 1]}, ('std r', '%rd', ' r', '%rs1', '+r', '%rs2'))
@@ -904,7 +904,7 @@ std_reg_Instr.addVariable(('npcounter', 'BIT<32>'))
 std_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 std_reg_Instr.addVariable(('address', 'BIT<32>'))
 std_reg_Instr.addVariable(('toWrite', 'BIT<64>'))
-std_imm_Instr.addCheckHazardCode('REGS[rd_bit ^ 0x1].is_locked()', 'decode')
+std_imm_Instr.addCheckHazardCode('REGS[rd_bit ^ 0x1].is_locked(1 /* in decode */, 2 /* read in execute, 2 cycles ahead */)', 'decode')
 isa.addInstruction(std_reg_Instr)
 opCodeRegsRegs = cxx_writer.Code("""
 address = rs1 + rs2;
@@ -1077,7 +1077,7 @@ stda_reg_Instr.addVariable(('supervisor', 'BIT<1>'))
 stda_reg_Instr.addVariable(('notAligned', 'BIT<1>'))
 stda_reg_Instr.addVariable(('address', 'BIT<32>'))
 stda_reg_Instr.addVariable(('toWrite', 'BIT<64>'))
-stda_reg_Instr.addCheckHazardCode('REGS[rd_bit ^ 0x1].is_locked()', 'decode')
+stda_reg_Instr.addCheckHazardCode('REGS[rd_bit ^ 0x1].is_locked(1 /* in decode */, 2 /* read in execute, 2 cycles ahead */)', 'decode')
 isa.addInstruction(stda_reg_Instr)
 
 # Atomic Load/Store
@@ -1736,9 +1736,9 @@ opCodeExec = cxx_writer.Code("""
 #ifndef ACC_MODEL
 result = rs1_op + rs2_op + PSR[PSR_ICC_c];
 #else
-//I read the register of the execute stage since this
+// TODO: I read the register of the execute stage since this
 //is the one containing the bypass value
-result = rs1_op + rs2_op + PSR_execute[key_ICC_c];
+result = rs1_op + rs2_op + PSR[PSR_ICC_c];
 #endif
 """)
 addx_imm_Instr = trap.Instruction('ADDX_imm', True, frequency = 5)
@@ -1922,7 +1922,8 @@ opCodeExec = cxx_writer.Code("""
 #ifndef ACC_MODEL
 result = rs1_op - rs2_op - PSR[PSR_ICC_c];
 #else
-result = rs1_op - rs2_op - PSR_execute[key_ICC_c];
+// TODO: Read execute bypass.
+result = rs1_op - rs2_op - PSR[PSR_ICC_c];
 #endif
 """)
 subx_imm_Instr = trap.Instruction('SUBX_imm', True, frequency = 3)
@@ -2059,14 +2060,16 @@ opCodeExec = cxx_writer.Code("""
 #ifndef ACC_MODEL
 unsigned yNew = (((unsigned)YREG) >> 1) | (rs1_op << 31);
 #else
-unsigned yNew = (((unsigned)YREG_execute) >> 1) | (rs1_op << 31);
+// TODO: Read execute bypass.
+unsigned yNew = (((unsigned)YREG) >> 1) | (rs1_op << 31);
 #endif
 rs1_op = ((PSR[PSR_ICC_n] ^ PSR[PSR_ICC_v]) << 31) | (((unsigned)rs1_op) >> 1);
 result = rs1_op;
 #ifndef ACC_MODEL
 unsigned yOld = YREG;
 #else
-unsigned yOld = YREG_execute;
+// TODO: Read execute bypass.
+unsigned yOld = YREG;
 #endif
 if((yOld & 0x00000001) != 0){
     result += rs2_op;
@@ -2086,7 +2089,7 @@ mulscc_imm_Instr.addBehavior(ICC_writeAdd, 'execute', False)
 mulscc_imm_Instr.addVariable(('result', 'BIT<32>'))
 mulscc_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 mulscc_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
-mulscc_imm_Instr.addSpecialRegister('PSR', 'in')
+mulscc_imm_Instr.addSpecialRegister('PSR', 'in', 'execute')
 mulscc_imm_Instr.addSpecialRegister('YREG', 'inout', 'execute')
 isa.addInstruction(mulscc_imm_Instr)
 mulscc_reg_Instr = trap.Instruction('MULScc_reg', True, frequency = 2)
@@ -2099,7 +2102,7 @@ mulscc_reg_Instr.addBehavior(ICC_writeAdd, 'execute', False)
 mulscc_reg_Instr.addVariable(('result', 'BIT<32>'))
 mulscc_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 mulscc_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
-mulscc_reg_Instr.addSpecialRegister('PSR', 'in')
+mulscc_reg_Instr.addSpecialRegister('PSR', 'in', 'execute')
 mulscc_reg_Instr.addSpecialRegister('YREG', 'inout', 'execute')
 isa.addInstruction(mulscc_reg_Instr)
 
@@ -2346,7 +2349,8 @@ if(!exception){
     #ifndef ACC_MODEL
     unsigned long long res64 = ((unsigned long long)((((unsigned long long)YREG) << 32) | (unsigned long long)rs1_op))/(unsigned long long)rs2_op;
     #else
-    unsigned long long res64 = ((unsigned long long)((((unsigned long long)YREG_execute) << 32) | (unsigned long long)rs1_op))/(unsigned long long)rs2_op;
+    // TODO: Read execute bypass.
+    unsigned long long res64 = ((unsigned long long)((((unsigned long long)YREG) << 32) | (unsigned long long)rs1_op))/(unsigned long long)rs2_op;
     #endif
     temp_V = (res64 & 0xFFFFFFFF00000000LL) != 0;
     if(temp_V){
@@ -2364,7 +2368,8 @@ if(!exception){
     #ifndef ACC_MODEL
     long long res64 = ((long long)((((unsigned long long)YREG) << 32) | (unsigned long long)rs1_op))/((long long)((int)rs2_op));
     #else
-    long long res64 = ((long long)((((unsigned long long)YREG_execute) << 32) | (unsigned long long)rs1_op))/((long long)((int)rs2_op));
+    // TODO: Read execute bypass.
+    long long res64 = ((long long)((((unsigned long long)YREG) << 32) | (unsigned long long)rs1_op))/((long long)((int)rs2_op));
     #endif
     temp_V = (res64 & 0xFFFFFFFF80000000LL) != 0 && (res64 & 0xFFFFFFFF80000000LL) != 0xFFFFFFFF80000000LL;
     if(temp_V){
@@ -2555,7 +2560,7 @@ if(!okNewWin){
     flush();
 }
 else{
-    rd.lock();
+    rd.lock(this, 1 /* in decode */, 2 /* write in execute, 2 cycles ahead */);
 }
 #endif
 """
@@ -2578,7 +2583,7 @@ opCodeWb = cxx_writer.Code("""
 if(okNewWin){
     rd = result;
     #ifdef ACC_MODEL
-    unlock_queue[0].push_back(rd.get_pipe_reg());
+    rd.unlock(this);
     #endif
 }
 """)
@@ -2600,7 +2605,7 @@ save_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 save_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
 save_imm_Instr.addVariable(('newCwp', 'BIT<32>'))
 save_imm_Instr.removeLockRegRegister('rd')
-save_imm_Instr.addSpecialRegister('PSR', 'inout')
+save_imm_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 isa.addInstruction(save_imm_Instr)
 save_reg_Instr = trap.Instruction('SAVE_reg', True, frequency = 2)
 save_reg_Instr.setMachineCode(dpi_format1, {'op3': [1, 1, 1, 1, 0, 0], 'asi' : [0, 0, 0, 0, 0, 0, 0, 0]}, ('save', ' r', '%rs1', ' r', '%rs2', ' r', '%rd'))
@@ -2620,7 +2625,7 @@ save_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 save_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 save_reg_Instr.addVariable(('newCwp', 'BIT<32>'))
 save_reg_Instr.removeLockRegRegister('rd')
-save_reg_Instr.addSpecialRegister('PSR', 'inout')
+save_reg_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 isa.addInstruction(save_reg_Instr)
 
 opCodeDec = """
@@ -2630,7 +2635,7 @@ if(!okNewWin){
     flush();
 }
 else{
-    rd.lock();
+    rd.lock(this, 1 /* in decode */, 2 /* write in execute, 2 cycles ahead */);
 }
 #endif
 """
@@ -2660,7 +2665,7 @@ restore_imm_Instr.addVariable(('rs1_op', 'BIT<32>'))
 restore_imm_Instr.addVariable(('rs2_op', 'BIT<32>'))
 restore_imm_Instr.addVariable(('newCwp', 'BIT<32>'))
 restore_imm_Instr.removeLockRegRegister('rd')
-restore_imm_Instr.addSpecialRegister('PSR', 'inout')
+restore_imm_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 isa.addInstruction(restore_imm_Instr)
 restore_reg_Instr = trap.Instruction('RESTORE_reg', True, frequency = 6)
 restore_reg_Instr.setMachineCode(dpi_format1, {'op3': [1, 1, 1, 1, 0, 1], 'asi' : [0, 0, 0, 0, 0, 0, 0, 0]}, ('restore', ' r', '%rs1', ' r', '%rs2', ' r', '%rd'))
@@ -2680,7 +2685,7 @@ restore_reg_Instr.addVariable(('rs1_op', 'BIT<32>'))
 restore_reg_Instr.addVariable(('rs2_op', 'BIT<32>'))
 restore_reg_Instr.addVariable(('newCwp', 'BIT<32>'))
 restore_reg_Instr.removeLockRegRegister('rd')
-restore_reg_Instr.addSpecialRegister('PSR', 'inout')
+restore_reg_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 isa.addInstruction(restore_reg_Instr)
 
 # Branch on Integer Condition Codes
@@ -2730,10 +2735,11 @@ switch(cond){
         bool icc_v = PSR[PSR_ICC_v];
         bool icc_c = PSR[PSR_ICC_c];
         #else
-        bool icc_z = PSR_execute[key_ICC_z];
-        bool icc_n = PSR_execute[key_ICC_n];
-        bool icc_v = PSR_execute[key_ICC_v];
-        bool icc_c = PSR_execute[key_ICC_c];
+        // TODO: Read execute bypass.
+        bool icc_z = PSR[PSR_ICC_z];
+        bool icc_n = PSR[PSR_ICC_n];
+        bool icc_v = PSR[PSR_ICC_v];
+        bool icc_c = PSR[PSR_ICC_c];
         #endif
         // All the other non-special situations
         bool exec = ((cond == 0x9) && !icc_z) ||
@@ -2816,7 +2822,7 @@ call_Instr.addBehavior(IncrementPC, 'fetch', pre = False, functionalModel = Fals
 call_Instr.setCode(opCodeReadPC, 'fetch')
 call_Instr.addVariable(('pcounter', 'BIT<32>'))
 call_Instr.addVariable(('npcounter', 'BIT<32>'))
-call_Instr.addSpecialRegister('REGS[15]', 'out')
+call_Instr.addSpecialRegister('REGS[15]', 'out', 'execute')
 call_Instr.addVariable(('oldPC', 'BIT<32>'))
 isa.addInstruction(call_Instr)
 
@@ -2951,7 +2957,7 @@ rett_imm_Instr.addVariable(cxx_writer.Variable('invalidWin', cxx_writer.boolType
 rett_imm_Instr.addVariable(cxx_writer.Variable('notAligned', cxx_writer.boolType))
 rett_imm_Instr.addVariable(cxx_writer.Variable('supervisor', cxx_writer.boolType))
 rett_imm_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
-rett_imm_Instr.addSpecialRegister('PSR', 'inout')
+rett_imm_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 isa.addInstruction(rett_imm_Instr)
 rett_reg_Instr = trap.Instruction('RETT_reg', True, frequency = 2)
 rett_reg_Instr.setMachineCode(dpi_format1, {'op3': [1, 1, 1, 0, 0, 1], 'asi' : [0, 0, 0, 0, 0, 0, 0, 0]}, ('rett r', '%rs1', '+r', '%rs2'))
@@ -2973,7 +2979,7 @@ rett_reg_Instr.addVariable(cxx_writer.Variable('invalidWin', cxx_writer.boolType
 rett_reg_Instr.addVariable(cxx_writer.Variable('notAligned', cxx_writer.boolType))
 rett_reg_Instr.addVariable(cxx_writer.Variable('supervisor', cxx_writer.boolType))
 rett_reg_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
-rett_reg_Instr.addSpecialRegister('PSR', 'inout')
+rett_reg_Instr.addSpecialRegister('PSR', 'inout', 'execute')
 isa.addInstruction(rett_reg_Instr)
 
 # Trap on Integer Condition Code; note this instruction also receives the forwarding
@@ -2985,10 +2991,10 @@ bool icc_n = PSR[PSR_ICC_n];
 bool icc_v = PSR[PSR_ICC_v];
 bool icc_c = PSR[PSR_ICC_c];
 #else
-bool icc_z = PSR_execute[key_ICC_z];
-bool icc_n = PSR_execute[key_ICC_n];
-bool icc_v = PSR_execute[key_ICC_v];
-bool icc_c = PSR_execute[key_ICC_c];
+bool icc_z = PSR[PSR_ICC_z];
+bool icc_n = PSR[PSR_ICC_n];
+bool icc_v = PSR[PSR_ICC_v];
+bool icc_c = PSR[PSR_ICC_c];
 #endif
 
 //While TRAP normally stops simulation when the _exit routine is encountered, TSIM stops simulation
@@ -3088,7 +3094,7 @@ readY_Instr.setCode(opCodeRegs, 'regs')
 readY_Instr.setCode(opCodeWb, 'wb')
 readY_Instr.addBehavior(IncrementPC, 'fetch', pre = False)
 readY_Instr.addVariable(('y_temp', 'BIT<32>'))
-readY_Instr.addSpecialRegister('YREG', 'in')
+readY_Instr.addSpecialRegister('YREG', 'in', 'execute')
 isa.addInstruction(readY_Instr)
 opCodeRegs = cxx_writer.Code("""
 asr_temp = ASR[asr];
@@ -3105,7 +3111,8 @@ readASR_Instr.addVariable(('asr_temp', 'BIT<32>'))
 isa.addInstruction(readASR_Instr)
 opCodeRegs = cxx_writer.Code("""
 #ifdef ACC_MODEL
-psr_temp = PSR_execute;
+// TODO: Read execute bypass.
+psr_temp = PSR;
 #else
 psr_temp = PSR;
 #endif

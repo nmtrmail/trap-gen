@@ -46,110 +46,6 @@ import cxx_writer
 ################################################################################
 archWordType = None
 
-def getToUnlockRegs(self, processor, pipeStage, getAll, delayedUnlock):
-    """Returns the list of registers which have to be unlocked in the current
-    pipeline stage; in case getAll is true, I have to unlock all of the
-    locked registers, and I return the pipeline register (ending with _pipe).
-    Else, I have to return only the registers for this particular stage,
-    so that only the stage register is unlocked."""
-
-    code = ''
-    regsToUnlock = []
-
-    if getAll or pipeStage.wb:
-        # Calculate preceding and remaining stages.
-        precedingStages = []
-        remainingStages = []
-        foundCur = False
-        for curPipe in processor.pipes:
-            if curPipe.name == pipeStage.name:
-                foundCur = True
-            if foundCur:
-                remainingStages.append(curPipe.name)
-            else:
-                precedingStages.append(curPipe.name)
-
-        # Special registers specify the stages where they should remain locked.
-        # We therefore unlock all other stages except for the ones in this list.
-        specialRegStages = {}
-        for toUnlockStage, regToUnlockList in self.specialOutRegs.items():
-            for regToUnlock in regToUnlockList:
-                # The fact that we want to unlock them.
-                regsToUnlock.append(regToUnlock)
-                # The stages that should NOT be unlocked.
-                if specialRegStages.has_key(regToUnlock):
-                    specialRegStages[regToUnlock].append(toUnlockStage)
-                else:
-                    specialRegStages[regToUnlock] = [toUnlockStage]
-
-        # Non-special registers can be unlocked for all stages.
-        for regToUnlock in self.machineCode.bitCorrespondence.keys():
-            if 'out' in self.machineCode.bitDirection[regToUnlock] and not regToUnlock in regsToUnlock:
-                regsToUnlock.append(regToUnlock)
-        for regToUnlock in self.bitCorrespondence.keys():
-            if 'out' in self.bitDirection[regToUnlock] and not regToUnlock in regsToUnlock:
-                regsToUnlock.append(regToUnlock)
-    else:
-        # Unlock only this stage.
-        if self.specialOutRegs.has_key(pipeStage.name):
-            for regToUnlock in self.specialOutRegs[pipeStage.name]:
-                regsToUnlock.append(regToUnlock)
-
-    # Only registers can be unlocked, not aliases.
-    regNames = [i.name for i in processor.regBanks + processor.regs]
-    # TODO: Think of how to store the stage index in the unlock_queue. Map?
-    for regToUnlock in regsToUnlock:
-        if not regToUnlock in self.notLockRegs:
-            regName = regToUnlock
-            bracket = regName.find('[')
-            if bracket > 0:
-                regName = regName[:bracket]
-
-            delay = '0'
-            if delayedUnlock and self.delayedWb.has_key(regToUnlock):
-                delay = str(self.delayedWb[regToUnlock])
-
-            # Determine the stages which have to be unlocked:
-            # - If neither getAll nor pipeStage.wb is true, unlock only the
-            #   current stage of both regular and special registers.
-            # - Else unlock all stages of regular registers and, for special
-            #   registers, unlock all upcoming stages as well as all preceding
-            #   stages not explicity specified.
-            if getAll or pipeStage.wb:
-                # Regular Register/Alias
-                if not specialRegStages.has_key(regToUnlock):
-                    if regName in regNames:
-                        code += 'unlock_queue[' + delay + '].push_back(' + regToUnlock + '/* all */);\n'
-                    else:
-                        code += 'unlock_queue[' + delay + '].push_back(' + regToUnlock + '.get_reg(/* all */));\n'
-                # Special Register/Alias
-                # Unlock all upcoming stages as well as all preceding stages
-                # not explicity specified.
-                else:
-                    if regName in regNames:
-                        code += 'unlock_queue[' + delay + '].push_back(' + regToUnlock + '/* all */);\n'
-                    else:
-                        code += 'unlock_queue[' + delay + '].push_back(' + regToUnlock + '.get_reg(/* all */));\n'
-                    toUnlockStages = []
-                    for precedingStage in precedingStages:
-                        if not precedingStage in specialRegStages[regToUnlock]:
-                            toUnlockStages.append(precedingStage)
-                    toUnlockStages += remainingStages
-                    for toUnlockStage in toUnlockStages:
-                        if regName in regNames:
-                            code += 'unlock_queue[' + delay + '].push_back(' + regToUnlock + '/* ' + toUnlockStage + ' */);\n'
-                        else:
-                            code += 'unlock_queue[' + delay + '].push_back(' + regToUnlock + '.get_reg(/* ' + toUnlockStage + ' */));\n'
-
-            # Unlock the current stage of both regular and special registers.
-            else:
-                if regName in regNames:
-                    code += 'unlock_queue[' + delay + '].push_back(' + regToUnlock + '/* ' + pipeStage.name + ' */);\n'
-                else:
-                    code += 'unlock_queue[' + delay + '].push_back(' + regToUnlock + '.get_reg(/* ' + pipeStage.name + ' */);\n'
-
-    return code
-
 def toBinStr(intNum, maxLen = -1):
     """Given an integer number it converts it to a bitstring; maxLen is used only
     in case a negative number have to be converted"""
@@ -239,7 +135,6 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     from procWriter import instrCtorParams, instrCtorValues
     from registerWriter import registerType, registerContainerType
     memoryType = cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"')
-    unlockQueueType = cxx_writer.TemplateType('std::map', ['unsigned', cxx_writer.TemplateType('std::vector', [registerType.makePointer()], 'vector')], 'map')
     instructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
 
     emptyBody = cxx_writer.Code('')
@@ -266,9 +161,8 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
         behaviorMethod = cxx_writer.Method('behavior', cxx_writer.Code('return 0;\n'), cxx_writer.uintType, 'public', virtual = True)
         instructionElements.append(behaviorMethod)
     else:
-        unlockQueueParam = cxx_writer.Parameter('unlock_queue', unlockQueueType.makeRef())
         for pipeStage in processor.pipes:
-            behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, cxx_writer.Code('return 0;\n'), cxx_writer.uintType, 'public', [unlockQueueParam], virtual = True)
+            behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, cxx_writer.Code('return 0;\n'), cxx_writer.uintType, 'public', virtual = True)
             instructionElements.append(behaviorMethod)
 
     # Methods: replicate()
@@ -280,24 +174,14 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     setParamsMethod = cxx_writer.Method('set_params', emptyBody, cxx_writer.voidType, 'public', [setParamsParam], noException = True, virtual = True)
     instructionElements.append(setParamsMethod)
 
-    # Methods: check_hazard(), lock_regs(), get_unlock()
+    # Methods: check_regs(), lock_regs(), unlock_regs()
     if model.startswith('acc'):
-        # Now I have to add the code for checking data hazards
-        hasCheckHazard = False
-        for pipeStage in processor.pipes:
-            if pipeStage.checkHazard:
-                if processor.pipes.index(pipeStage) + 1 < len(processor.pipes):
-                    # There exist stages between the beginning and the end of the hazard.
-                    if not processor.pipes[processor.pipes.index(pipeStage) + 1].wb:
-                        hasCheckHazard = True
-        if hasCheckHazard:
-            for pipeStage in processor.pipes:
-                checkHazardMethod = cxx_writer.Method('check_hazard_' + pipeStage.name, cxx_writer.Code('return true;\n'), cxx_writer.boolType, 'public', virtual = True)
-                instructionElements.append(checkHazardMethod)
-                lockMethod = cxx_writer.Method('lock_regs_' + pipeStage.name, emptyBody, cxx_writer.voidType, 'public', virtual = True)
-                instructionElements.append(lockMethod)
-                getUnlockMethod = cxx_writer.Method('get_unlock_' + pipeStage.name, emptyBody, cxx_writer.voidType, 'public', [unlockQueueParam], virtual = True)
-                instructionElements.append(getUnlockMethod)
+        checkRegsMethod = cxx_writer.Method('check_regs', cxx_writer.Code('return 0;\n'), cxx_writer.uintType, 'public', virtual = True)
+        instructionElements.append(checkRegsMethod)
+        lockRegsMethod = cxx_writer.Method('lock_regs', cxx_writer.Code('return true;\n'), cxx_writer.boolType, 'public', virtual = True)
+        instructionElements.append(lockRegsMethod)
+        unlockRegsMethod = cxx_writer.Method('unlock_regs', cxx_writer.Code('return true;\n'), cxx_writer.boolType, 'public', virtual = True)
+        instructionElements.append(unlockRegsMethod)
 
         # Attributes
         # I also have to add the program counter attribute
@@ -437,7 +321,7 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     if model.startswith('acc'):
         for pipeStage in processor.pipes:
             if pipeStage.checkUnknown:
-                behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'public', [unlockQueueParam])
+                behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'public')
                 invalidInstrElements.append(behaviorMethod)
     else:
         behaviorMethod = cxx_writer.Method('behavior', behaviorBody, cxx_writer.uintType, 'public')
@@ -449,7 +333,7 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     invalidInstrElements.append(replicateMethod)
 
     # Methods: get_name()
-    getNameBody = cxx_writer.Code('return \"InvalidInstruction\";')
+    getNameBody = cxx_writer.Code('return \"Invalid\";')
     getNameMethod = cxx_writer.Method('get_name', getNameBody, cxx_writer.stringType, 'public', noException = True, const = True)
     invalidInstrElements.append(getNameMethod)
 
@@ -487,7 +371,7 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
                 defineCode = 'R.set_stage(' + str(processor.pipes.index(pipeStage)) + ');\n'
                 undefineCode = 'R.unset_stage();\n'
                 behaviorBody = cxx_writer.Code(defineCode + '\n' + self.nopBeh[pipeStage.name] + '\n' + undefineCode)
-                behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'public', [unlockQueueParam])
+                behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'public')
                 NOPInstrElements.append(behaviorMethod)
 
         # Methods: replicate()
@@ -496,7 +380,7 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
         NOPInstrElements.append(replicateMethod)
 
         # Methods: get_name()
-        getNameBody = cxx_writer.Code('return \"NOPInstruction\";')
+        getNameBody = cxx_writer.Code('return \"NOP\";')
         getNameMethod = cxx_writer.Method('get_name', getNameBody, cxx_writer.stringType, 'public', noException = True, const = True)
         NOPInstrElements.append(getNameMethod)
 
@@ -631,8 +515,6 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     from procWriter import instrCtorParams, instrCtorValues
     from registerWriter import registerType, aliasType
     instructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
-    unlockQueueType = cxx_writer.TemplateType('std::map', ['unsigned', cxx_writer.TemplateType('std::vector', [registerType.makePointer()], 'vector')], 'map')
-    unlockQueueParam = cxx_writer.Parameter('unlock_queue', unlockQueueType.makeRef())
     externalClock = processor.externalClock
 
     emptyBody = cxx_writer.Code('')
@@ -662,17 +544,23 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     if not instrBases:
         instrBases.append(instructionType)
 
-    hasCheckHazard = False
-    checkHazardStage = None
+    hasHazard = False
+    decodeStage = None
+    regsStage = None
+    wbStage = None
     if model.startswith('acc'):
         # Now I have to add the code for checking data hazards
         for pipeStage in processor.pipes:
-            if pipeStage.checkHazard:
+            if pipeStage.decodeStage:
+                decodeStage = processor.pipes.index(pipeStage)
+            if pipeStage.regsStage:
                 if processor.pipes.index(pipeStage) + 1 < len(processor.pipes):
                     # There exist stages between the beginning and the end of the hazard.
-                    if not processor.pipes[processor.pipes.index(pipeStage) + 1].wb:
-                        hasCheckHazard = True
-                checkHazardStage = pipeStage.name
+                    if not processor.pipes[processor.pipes.index(pipeStage) + 1].wbStage:
+                        hasHazard = True
+                regsStage = processor.pipes.index(pipeStage)
+            if pipeStage.wbStage:
+                wbStage = processor.pipes.index(pipeStage)
 
     behaviorUserCode = ''
     for pipeStage in processor.pipes:
@@ -748,8 +636,6 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
         # add, if the current one is the writeBack stage, the registers locked in the read stage
         # to the unlock queue
         if model.startswith('acc'):
-            if hasCheckHazard:
-                behaviorUserCode += getToUnlockRegs(self, processor, pipeStage, False, True)
             behaviorCode = 'this->num_stage_cycles = 0;\n'
             if behaviorUserCode:
                 # now I have to take all the resources and create a define which
@@ -760,7 +646,7 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
                 behaviorCode += '\nR.unset_stage();\n'
                 behaviorCode += 'return this->num_stage_cycles;\n'
                 behaviorBody = cxx_writer.Code(behaviorCode)
-                behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'public', [unlockQueueParam])
+                behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'public')
                 instrMembers.append(behaviorMethod)
                 behaviorUserCode = ''
     if not model.startswith('acc'):
@@ -771,106 +657,240 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
         behaviorMethod = cxx_writer.Method('behavior', behaviorBody, cxx_writer.uintType, 'public')
         instrMembers.append(behaviorMethod)
 
-    # Methods: check_hazard(), lock_regs(), get_unlock(), print_busy_regs()
-    # Here we deal with the code for checking data hazards: three methods are used for this purpose:
-    # --- checkHazard: is called at the beginning of the register read stage to check that the
-    #     registers needed by the current instruction are not being written by a previous one in
-    #     the processor.pipes; in case this happens, the method contains the code to halt the processor.pipes stage;
-    #     I have to check for the in/inout registers and special registers as needed by the instruction
-    # --- lockRegs: also called at the beginning of the register read processor.pipes stage to lock the out/inout
-    #     registers needed by the instruction
-    # --- getUnlock: called in every stage when the instruction is annulled: this means that it is substituted
-    #     with a nop instruction: as such, registers which were previously locked are added to the unlock queue;
-    #     since it can be called from any processor.pipes stage, we have a copy of this method for all the stages
-    # @see TODO in pipelineWriter.py preamble: The logic here does not honor special write-back sequences.
+    # Methods: check_regs(), lock_regs(), unlock_regs(), print_busy_regs()
+    # These methods deal with hazard detection and prevention. Different types
+    # of hazards can occur depend on the combination of register type and
+    # pipeline bypasses:
+    #
+    # Register Types:
+    # - Most general-purpose registers are read in the stage specified by
+    #   <pipe>.setRegs() and written in the stage specified by <pipe>.setWb().
+    # - Special, instruction-specific registers specified by <instr>.
+    #   addSpecialRegister() are read and written in the given stages. This is
+    #   often the case for status registers that might be read and written in
+    #   execute.
+    #
+    # Pipeline Feedback:
+    # - Default behavior: The default behavior of the pipeline is to propagate
+    #   each register from regsStage to wbStage one stage forward every cycle.
+    #   In addition, wbStage is considered the stable value and bypassed to all
+    #   stages from [0..regsStage] as well as all stages from [wbStage+1..
+    #   lastStage].
+    # - Common feedback loops via <processor>Arch.py:<pipe>.setWbStageOrder():
+    #   A backward path is created for each stage in the list back to <pipe>
+    #   for all registers.
+    # - Register-specific feedback loops via <reg>.setWbStageOrder():
+    #   This behaves as in common feedback loops, but only for the given
+    #   registers.
+    # - Global registers are assumed to be immediately visible to all stages at
+    #   the end of cycle where the were written.
+    #
+    # Hazard Functions:
+    # To prevent data hazards, each instruction needs to perform the following
+    # three actions:
+    #
+    # - check_regs():
+    #   Calling sequence:
+    #      Pipeline[decode]::behavior()
+    #   -> Instruction::check_regs()
+    #   -> Register::is_locked()
+    #   Before reading a register, an instruction needs to make sure no other
+    #   instruction currently in the pipeline intends to write or has already
+    #   written the register locally without write-back. We test the lock as
+    #   early as possible, i.e. in the decode stage, even if the read is yet
+    #   to come. Example: If an instruction i wants to read a register in the
+    #   regs stage, pipe[decode].behavior() calls i.check_regs(), which calls
+    #   reg.is_locked(stage=regs). Since the register itself has no knowledge
+    #   of bypass loops, this returns an upper limit on the required stall
+    #   cycles, if any.
+    #
+    # - lock_regs():
+    #   Calling sequence:
+    #      Pipeline[decode]::behavior()
+    #   -> Instruction::lock_regs()
+    #   -> Register::lock()
+    #   If the instruction intends to write a general or instruction-specific
+    #   register, this function calls the lock() method of the register with
+    #   the correct latency and stage. As in check_regs(), it is best to signal
+    #   the intention to write asap. Since we use register renaming, there are
+    #   no WAW hazards. This means reg.lock() will return true as long as the
+    #   write-order is preserved, i.e. the program is well-formed. If i0 calls
+    #   lock(stage0, latency0), an instruction i1 coming one cc later will
+    #   always either 1) request to write a stage1 < stage0, 2) request to write
+    #   stage0 with latency1 = latency0+1 or 3) request to write stage1 > stage0
+    #   with latency1 > latency0 where stage1-stage0 = latency1-latency0. This
+    #   can only be guaranteed so long as 1) the instructions are issued
+    #   in-order and 2) all instructions signal the write in the same stage.
+    #
+    # - unlock_regs():
+    #   Calling sequence:
+    #      Pipeline[regs..wb]::behavior():catch(annul_exception)
+    #   -> Instruction::unlock_regs()
+    #   -> Register::unlock()
+    #   This method unlocks all registers previously unlocked. Called only when
+    #   an instruction is annulled. The regular write-back case does not require
+    #   an explicit unlock_regs(), since the registers themselves undertake
+    #   decrementing the latencies and advancing the locked stages.
+    #
+    # @see register_abstraction.hpp:is_locked(), lock() and unlock().
     if model.startswith('acc'):
-        if hasCheckHazard:
-            unlockHazard = False
-            for pipeStage in processor.pipes:
-                # check_hazard()
-                checkHazardCode = ''
-                if pipeStage.checkHazard:
-                    regsToCheck = []
-                    checkHazardCode = 'bool reg_locked = false;\n'
-                    for name, correspondence in self.machineCode.bitCorrespondence.items():
-                        if 'in' in self.machineCode.bitDirection[name]:
-                            regsToCheck.append(name)
-                    for name, correspondence in self.bitCorrespondence.items():
-                        if 'in' in self.bitDirection[name]:
-                            regsToCheck.append(name)
-                    for regToCheck in regsToCheck:
-                        if regToCheck not in self.notLockRegs:
-                            # TODO:This checks if ANY stage is locked. Doesn't
-                            # make sense of course, but errs on the safe side.
-                            # @see TODO in pipelineWriter.py preamble.
-                            checkHazardCode += 'reg_locked = this->' + regToCheck + '.is_locked(' + str(len(processor.pipes)) + ') || reg_locked;\n'
-                    for pipeName, regList in self.specialInRegs.items():
-                        for regToCheck in regList:
-                            if regToCheck not in regsToCheck and pipeName != pipeStage.name:
-                                checkHazardCode += 'reg_locked = this->' + regToCheck + '.is_locked(' + str([ pipeStageInner.name for pipeStageInner in processor.pipes ].index(pipeName)) + ') || reg_locked;\n'
-                if self.customCheckHazardOp.has_key(pipeStage.name):
-                    for customRegToCheck in self.customCheckHazardOp[pipeStage.name]:
-                        checkHazardCode += 'reg_locked = ' + customRegToCheck + '.is_locked(' + str(processor.pipes.index(pipeStage)) + ') || reg_locked;\n'
-                if checkHazardCode:
-                    checkHazardCode += 'return !reg_locked;\n'
-                    checkHazardBody = cxx_writer.Code(checkHazardCode)
-                    checkHazardMethod = cxx_writer.Method('check_hazard_' + pipeStage.name, checkHazardBody, cxx_writer.boolType, 'public')
-                    instrMembers.append(checkHazardMethod)
+        if hasHazard:
+            # Regular input registers: Aliases specified by instruction fields.
+            # Unfortunately, we cannot consider special bypasses since we do not
+            # what the alias is pointing to at the time of code generation. This
+            # is erring on the safe side, and should have little effect in
+            # practice.
+            # TODO: I wonder about the PC: Will it happen that we assume
+            # there exists a common bypass, which is nullified by PC-
+            # specific bypasses, and end up not stalling long enough?
+            # Tricky...The only error-proof way is storing bypass
+            # information in the register itself after all. This is
+            # precisely what I tried to avoid by hard-coding
+            # clock_cycle. Maybe I could keep clock_cycle as it is, and
+            # just use the stored info for calculating locks only. Then
+            # I could move the following calculation to reg.is_locked()
+            # and have it return the required stall that considers all
+            # stages and bypasses.
+            instrInRegs = []
+            for reg, correspondence in self.machineCode.bitCorrespondence.items():
+                if 'in' in self.machineCode.bitDirection[reg]:
+                    if reg not in self.notLockRegs:
+                        instrInRegs.append(reg)
+            for reg, correspondence in self.bitCorrespondence.items():
+                if 'in' in self.bitDirection[reg]:
+                    if reg not in self.notLockRegs:
+                        instrInRegs.append(reg)
+            # Special input registers.
+            instrSpecialInRegs = {}
+            for pipeName, regList in self.specialInRegs.items():
+                for reg in regList:
+                    stageIndex = [pipeStageInner.name for pipeStageInner in processor.pipes].index(pipeName)
+                    # Only if the register will be read in an earlier stage than
+                    # we already calculated.
+                    if reg not in instrInRegs:
+                        if reg not in instrSpecialInRegs.keys():
+                            instrSpecialInRegs[reg] = stageIndex
+                        elif stageIndex < instrSpecialInRegs[reg]:
+                            instrSpecialInRegs[reg] = stageIndex
+                    elif stageIndex < regsStage:
+                        instrSpecialInRegs[reg] = stageIndex
+                        instrInRegs.remove(reg)
+            # Special input registers from HelperOperations.
+            for pipeName, behaviors in self.prebehaviors.items() + self.postbehaviors.items():
+                for beh in behaviors:
+                    for reg in beh.specialInRegs:
+                        stageIndex = [pipeStageInner.name for pipeStageInner in processor.pipes].index(pipeName)
+                        # Only if the register will be read in an earlier
+                        # stage than we already calculated.
+                        if reg not in instrInRegs:
+                            if reg not in instrSpecialInRegs.keys():
+                                instrSpecialInRegs[reg] = stageIndex
+                            elif stageIndex < instrSpecialInRegs[reg]:
+                                instrSpecialInRegs[reg] = stageIndex
+                        elif stageIndex < regsStage:
+                            instrSpecialInRegs[reg] = stageIndex
+                            instrInRegs.remove(reg)
+            # Regular output registers: Aliases specified by instruction fields.
+            instrOutRegs = []
+            for reg, correspondence in self.machineCode.bitCorrespondence.items():
+                if 'out' in self.machineCode.bitDirection[reg]:
+                    if not reg in self.notLockRegs:
+                        instrOutRegs.append(reg)
+            for reg, correspondence in self.bitCorrespondence.items():
+                if 'out' in self.bitDirection[reg] and not reg in instrOutRegs:
+                    if not reg in self.notLockRegs:
+                        instrOutRegs.append(reg)
+            # Special output registers.
+            instrSpecialOutRegs = {}
+            for pipeName, regList in self.specialOutRegs.items():
+                for reg in regList:
+                    stageIndex = [pipeStageInner.name for pipeStageInner in processor.pipes].index(pipeName)
+                    # Only if the register will be written in an earlier stage
+                    # than we already calculated.
+                    if reg not in instrOutRegs:
+                        if reg not in instrSpecialOutRegs.keys():
+                            instrSpecialOutRegs[reg] = stageIndex
+                        elif stageIndex < instrSpecialOutRegs[reg]:
+                            instrSpecialOutRegs[reg] = stageIndex
+                    elif stageIndex < regsStage:
+                        instrSpecialOutRegs[reg] = stageIndex
+                        instrOutRegs.remove(reg)
+            # Special output registers from HelperOperations.
+            for pipeName, behaviors in self.prebehaviors.items() + self.postbehaviors.items():
+                for beh in behaviors:
+                    for reg in beh.specialOutRegs:
+                        stageIndex = [pipeStageInner.name for pipeStageInner in processor.pipes].index(pipeName)
+                        if reg not in instrOutRegs:
+                            if reg not in instrSpecialOutRegs.keys():
+                                instrSpecialOutRegs[reg] = stageIndex
+                            elif stageIndex < instrSpecialOutRegs[reg]:
+                                instrSpecialOutRegs[reg] = stageIndex
+                        elif stageIndex < regsStage:
+                            instrSpecialOutRegs[reg] = stageIndex
+                            instrOutRegs.remove(reg)
 
-                # lock_regs()
-                if pipeStage.checkHazard:
-                    regsToLock = []
-                    lockCode = ''
-                    for name, correspondence in self.machineCode.bitCorrespondence.items():
-                        if 'out' in self.machineCode.bitDirection[name]:
-                            regsToLock.append(name)
-                    for name, correspondence in self.bitCorrespondence.items():
-                        if 'out' in self.bitDirection[name]:
-                            regsToLock.append(name)
-                    specialRegs = []
-                    for reg in self.specialOutRegs.values():
-                        specialRegs += reg
-                    for specialRegName in specialRegs:
-                        if specialRegName not in regsToLock:
-                            regsToLock.append(specialRegName)
-                    for regToLock in regsToLock:
-                        if not regToLock in self.notLockRegs:
-                            lockCode += 'this->' + regToLock + '.lock(' + str(processor.pipes.index(pipeStage)) + ');\n'
-                    lockBody = cxx_writer.Code(lockCode)
-                    lockMethod = cxx_writer.Method('lock_regs_' + pipeStage.name, lockBody, cxx_writer.voidType, 'public')
-                    instrMembers.append(lockMethod)
+            # check_regs()
+            Code = ''
+            # Regular input registers: Aliases specified by instruction fields.
+            for reg in instrInRegs:
+                Code += 'reg_stall = this->' + reg + '.is_locked(' + str(regsStage) + ', ' + str(regsStage-decodeStage) + ');\n'
+                Code += 'if (reg_stall > max_stall) max_stall = reg_stall;\n'
+            # Special input registers.
+            for reg, stageIndex in instrSpecialInRegs.items():
+                Code += 'reg_stall = this->' + reg + '.is_locked(' + str(stageIndex) + ', ' + str(stageIndex-decodeStage) + ');\n'
+                Code += 'if (reg_stall > max_stall) max_stall = reg_stall;\n'
+            # Custom hazard checking operations.
+            if self.customCheckHazardOp.has_key(pipeStage.name):
+                for customRegToCheck in self.customCheckHazardOp[pipeStage.name]:
+                    Code += 'reg_stall = ' + customRegToCheck + '.is_locked(' + str(processor.pipes.index(pipeStage)) + ', ' + str(processor.pipes.index(pipeStage)-decodeStage) + ');\n'
+                    Code += 'if (reg_stall > max_stall) max_stall = reg_stall;\n'
+            if Code:
+                checkRegsCode = 'unsigned reg_stall, max_stall = 0;\n'
+                checkRegsCode += Code
+                checkRegsCode += 'return max_stall;\n'
+                checkRegsMethod = cxx_writer.Method('check_regs', cxx_writer.Code(checkRegsCode), cxx_writer.uintType, 'public')
+                instrMembers.append(checkRegsMethod)
 
-                # get_unlock()
-                if pipeStage.checkHazard:
-                    unlockHazard = True
-                if unlockHazard:
-                    getUnlockCode = getToUnlockRegs(self, processor, pipeStage, True, False)
-                    getUnlockBody = cxx_writer.Code(getUnlockCode)
-                    getUnlockMethod = cxx_writer.Method('get_unlock_' + pipeStage.name, getUnlockBody, cxx_writer.voidType, 'public', [unlockQueueParam])
-                    instrMembers.append(getUnlockMethod)
+            # lock_regs()
+            Code = ''
+            # Regular output registers: Aliases specified by instruction fields.
+            for reg in instrOutRegs:
+                Code += 'can_lock = can_lock && this->' + reg + '.lock(this, ' + str(wbStage) + ', ' + str(wbStage-decodeStage) + ');\n'
+            # Special output registers.
+            for reg, stageIndex in instrSpecialOutRegs.items():
+                Code += 'can_lock = can_lock && this->' + reg + '.lock(this, ' + str(stageIndex) + ', ' + str(stageIndex-decodeStage) + ');\n'
+            if Code:
+                lockRegsCode = 'bool can_lock = true;\n'
+                lockRegsCode += Code
+                lockRegsCode += 'return can_lock;\n'
+                lockRegsMethod = cxx_writer.Method('lock_regs', cxx_writer.Code(lockRegsCode), cxx_writer.boolType, 'public')
+                instrMembers.append(lockRegsMethod)
 
-        if trace and hasCheckHazard:
-            # Now we have to print the method for creating the data hazards
-            regsToCheck = []
+            # unlock_regs()
+            Code = ''
+            # Regular and special output registers.
+            for reg in instrOutRegs + instrSpecialOutRegs.keys():
+                Code += 'can_unlock = can_unlock && this->' + reg + '.unlock(this);\n'
+            if Code:
+                unlockRegsCode = 'bool can_unlock = true;\n'
+                unlockRegsCode += Code
+                unlockRegsCode += 'return can_unlock;\n'
+                unlockRegsMethod = cxx_writer.Method('unlock_regs', cxx_writer.Code(unlockRegsCode), cxx_writer.boolType, 'public')
+                instrMembers.append(unlockRegsMethod)
+
+        # Methods: print_busy_regs()
+        if trace and hasHazard:
             Code = 'std::string ret_val = "";\n'
-            for name, correspondence in self.machineCode.bitCorrespondence.items():
-                if 'in' in self.machineCode.bitDirection[name]:
-                    regsToCheck.append(name)
-            for name, correspondence in self.bitCorrespondence.items():
-                if 'in' in self.bitDirection[name]:
-                    regsToCheck.append(name)
-            specialRegList = []
-            for reg in self.specialInRegs.values():
-                specialRegList += reg
-            for specialRegName in specialRegList:
-                if not specialRegName in regsToCheck:
-                    regsToCheck.append(specialRegName)
-
-            for regToCheck in regsToCheck:
-                if not regToCheck in self.notLockRegs:
-                    Code += 'if (this->' + regToCheck + '.is_locked(' + str([ pipeStageInner.name for pipeStageInner in processor.pipes ].index(checkHazardStage)) + ')) {\n'
-                    Code += 'ret_val += "' + regToCheck + ' - ";\n'
-                    Code += '}\n'
+            # Regular input registers: Aliases specified by instruction fields.
+            for reg in instrInRegs:
+                Code += 'if (this->' + reg + '.is_locked(' + str(regsStage) + ', ' + str(regsStage-decodeStage) + ') > 0) {\n'
+                Code += 'ret_val += "' + reg + ' - ";\n'
+                Code += '}\n'
+            # Special input registers.
+            for reg, stageIndex in instrSpecialInRegs.items():
+                Code += 'if (this->' + reg + '.is_locked(' + str(stageIndex) + ', ' + str(stageIndex-decodeStage) + ') > 0) {\n'
+                Code += 'ret_val += "' + reg + ' - ";\n'
+                Code += '}\n'
             Code += 'return ret_val;\n'
             printBusyRegsBody = cxx_writer.Code(Code)
             printBusyRegsMethod = cxx_writer.Method('print_busy_regs', printBusyRegsBody, cxx_writer.stringType, 'public')

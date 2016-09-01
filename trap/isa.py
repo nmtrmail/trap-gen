@@ -517,7 +517,7 @@ class Instruction:
         raise Exception('GCC retargeting not yet supported')
         self.templateString = templateString
 
-    def addSpecialRegister(self, regName, direction = 'inout', stage = 'default'):
+    def addSpecialRegister(self, regName, direction, stage):
         if direction in ['inout', 'in']:
             if self.specialInRegs.has_key(stage):
                 self.specialInRegs[stage].append(regName)
@@ -592,6 +592,8 @@ class HelperOperation:
         self.instrvars = []
         self.archElems = []
         self.archVars = []
+        self.specialInRegs = []
+        self.specialOutRegs = []
         validModel = ['all', 'func', 'acc']
         # Now we check which model has to include the operation
         if not model in validModel:
@@ -624,6 +626,14 @@ class HelperOperation:
         """adds an instruction element to this instruction: this is necessary in case
         the current operation needs to access the field of a machine code"""
         self.archElems.append(archElem)
+
+    def addSpecialRegister(self, regName, direction = 'inout'):
+        if direction in ['inout', 'in']:
+            self.specialInRegs.append(regName)
+        if direction in ['inout', 'out']:
+            self.specialOutRegs.append(regName)
+        if not direction in ['inout', 'out', 'in']:
+            raise Exception('Invalid value ' + str(direction) + ' for direction of register ' + regName + ', expected \'inout\', \'in\', or \'out\'.')
 
     def getCPPOperation(self, namespace):
         """returns the cpp code implementing the current method"""

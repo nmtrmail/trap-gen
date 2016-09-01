@@ -185,23 +185,25 @@ PC = 0x1C;""")
 
 # Now it is time to add the pipeline stages
 fetchStage = trap.PipeStage('fetch')
+fetchStage.setFetchStage()
 processor.addPipeStage(fetchStage)
+
 decodeStage = trap.PipeStage('decode')
-decodeStage.setHazard()
+decodeStage.setDecodeStage()
+decodeStage.setRegsStage()
 processor.addPipeStage(decodeStage)
+
 executeStage = trap.PipeStage('execute')
 executeStage.setCheckUnknownInstr()
 #executeStage.setCheckTools()
-# TODO: This is copy-paste from 7TDMI. The 9TDMI has a 5-stage pipeline.
-#memStage = trap.PipeStage('mem')
-#processor.addPipeStage(memStage)
-#wbStage = trap.PipeStage('wb')
-executeStage.setWriteBack()
-executeStage.setEndHazard()
-#wbStage.setWriteBack()
-#wbStage.setEndHazard()
-#processor.addPipeStage(wbStage)
 processor.addPipeStage(executeStage)
+
+memStage = trap.PipeStage('mem')
+processor.addPipeStage(memStage)
+
+wbStage = trap.PipeStage('wb')
+wbStage.setWbStage()
+processor.addPipeStage(wbStage)
 
 # The ABI is necessary to emulate system calls, personalize the GDB stub and,
 # eventually, retarget GCC

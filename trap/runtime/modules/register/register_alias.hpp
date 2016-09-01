@@ -700,6 +700,40 @@ class RegisterAlias
     this->m_reg->execute_callbacks(type, offset, size);
   }
 
+  // TODO: This delegation needs rethinking. @see note in RegisterInterface.hpp.
+  void set_stage(unsigned stage) {
+    this->m_reg->get_strategy()->set_stage(stage);
+  }
+
+  void unset_stage() {
+    this->m_reg->get_strategy()->unset_stage();
+  }
+
+  void stall(unsigned stage) {
+    return this->m_reg->get_strategy()->stall(stage);
+  }
+
+  void advance() {
+    return this->m_reg->get_strategy()->advance();
+  }
+
+  void flush(unsigned stage) {
+    return this->m_reg->get_strategy()->flush(stage);
+  }
+
+  // Hazard Detection Functions
+  unsigned is_locked(unsigned stage, unsigned latency) {
+    return this->m_reg->get_strategy()->is_locked(stage, latency);
+  }
+
+  bool lock(void* instr, unsigned stage, unsigned latency) {
+    return this->m_reg->get_strategy()->lock(instr, stage, latency);
+  }
+
+  bool unlock(void* instr) {
+    return this->m_reg->get_strategy()->unlock(instr);
+  }
+
   /// @} Observer Methods
   /// --------------------------------------------------------------------------
   /// @name Information and Helper Methods
@@ -734,7 +768,7 @@ class RegisterAlias
 
   /// sc_object style print() of register value.
   void print(std::ostream& os) const {
-    this->m_reg->print(os);
+    this->m_reg->get_strategy()->print(os);
   }
 
   /// @} Information and Helper Methods

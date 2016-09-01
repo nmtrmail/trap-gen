@@ -91,8 +91,7 @@ hash_map_include = """
 ################################################################################
 # Globals and Helpers
 ################################################################################
-# Computes current program counter, in order to fetch
-# instrutions from it
+# Computes current program counter, in order to fetch instrutions from it.
 def getFetchAddressCode(self, model):
     """Sets cur_PC to the address of the instruction to be fetched."""
     Code = ''
@@ -107,7 +106,7 @@ def getFetchAddressCode(self, model):
     else:
         fetchStage = 0
         for i in range(0, len(self.pipes)):
-            if self.pipes[i].fetch:
+            if self.pipes[i].fetchStage:
                 fetchStage = i
                 break;
         # Read the latched PC belonging to this pipeline stage.
@@ -117,7 +116,7 @@ def getFetchAddressCode(self, model):
     return Code
 
 # Computes the code for the fetch address
-def getFetchDataCode(self):
+def getDoFetchCode(self):
     """Reads the instruction at the address pointed to by cur_PC."""
     Code = str(self.bitSizes[1]) + ' bitstring = this->'
     # Fetching is either from memory or through TLM ports.
@@ -132,7 +131,7 @@ def getFetchDataCode(self):
     Code += '.read_word(cur_PC);\n'
     return Code
 
-def getCacheInstrFetchCode(self, fetchCode, trace, combinedTrace, issueCodeFunction, hasCheckHazard = False, pipeStage = None):
+def getCacheInstrFetchCode(self, doFetchCode, trace, combinedTrace, issueCodeFunction, hasHazard = False, pipeStage = None):
     Code = ''
     if self.fastFetch:
         mapKey = 'cur_PC'
@@ -140,52 +139,51 @@ def getCacheInstrFetchCode(self, fetchCode, trace, combinedTrace, issueCodeFunct
         mapKey = 'bitstring'
     Code += 'template_map< ' + str(self.bitSizes[1]) + ', CacheElem >::iterator cached_instr = this->instr_cache.find(' + mapKey + ');'
     # I have found the instruction in the cache
-    Code += """
-    if (cached_instr != icache_end) {
-        Instruction* cur_instr_ptr = cached_instr->second.instr;
+    Code += """if (cached_instr != icache_end) {
+        cur_instr = cached_instr->second.instr;
         // Instruction found, call it.
-        if (cur_instr_ptr != NULL) {
+        if (cur_instr != NULL) {
     """
 
     # Here we add the details about the instruction to the current history element
     Code += """#ifdef ENABLE_HISTORY
     if (this->history_en) {
-        instr_queue_elem.name = cur_instr_ptr->get_name();
-        instr_queue_elem.mnemonic = cur_instr_ptr->get_mnemonic();
+        instr_queue_elem.name = cur_instr->get_name();
+        instr_queue_elem.mnemonic = cur_instr->get_mnemonic();
     }
     #endif
     """
 
     if pipeStage:
-        Code += 'if (cur_instr_ptr->in_pipeline) {\n'
-        Code += 'cur_instr_ptr = cur_instr_ptr->replicate(cur_instr_ptr);\n'
-        Code += 'cur_instr_ptr->to_destroy = true;\n'
+        Code += 'if (cur_instr->in_pipeline) {\n'
+        Code += 'cur_instr = cur_instr->replicate(cur_instr);\n'
+        Code += 'cur_instr->to_destroy = true;\n'
         Code += '}\n'
-        Code += 'cur_instr_ptr->in_pipeline = true;\n'
-        Code += 'cur_instr_ptr->fetch_PC = cur_PC;\n'
-    Code += issueCodeFunction(self, trace, combinedTrace, 'cur_instr_ptr', hasCheckHazard, pipeStage)
+        Code += 'cur_instr->in_pipeline = true;\n'
+        Code += 'cur_instr->fetch_PC = cur_PC;\n'
+    Code += issueCodeFunction(self, trace, combinedTrace, hasHazard, pipeStage)
 
     # I have found the element in the cache, but not the instruction
-    Code += '} else {\n'
+    Code += '} else {\n// Current instruction is indexed but not present in the cache. Perform regular decoding.\n'
     if self.fastFetch:
-        Code += fetchCode
-    Code += 'unsigned& cur_count = cached_instr->second.count;\n'
-    Code += getInstrFetchCode(self, trace, combinedTrace, issueCodeFunction, hasCheckHazard, pipeStage, ' && cur_count < ' + str(self.cacheLimit))
-    Code += """if (cur_count < """ + str(self.cacheLimit) + """) {
-            cur_count++;
+        Code += doFetchCode
+    Code += 'unsigned& cur_instr_count = cached_instr->second.count;\n'
+    Code += getDoDecodeCode(self, trace, combinedTrace, issueCodeFunction, hasHazard, pipeStage, ' && cur_instr_count < ' + str(self.cacheLimit))
+    Code += """if (cur_instr_count < """ + str(self.cacheLimit) + """) {
+            cur_instr_count++;
         } else {
             // Add the instruction to the i-cache.
-            cached_instr->second.instr = instr;
+            cached_instr->second.instr = cur_instr;
     """
     if pipeStage:
-        Code += """if (instr->to_destroy) {
-                instr->to_destroy = false;
+        Code += """if (cur_instr->to_destroy) {
+                cur_instr->to_destroy = false;
             } else {
             """
-        Code += 'this->INSTRUCTIONS[instr_id] = instr->replicate();\n'
+        Code += 'this->INSTRUCTIONS[cur_instr_id] = cur_instr->replicate();\n'
         Code += '}\n'
     else:
-        Code += 'this->INSTRUCTIONS[instr_id] = instr->replicate();\n'
+        Code += 'this->INSTRUCTIONS[cur_instr_id] = cur_instr->replicate();\n'
     Code += '}\n'
 
     # and now finally I have found nothing and I have to add everything
@@ -194,8 +192,8 @@ def getCacheInstrFetchCode(self, fetchCode, trace, combinedTrace, issueCodeFunct
         // Current instruction is not present in the cache. Perform regular decoding.
     """
     if self.fastFetch:
-        Code += fetchCode
-    Code += getInstrFetchCode(self, trace, combinedTrace, issueCodeFunction, hasCheckHazard, pipeStage)
+        Code += doFetchCode
+    Code += getDoDecodeCode(self, trace, combinedTrace, issueCodeFunction, hasHazard, pipeStage)
     Code += """this->instr_cache.insert(std::pair<unsigned, CacheElem>(bitstring, CacheElem()));
         icache_end = this->instr_cache.end();
         }
@@ -204,53 +202,53 @@ def getCacheInstrFetchCode(self, fetchCode, trace, combinedTrace, issueCodeFunct
 
 # Returns the code necessary for performing a standard instruction fetch: i.e.
 # read from memory and set the instruction parameters
-def getInstrFetchCode(self, trace, combinedTrace, issueCodeFunction, hasCheckHazard = False, pipeStage = None, checkDestroyCode = ''):
-    Code = 'int instr_id = this->decoder.decode(bitstring);\n'
+def getDoDecodeCode(self, trace, combinedTrace, issueCodeFunction, hasHazard = False, pipeStage = None, checkDestroyCode = ''):
+    Code = 'int cur_instr_id = this->decoder.decode(bitstring);\n'
     if pipeStage:
-        Code += 'Instruction* instr = this->INSTRUCTIONS[instr_id];\n'
-        Code += 'if (instr->in_pipeline) {\n'
-        Code += 'instr = instr->replicate();\n'
-        Code += 'instr->to_destroy = true;\n'
+        Code += 'cur_instr = this->INSTRUCTIONS[cur_instr_id];\n'
+        Code += 'if (cur_instr->in_pipeline) {\n'
+        Code += 'cur_instr = cur_instr->replicate();\n'
+        Code += 'cur_instr->to_destroy = true;\n'
         Code += '}\n'
-        Code += 'instr->in_pipeline = true;\n'
-        Code += 'instr->fetch_PC = cur_PC;\n'
+        Code += 'cur_instr->in_pipeline = true;\n'
+        Code += 'cur_instr->fetch_PC = cur_PC;\n'
     else:
-        Code += 'Instruction* instr = this->INSTRUCTIONS[instr_id];\n'
-    Code += 'instr->set_params(bitstring);\n'
+        Code += 'cur_instr = this->INSTRUCTIONS[cur_instr_id];\n'
+    Code += 'cur_instr->set_params(bitstring);\n'
 
     # Here we add the details about the instruction to the current history element
     Code += """#ifdef ENABLE_HISTORY
     if (this->history_en) {
-        instr_queue_elem.name = instr->get_name();
-        instr_queue_elem.mnemonic = instr->get_mnemonic();
+        instr_queue_elem.name = cur_instr->get_name();
+        instr_queue_elem.mnemonic = cur_instr->get_mnemonic();
     }
     #endif
     """
 
-    Code += issueCodeFunction(self, trace, combinedTrace, 'instr', hasCheckHazard, pipeStage, checkDestroyCode)
+    Code += issueCodeFunction(self, trace, combinedTrace, hasHazard, pipeStage, checkDestroyCode)
     return Code
 
 # Computes the code defining the execution of an instruction and
 # of the processor tools.
-def getInstrIssueCode(self, trace, combinedTrace, instrVarName, hasCheckHazard = False, pipeStage = None, checkDestroyCode = ''):
+def getInstrIssueCode(self, trace, combinedTrace, hasHazard = False, pipeStage = None, checkDestroyCode = ''):
     Code = """try {
             #ifndef DISABLE_TOOLS
-            if (!(this->tool_manager.issue(cur_PC, """ + instrVarName + """))) {
+            if (!(this->tool_manager.issue(cur_PC, cur_instr))) {
             #endif
-            num_cycles = """ + instrVarName + """->behavior();
+            num_cycles = cur_instr->behavior();
     """
     if trace:
-        Code += instrVarName + '->print_trace();\n'
+        Code += 'cur_instr->print_trace();\n'
     Code += '#ifndef DISABLE_TOOLS\n}\n'
     if trace:
         Code += """else {
-            std::cerr << "Instruction anulled by tools." << std::endl << std::endl;
+            std::cerr << "Instruction annulled by tools." << std::endl << std::endl;
         }
         """
     Code +='#endif\n}\ncatch(annul_exception& etc) {\n'
     if trace:
-        Code += instrVarName + """->print_trace();
-                std::cerr << "Skipped Instruction " << """ + instrVarName + """->get_name() << '.' << std::endl;
+        Code += """cur_instr->print_trace();
+                std::cerr << "Skipped Instruction " << cur_instr->get_name() << '.' << std::endl;
         """
     Code += """num_cycles = 0;
         }
@@ -259,69 +257,62 @@ def getInstrIssueCode(self, trace, combinedTrace, instrVarName, hasCheckHazard =
 
 # Computes the code defining the execution of an instruction and
 # of the processor tools.
-def getPipeInstrIssueCode(self, trace, combinedTrace, instrVarName, hasCheckHazard, pipeStage, checkDestroyCode = ''):
+def getPipeInstrIssueCode(self, trace, combinedTrace, hasHazard, pipeStage, checkDestroyCode = ''):
     fetchStage = self.pipes[0]
     for i in self.pipes:
-        if i.fetch:
+        if i.fetchStage:
             fetchStage = i
             break;
 
     unlockHazard = False
     for i in self.pipes:
-        if i.checkHazard:
+        if i.decodeStage:
             unlockHazard = True
         if i == pipeStage:
             break
-    Code = ''
-    Code += 'try {\n'
+
+    Code = 'try {\n'
     if pipeStage == fetchStage:
         Code += """#ifndef DISABLE_TOOLS
-            if (!(this->tool_manager.issue(""" + instrVarName + """->fetch_PC, """ + instrVarName + """))) {
+            if (!(this->tool_manager.issue(cur_instr->fetch_PC, cur_instr))) {
             #endif
     """
-    Code += """num_cycles = """ + instrVarName + """->behavior_""" + pipeStage.name + """(BasePipeStage::unlock_queue);
+    Code += """num_cycles = cur_instr->behavior_""" + pipeStage.name + """();
     """
-    if instrVarName != 'this->cur_instr':
-        Code += """this->cur_instr = """ + instrVarName + """;
-        """
-    if trace:
-        if pipeStage.fetch:
-            if combinedTrace:
-                Code += 'if (this->cur_instr != this->NOP_instr) {\n'
-            Code += instrVarName + '->print_trace();\n'
-            if combinedTrace:
-                Code += '}\n'
     if pipeStage == fetchStage:
         Code += """#ifndef DISABLE_TOOLS
                     } else {
-            if (""" + instrVarName + """->to_destroy""" + checkDestroyCode + """) {
-                delete """ + instrVarName + """;
-            } else {
-                """ + instrVarName + """->in_pipeline = false;
-            }
-            this->cur_instr = this->NOP_instr;
         """
         if trace:
-            Code += """std::cerr << "Instruction anulled by tools." << std::endl << std::endl;
+            Code += """
+            std::cerr << std::setw(15) << std::left << \"Stage=""" + pipeStage.name + """\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_instr->fetch_PC << \", Instruction=\" << std::setw(10) << std::left << cur_instr->get_name() << \", Mnemonic=\" << cur_instr->get_mnemonic() << \": Instruction annulled by tools.\" << std::endl;
             """
+        Code += """
+        if (cur_instr->to_destroy""" + checkDestroyCode + """) {
+            delete cur_instr;
+        } else {
+            cur_instr->in_pipeline = false;
+        }
+        cur_instr = this->NOP_instr;
+        """
         Code +='}\n#endif\n'
     Code +='}\ncatch(annul_exception& etc) {\n'
     if trace:
-        Code += instrVarName + """->print_trace();
-        std::cerr << "Skipped Instruction " << """ + instrVarName + """->get_name() << " at stage """ + pipeStage.name + """." << std::endl << std::endl;
+        Code += """
+        std::cerr << std::setw(15) << std::left << \"Stage=""" + pipeStage.name + """\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_instr->fetch_PC << \", Instruction=\" << std::setw(10) << std::left << cur_instr->get_name() << \", Mnemonic=\" << cur_instr->get_mnemonic() << \": Skipped instruction.\" << std::endl;
         """
     if pipeStage != fetchStage:
-        Code += 'flush_annulled = this->cur_instr->flush_pipeline;\n'
-        Code += 'this->cur_instr->flush_pipeline = false;\n'
-    if hasCheckHazard and unlockHazard:
-        Code +=  instrVarName + '->get_unlock_' + pipeStage.name + '(BasePipeStage::unlock_queue);\n'
+        Code += 'instr_annulled = cur_instr->flush_pipeline;\n'
+        Code += 'cur_instr->flush_pipeline = false;\n'
+    if hasHazard and unlockHazard:
+        Code +=  'cur_instr->unlock_regs();\n'
     Code += """
-            if (""" + instrVarName + """->to_destroy""" + checkDestroyCode + """) {
-                delete """ + instrVarName + """;
+            if (cur_instr->to_destroy""" + checkDestroyCode + """) {
+                delete cur_instr;
             } else {
-                """ + instrVarName + """->in_pipeline = false;
+                cur_instr->in_pipeline = false;
             }
-            this->cur_instr = this->NOP_instr;
+            cur_instr = this->NOP_instr;
             num_cycles = 0;
         }
         """
@@ -351,15 +342,20 @@ def getInterruptCode(self, trace, pipeStage = None):
         interruptCode += 'this->' + irqPort.name + '_instr->set_interrupt_value(' + irqPort.name + ');\n'
         interruptCode += 'try {\n'
         if pipeStage:
-            interruptCode += 'num_cycles = this->' + irqPort.name + '_instr->behavior_' + pipeStage.name + '(BasePipeStage::unlock_queue);\n'
-            interruptCode += 'this->cur_instr = this->' + irqPort.name + '_instr;\n'
+            interruptCode += 'num_cycles = this->' + irqPort.name + '_instr->behavior_' + pipeStage.name + '();\n'
+            interruptCode += 'cur_instr = this->' + irqPort.name + '_instr;\n'
         else:
             interruptCode += 'num_cycles = this->' + irqPort.name + '_instr->behavior();\n'
         interruptCode +='}\ncatch(annul_exception& etc) {\n'
         if trace:
-            interruptCode += 'this->' + irqPort.name + """_instr->print_trace();
-                    std::cerr << "Skipped Instruction " << this->""" + irqPort.name + """_instr->get_name() << '.' << std::endl;
-            """
+            if pipeStage:
+                interruptCode += """
+                std::cerr << std::setw(15) << std::left << \"Stage=""" + pipeStage.name + """\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_instr->fetch_PC << \", Instruction=\" << std::setw(10) << std::left << this->""" + irqPort.name + """_instr->get_name() << \", Mnemonic=\" << this->""" + irqPort.name + """_instr->get_mnemonic() << \": Skipped instruction.\" << std::endl;
+                """
+            else:
+                interruptCode += """
+                std::cerr << \"Instruction=\" << std::setw(10) << std::left << this->""" + irqPort.name + """_instr->get_name() << \", Mnemonic=\" << this->""" + irqPort.name + """_instr->get_mnemonic() << \": Skipped instruction.\" << std::endl;
+                """
         interruptCode += """num_cycles = 0;
             }
             """
@@ -382,7 +378,7 @@ def initPipeline(self, processorMembers, processorCtorInit):
 
     fetchStage = self.pipes[0]
     for i in self.pipes:
-        if i.fetch:
+        if i.fetchStage:
             fetchStage = i
             break;
 
@@ -476,7 +472,7 @@ def initPipeline(self, processorMembers, processorCtorInit):
             pipeFetchCtorParams.append(cxx_writer.Parameter('instr_end_event', cxx_writer.sc_eventType.makeRef()))
             pipeCtorValues.append('instr_end_event')
 
-        processorCtorInit.append('\n' + pipeStage.name + '_stage(' + ', '.join(pipeCtorValues)  + ')')
+        processorCtorInit.append(pipeStage.name + '_stage(' + ', '.join(pipeCtorValues)  + ')')
 
 
 ################################################################################
@@ -493,11 +489,15 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     InstructionTypePtr = IntructionType.makePointer()
     CacheElemType = cxx_writer.Type('CacheElem')
 
+    # fetchStage = [pipeIdx for pipeIdx, pipeStage in enumerate(self.pipes) if pipeStage.fetchStage][0]
+    # wbStage = [pipeIdx for pipeIdx, pipeStage in enumerate(self.pipes) if pipeStage.wbStage][0]
     fetchStage = self.pipes[0]
-    for i in self.pipes:
-        if i.fetch:
-            fetchStage = i
-            break;
+    wbStage = self.pipes[-1]
+    for pipeStage in self.pipes:
+        if pipeStage.fetchStage:
+            fetchStage = pipeStage
+        if pipeStage.wbStage:
+            wbStage = pipeStage
 
     processorMembers = []
     processorCtorInit = []
@@ -604,7 +604,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
             memoryCtorValues.append(self.memory[3])
         processorCtorInit.append(self.memory[0] + '(' + ', '.join(memoryCtorValues) + ')')
         if self.memory[0] in self.abi.memories.keys():
-            abiAttrs.append(cxx_writer.Attribute(memName, cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"').makeRef(), 'private'))
+            abiAttrs.append(cxx_writer.Attribute(self.memory[0], cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"').makeRef(), 'private'))
             abiCtorValues.append('this->' + self.memory[0])
 
     # Attributes and Initialization: Iterrupts
@@ -926,20 +926,21 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         """
 
         # computes the correct memory and/or memory port from which fetching the instruction stream
-        fetchCode = getFetchDataCode(self)
+        doFetchCode = getDoFetchCode(self)
         # We need to fetch the instruction ... only if the cache is not used or if
         # the index of the cache is the current instruction
         if not (self.instructionCache and self.fastFetch):
-            Code += fetchCode
+            Code += doFetchCode
         if trace:
             Code += 'std::cerr << \"Current PC: \" << std::hex << std::showbase << cur_PC << \'.\' << std::endl;\n'
 
         # Finally I declare the fetch, decode, execute loop, where the instruction is actually executed;
         # Note the possibility of performing it with the instruction fetch
+        Code += 'Instruction* cur_instr = NULL;\n'
         if self.instructionCache:
-            Code += getCacheInstrFetchCode(self, fetchCode, trace, combinedTrace, getInstrIssueCode)
+            Code += getCacheInstrFetchCode(self, doFetchCode, trace, combinedTrace, getInstrIssueCode)
         else:
-            Code += getInstrFetchCode(self, trace, combinedTrace, getInstrIssueCode)
+            Code += getDoDecodeCode(self, trace, combinedTrace, getInstrIssueCode)
 
         for pipeStage in self.pipes:
             # User-defined operations are executed after the regular instruction behavior.
@@ -1023,13 +1024,15 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     # TODO: Ugly special case for the fetch register: Since ENTRY_POINT is
     # public and usually written after initialization, the reset value is stale.
     # I need to replace public variables with get/set methods or parameters.
-    # NOTE: All stages up to and including and fetch stage are set (in practice
-    # the first one or two stages).
-    for i in range(0, len(self.pipes)):
+    # NOTE: All stages up to the fetch stage are set [0..fetchStage] (in
+    # practice the first one or two stages) as well as all stages [wbStage..
+    # lastStage]
+    for i in range(0, self.pipes.index(fetchStage)+1):
         Code += 'this->' + self.fetchReg[0] + '.set_stage(' + str(i) + ');\n'
         Code += 'this->' + self.fetchReg[0] + ' = this->ENTRY_POINT;\n'
-        if self.pipes[i].fetch:
-            break
+    #for i in range(self.pipes.index(wbStage), len(self.pipes)):
+    #    Code += 'this->' + self.fetchReg[0] + '.set_stage(' + str(i) + ');\n'
+    #    Code += 'this->' + self.fetchReg[0] + ' = this->ENTRY_POINT;\n'
     Code += 'this->' + self.fetchReg[0] + '.unset_stage();\n'
     for irqPort in self.irqs:
         Code += 'this->' + irqPort.name + ' = 0;\n'
@@ -1437,7 +1440,8 @@ def getCPPMain(self, model, namespace):
     mainCode = cxx_writer.Code(code)
     mainCode.addInclude("""#ifdef _WIN32
 #pragma warning(disable : 4101)
-#endif""")
+#endif
+""")
 
     mainCode.addInclude('#define WIN32_LEAN_AND_MEAN')
 

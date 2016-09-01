@@ -44,8 +44,6 @@ def getCPPIRQInstr(self, model, trace, namespace):
     from procWriter import instrCtorParams, instrCtorValues
     instructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
     from registerWriter import registerType
-    unlockQueueType = cxx_writer.TemplateType('std::map', ['unsigned', cxx_writer.TemplateType('std::vector', [registerType.makePointer()], 'vector')], 'map')
-    unlockQueueParam = cxx_writer.Parameter('unlock_queue', unlockQueueType.makeRef())
 
     emptyBody = cxx_writer.Code('')
     IRQInstrClasses = []
@@ -77,7 +75,7 @@ def getCPPIRQInstr(self, model, trace, namespace):
                     behaviorCode += '\nR.unset_stage();\n'
                 behaviorCode += 'return this->num_stage_cycles;\n'
                 behaviorBody = cxx_writer.Code(behaviorCode)
-                behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'public', [unlockQueueParam])
+                behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'public')
                 IRQInstrMembers.append(behaviorMethod)
         if not model.startswith('acc'):
             behaviorCode = 'this->num_instr_cycles = 0;\n'

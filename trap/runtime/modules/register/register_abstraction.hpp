@@ -41,6 +41,7 @@
 #include <systemc>
 //#include <amba_parameters.h>
 
+#include <list>
 #include <assert.h>
 #include <iomanip>
 
@@ -127,12 +128,18 @@ class RegisterAbstraction {
 
   virtual void unset_stage() {}
 
+  virtual void stall(unsigned stage) {}
+
+  virtual void advance() {}
+
+  virtual void flush(unsigned stage) {}
+
   // Hazard Detection Functions
-  virtual void lock(int stage = -1) {}
+  virtual unsigned is_locked(unsigned stage, unsigned latency) { return 0; }
 
-  virtual void unlock(int stage = -1, int wb_latency = -1) {}
+  virtual bool lock(void* instr, unsigned stage, unsigned latency) { return true; }
 
-  virtual bool is_locked(int stage = -1) { return false; }
+  virtual bool unlock(void* instr) { return true; }
 
   /// @} Observer Methods
   /// --------------------------------------------------------------------------
@@ -453,7 +460,7 @@ class RegisterTLMDelayOffset : public RegisterTLM<DATATYPE> {
  *   are propagated on cycles edges, so that each stage is assigned the
  *   latch following it for both reading and writing. The last latch (after
  *   write-back) is written back to the first.
- * - The write-back stage is chosen by the user using <stage>.setWriteBack().
+ * - The write-back stage is chosen by the user using <stage>.setWbStage().
  * - The value written in the write-back stage is considered the stable value.
  *   All other values can potentially be flushed if the instruction is annulled.
  *   Flushes propagate backwards, causing all preceding stages to flush.
@@ -507,8 +514,10 @@ class RegisterTLMDelayOffset : public RegisterTLM<DATATYPE> {
 template <typename DATATYPE>
 class RegisterCA : public RegisterAbstraction<DATATYPE> {
   public:
-  typedef bool (*clock_cycle_func_t)(DATATYPE*, DATATYPE*, sc_core::sc_time*,
-    sc_core::sc_time*);
+  typedef bool (*clock_cycle_func_t)(DATATYPE*, DATATYPE*, unsigned long long*, unsigned long long*);
+  typedef std::tuple<void* /* instr* */, unsigned /* stage */, unsigned /* latency */> lock_type;
+  typedef std::list<lock_type> lock_list_type;
+  typedef lock_list_type::iterator lock_list_iterator;
 
   /// @name Constructors and Destructors
   /// @{
@@ -520,31 +529,27 @@ class RegisterCA : public RegisterAbstraction<DATATYPE> {
       m_read_mask(read_mask),
       m_write_mask(write_mask),
       m_num_stages(num_stages),
-      m_current_stage(num_stages-1),
+      m_current_stage(0),
+      m_stall_stage(-1),
+      m_current_cycle(1),
       m_clock_cycle_func(clock_cycle_func),
       m_has_to_propagate(false) {
 
     this->m_values = new DATATYPE[this->m_num_stages];
+    this->m_time_stamps = new unsigned long long[this->m_num_stages];
     this->temp_values = new DATATYPE[this->m_num_stages];
-    this->m_num_locks = new int[this->m_num_stages];
-    this->m_lock_duration = new int[this->m_num_stages];
-    this->m_time_stamp = new sc_core::sc_time[this->m_num_stages];
-    this->temp_time_stamp = new sc_core::sc_time[this->m_num_stages];
+    this->temp_time_stamps = new unsigned long long[this->m_num_stages];
     for (unsigned i = 0; i < this->m_num_stages; ++i) {
       this->m_values[i] = this->temp_values[i] = value;
-      this->m_num_locks[i] = 0;
-      this->m_lock_duration[i] = -1;
-      this->m_time_stamp[i] = this->temp_time_stamp[i] = sc_core::SC_ZERO_TIME;
+      this->m_time_stamps[i] = this->temp_time_stamps[i] = 0;
     }
   }
 
   ~RegisterCA() {
     delete [] this->m_values;
+    delete [] this->m_time_stamps;
     delete [] this->temp_values;
-    delete [] this->m_num_locks;
-    delete [] this->m_lock_duration;
-    delete [] this->m_time_stamp;
-    delete [] this->temp_time_stamp;
+    delete [] this->temp_time_stamps;
   }
 
   /// @} Constructors and Destructors
@@ -561,61 +566,101 @@ class RegisterCA : public RegisterAbstraction<DATATYPE> {
     this->m_values[this->m_current_stage] = data & this->m_write_mask;
     if (this->m_current_stage == this->m_num_stages-1)
       this->m_value = this->m_values[this->m_current_stage];
-    this->m_time_stamp[this->m_current_stage] = sc_core::sc_time_stamp();
+    this->m_time_stamps[this->m_current_stage] = m_current_cycle;
     this->m_has_to_propagate = true;
     return true;
   }
 
+  /**
+   * @brief Clock Cycle Function
+   *
+   * Callback implementing propagation logic.
+   * This takes into account:
+   * - First read (<pipe>.setRegsStage()).
+   * - Last write (<pipe>.setWbStage()).
+   * - Regular step-wise forward propagation.
+   * - Common feedback loops via <processor>Arch.py:<pipe>.setWbStageOrder().
+   * - Register-specific feedback loops via <reg>.setWbStageOrder().
+   *
+   * @see registerWriter.py:getPipeClockCycleFunction() for more details on the
+   * propagation logic.
+   *
+   * @see lock(), unlock() and is_locked() for details on locking logic.
+   *
+   * @note: Having TRAP generate a hardcoded function is faster than dynamic
+   * solutions involving maps or similar.
+   */
   void clock_cycle() {
-    // Decrease remaining lock duration.
-    for (unsigned i = 0; i < this->m_num_stages; ++i) {
-      if (this->m_lock_duration[i] > 0) {
-        this->m_lock_duration[i]--;
-        if (this->m_lock_duration[i] == 0 && this->m_num_locks[i] > 0 /* should always be true */) {
-          this->m_num_locks[i]--;
-        }
-      }
+    // Update list of instructions currently writing or intending to write.
+    for (lock_list_iterator it = this->m_lock_list.begin(); it != this->m_lock_list.end(); ++it) {
+      // Instruction will lock in the future: Decrease lock duration.
+      if (std::get<2>(*it) > 0)
+        std::get<2>(*it)--;
+      // Instruction has lock: Step one stage forward.
+      else if (std::get<1>(*it) < this->m_num_stages-1)
+        std::get<1>(*it)++;
+      // Instruction will leave pipeline: Remove instruction from lock queue.
+      else
+        it = this->m_lock_list.erase(it);
     }
 
+    // Execute propagation logic generated by TRAP.
     if (this->m_has_to_propagate) {
       bool has_changes = false;
 
-      // Stable value.
-      this->m_value = this->m_values[this->m_num_stages-1];
+      if (this->m_clock_cycle_func != NULL)
+        has_changes = (*this->m_clock_cycle_func)(m_values, temp_values, m_time_stamps, temp_time_stamps);
 
-      // Regular backward propagation (loop-back).
-      if (this->m_time_stamp[this->m_num_stages-1] >= this->m_time_stamp[0]) {
-        this->temp_values[0] = this->m_values[this->m_num_stages-1];
-        this->temp_time_stamp[0] = this->m_time_stamp[this->m_num_stages-1];
-        has_changes = true;
+      // Adopt new values.
+      // The propagation logic is hard-coded in m_clock_cycle_func() and saved
+      // in m_temp_values. Depending on the stall status, we may adopt only a
+      // subset of the calculated values:
+      // 1. If the pipeline is not stalled, all values are copied to m_values.
+      // 2. If the pipeline is just being stalled, we copy the values only
+      // upwards from the stall stage. The values in the stall stage downwards
+      // are kept unchanged.
+      // 3. If the pipeline is just coming out of a stall, copy the stable value
+      // to the stage causing the stall so it can use it the next cycle.
+      for (unsigned i = this->m_stall_stage+2; i < this->m_num_stages; ++i) {
+        this->m_values[i] = this->temp_values[i];
+        this->m_time_stamps[i] = this->temp_time_stamps[i];
       }
-
-      // Regular forward propagation.
-      for (int i = this->m_num_stages-2; i >= 0; --i) {
-        if (this->m_time_stamp[i] >= this->m_time_stamp[i+1]) {
-          this->temp_values[i+1] = this->m_values[i];
-          this->temp_time_stamp[i+1] = this->m_time_stamp[i];
-          has_changes = true;
+      if (this->m_stall_stage < (int)(this->m_num_stages)-1) {
+        if (this->m_stall_stage >= 0) {
+          // If this stage is causing the stall, propagate zero to the next
+          // stage. TODO: We might as well propagate nothing and let it keep
+          // its stale value. It runs NOP anyway, so who cares.
+          this->m_values[this->m_stall_stage+1] = 0;
+          this->m_time_stamps[this->m_stall_stage+1] = 0;
+          // If this stage was waiting for a lock, copy the value coming out of
+          // the locking stage. TODO: This is dirty and error-prone. The problem
+          // is that the way stalling is currently modeled keeps the higher
+          // values moving, but does not take them up in the lower stages until
+          // the registers are advanced. We only advance the registers after the
+          // stalling stage has finished processing, since otherwise the
+          // preceding stages, who have by now long since finished their
+          // processing, will suddenly see new register values. This is not only
+          // wrong, but we might need to propagate the registers several stages
+          // up to the stalled stage, without any processing done. All very
+          // ugly. The problem needs a different model for the latches, where
+          // we make more use of the stable value (m_value). Currently it is not
+          // really considered. This is also linked to bypasses, which are
+          // currently not handled properly.
+/*          if (was_locked) {
+            this->m_values[this->m_stall_stage] = this->temp_values[this->m_stall_stage];
+            this->m_time_stamps[this->m_stall_stage] = this->temp_time_stamps[this->m_stall_stage];
+          }*/
+        } else {
+          this->m_values[this->m_stall_stage+1] = this->temp_values[this->m_stall_stage+1];
+          this->m_time_stamps[this->m_stall_stage+1] = this->temp_time_stamps[this->m_stall_stage+1];
         }
       }
 
-      // Callback implementing special write-back sequences.
-      // Having TRAP generate a hardcoded function is faster than reading a map of
-      // stage -> stages every cycle.
-      bool has_changes_temp = false;
-      if (this->m_clock_cycle_func != NULL)
-        // This syntax does not call the function.
-        //has_changes = has_changes || (*this->m_clock_cycle_func)(m_values, temp_values, m_time_stamp, temp_time_stamp);
-        has_changes_temp = (*this->m_clock_cycle_func)(m_values, temp_values, m_time_stamp, temp_time_stamp);
-     has_changes = has_changes || has_changes_temp;
+      // Assign stable value.
+      this->m_value = this->m_values[this->m_num_stages-1];
 
-
-      // Copy most recent values.
-      for (unsigned i = 0; i < this->m_num_stages; ++i) {
-        this->m_values[i] = this->temp_values[i];
-        this->m_time_stamp[i] = this->temp_time_stamp[i];
-      }
-
+      // Increment clock cycle.
+      this->m_current_cycle++;
       this->m_has_to_propagate = has_changes;
     }
   }
@@ -633,117 +678,131 @@ class RegisterCA : public RegisterAbstraction<DATATYPE> {
   void unset_stage() { this->m_current_stage = this->m_num_stages-1; }
 
   /**
-   * @brief Hazard Detection Function lock()
+   * @brief Stall Functions
    *
-   * Called by
-   *    Pipeline[checkhazard]::behavior()
-   * -> Instruction[checkhazard]::lock_regs()
-   * to lock all out/inout registers to be written by the instruction.
-   *
-   * @parameter stage
-   * If no parameter is passed, it operates on the current stage. If the number
-   * of pipe stages is passed, it is interpreted as "lock(all)".
-   *
-   * @todo These are all wrong. Re-think the whole logic of locking a pipeline
-   * stage in relation to write-back stage, endHazard stage, forwarding paths
-   * (special write-back sequences), instruction-specific special registers,
-   * etc. Specifically, how to neatly combine the information about write-back
-   * paths with the duration/effect of the locking. grep for .lock, .unlock,
-   * .is_locked to catch usage in processors.
+   * Called whenever the pipeline needs to be stalled. All stages down from and
+   * including the given stage retain their values, while the stages upwards
+   * propagate in clock_cycle().
    */
-  void lock(unsigned stage = -1) {
-    assert(stage >= -1 and stage < (int)this->m_num_stages);
-    if (stage == (int)this->m_num_stages) {
-      for (unsigned i = 0; i < this->m_num_stages; ++i) {
-        this->m_lock_duration[i] = -1;
-        this->m_num_locks[i]++;
-      }
-    } else {
-      if (stage == -1) stage = this->m_current_stage;
-      this->m_lock_duration[stage] = -1;
-      this->m_num_locks[stage]++;
-    }
+  void stall(unsigned stage) {
+    assert(stage < this->m_num_stages);
+    this->m_stall_stage = (int)stage;
   }
 
-  /**
-   * @brief Hazard Detection Function unlock()
-   *
-   * This is either called in the write-back stage of an instruction, or when
-   * it is annulled to free the previously locked registers.
-   * In the regular case, the unlock_queue is created by
-   *    Pipeline[wb]::behavior()
-   * -> Instruction[wb]::behavior():unlock_queue.push_back(regs);
-   * In the annulled case, the unlock_queue is created by
-   *    Pipeline[checkhazard..wb]::behavior():catch(annul_exception)
-   * -> Instruction[checkhazard..wb]::get_unlock():unlock_queue.push_back(regs);
-   * This queue is then incrementally emptied via
-   *    Pipeline[0]::refresh_registers()
-   * -> Instruction[checkhazard]::get_unlock()
-   * to unlock the out/inout registers written by the instruction.
-   *
-   * @parameter stage
-   * If no parameter is passed, it operates on the current stage. If the number
-   * of pipe stages is passed, it is interpreted as "unlock(all)".
-   */
-  void unlock(int stage = -1, int wb_latency = -1) {
-    assert(stage >= -1 and stage < (int)this->m_num_stages);
-    if (stage == (int)this->m_num_stages) {
-      if (wb_latency > 0) {
-        for (unsigned i = 0; i < this->m_num_stages; ++i) {
-          if (this->m_num_locks[i] > 0) {
-            this->m_lock_duration[i] = wb_latency;
-          }
-        }
-      } else {
-        for (unsigned i = 0; i < this->m_num_stages; ++i) {
-          this->m_lock_duration[i] = -1;
-          if (this->m_num_locks[i] > 0) {
-            this->m_num_locks[i]--;
-          }
-        }
-      }
-    } else {
-      if (stage == -1) stage = this->m_current_stage;
-      if (wb_latency > 0) {
-        if (this->m_num_locks[stage] > 0) {
-          this->m_lock_duration[stage] = wb_latency;
-        }
-      } else {
-        this->m_lock_duration[stage] = -1;
-        if (this->m_num_locks[stage] > 0) {
-          this->m_num_locks[stage]--;
-        }
-      }
+  void advance() {
+    this->m_stall_stage = -1;
+  }
+
+  void flush(unsigned stage) {
+    assert(stage < this->m_num_stages);
+    for (unsigned i = 0; i <= stage; ++i) {
+      this->m_values[i] = 0;
+      this->m_time_stamps[i] = 0;
     }
   }
 
   /**
    * @brief Hazard Detection Function is_locked()
    *
-   * Called by
-   *    Pipeline[0]::behavior()
-   * -> Instruction[checkhazard]::check_hazard()
-   * to check that the registers needed by the current instruction are not being
-   * written by a previous one in the pipeline. In this case the pipeline stage
-   * is halted.
+   * Calling sequence:
+   *    Pipeline[decode]::behavior()
+   * -> Instruction::check_regs()
+   * -> Register::is_locked()
+   * Called by instructions before reading a register to check that the register
+   * has not been or is not being written by a previous instruction in the
+   * pipeline, in which case the pipeline is stalled.
+   * This function can only return an upper bound on the required stall cycles.
+   * The reason is that the register has no knowledge of pipeline bypasses. So a
+   * preceding instruction that is currently writing or will write in the next
+   * few cycles might still not necessarily cause a stall if there is an
+   * appropriate pipeline bypass.
    *
-   * @parameter stage
-   * If no parameter is passed, it operates on the current stage. If the number
-   * of pipe stages is passed, it is interpreted as "is_locked(any)".
+   * @see isaWriter.py:check_regs().
+   * @todo Think about how to incorporate information about bypasses into stall
+   * cycle calculations.
    */
-  bool is_locked(int stage = -1) {
-    assert(stage >= -1 and stage < (int)this->m_num_stages);
-    if (stage == -1) stage = this->m_current_stage;
-    if (stage == (int)this->m_num_stages) {
-      for (unsigned i = 0; i < this->m_num_stages; ++i) {
-        if (this->m_num_locks[i]) {
-          return true;
-        }
-      }
-      return false;
-    } else {
-      return this->m_num_locks[stage];
+  unsigned is_locked(unsigned stage, unsigned latency) {
+    assert(stage < this->m_num_stages);
+    int read_offset = this->m_num_stages + stage /* read stage */ - latency /* read latency */;
+    int instr_lock, max_lock = -1;
+    for (lock_list_iterator it = this->m_lock_list.begin(); it != this->m_lock_list.end(); ++it) {
+      // An instruction scheduled previously is writing or intends to write.
+      // Calculate when the new value will be available. This is the worst case
+      // and assumes we can only receive the new value after it has propagated
+      // through the whole pipeline and back into the stage where we want to
+      // read. The value is calculated as follows:
+      // + write latency
+      // - read latency
+      // + distance(write->read) = num_stages - write_stage + read_stage
+      // + 1cc (end of current clock cycles)
+      instr_lock = (int)(std::get<2>(*it)) /* write latency */ - (int)(std::get<1>(*it)) /* write stage */ + read_offset;
+      if (instr_lock > max_lock)
+        max_lock = instr_lock;
     }
+
+    // If an instruction is currently writing, the latency is 0 but we still
+    // have to wait until the next clock cycle edge.
+    if (max_lock >= 0) return (unsigned)(max_lock+1);
+    // A negative latency indicates that the write will have terminated before
+    // the read.
+    return 0;
+  }
+
+  /**
+   * @brief Hazard Detection Function lock()
+   *
+   * Calling sequence:
+   *    Pipeline[decode]::behavior()
+   * -> Instruction::lock_regs()
+   * -> Register::lock()
+   * Called by instructions before writing a register to signal the intention to
+   * write and lock the register for the duration of the write. Locks are
+   * scheduled for the future, so the function will return true even if a
+   * preceding instruction had already signalled the intention to write, so long
+   * as the latencies are such that the WAW order is preserved.
+   *
+   * @see isaWriter.py:lock_regs().
+   * @todo We could return the required stall similar to is_locked, instead of
+   * success/failure, in case we ever implement out-of-order scheduling or so.
+   */
+  bool lock(void* instr, unsigned stage, unsigned latency) {
+    assert(stage < this->m_num_stages);
+    for (lock_list_iterator it = this->m_lock_list.begin(); it != this->m_lock_list.end(); ++it) {
+      // An instruction scheduled previously will write later than we would. We have to wait.
+      // Note that the write stage does not matter, since the register is not
+      // pipelined. We therefore have to enforce strict order.
+      if (std::get<2>(*it) /* write latency */ <= latency) {
+        return false;
+      }
+    }
+
+    this->m_lock_list.push_back(std::make_tuple(instr, stage, latency));
+    return true;
+  }
+
+  /**
+   * @brief Hazard Detection Function unlock()
+   *
+   * Calling sequence:
+   *    Pipeline[regs..wb]::behavior():catch(annul_exception)
+   * -> Instruction::unlock_regs()
+   * -> Register::unlock()
+   * Unlocks all registers previously unlocked. Called only when an instruction
+   * is annulled. The regular write-back case does not require an explicit
+   * unlock_regs(), since the registers themselves undertake decrementing the
+   * latencies and advancing the locked stages.
+   *
+   * @see isaWriter.py:unlock_regs().
+   */
+  bool unlock(void* instr) {
+    for (lock_list_iterator it = this->m_lock_list.begin(); it != this->m_lock_list.end(); ++it) {
+      // Found locking instruction.
+      if (std::get<0>(*it) == instr) {
+        this->m_lock_list.erase(it);
+        return true;
+      }
+    }
+    return false;
   }
 
   /// @} Observer Methods
@@ -771,24 +830,177 @@ class RegisterCA : public RegisterAbstraction<DATATYPE> {
   DATATYPE& m_read_mask;
   DATATYPE& m_write_mask;
 
+  // Stages and propagation
   const unsigned m_num_stages;
   unsigned m_current_stage;
+  int m_stall_stage;
+  unsigned long long m_current_cycle;
   bool m_has_to_propagate;
   clock_cycle_func_t m_clock_cycle_func;
 
+  // Latch values
   DATATYPE* m_values;
-  sc_core::sc_time* m_time_stamp;
+  unsigned long long* m_time_stamps;
   // Temporary array holding pipeline values and timestamps. Eases multiplexing
   // several values and choosing the most recent.
   DATATYPE* temp_values;
-  sc_core::sc_time* temp_time_stamp;
-  int* m_num_locks;
-  // Remaining lock cycles.
-  int* m_lock_duration;
-  void** m_observers;
+  unsigned long long* temp_time_stamps;
+
+  // Locking scheduling queue: Saves a list of (instr*, stage, latency) tuples.
+  lock_list_type m_lock_list;
 
   /// @} Data
 }; // class RegisterCA
+
+/// ****************************************************************************
+
+/**
+ * @brief RegisterCAGlobal
+ *
+ * This class models a register on the cycle-accurate level that is not
+ * pipelined. The register can be locked for writing for the duration of one
+ * cycle. Other instructions requesting to read the register will have to wait
+ * until the beginning of the cycle after the write. Since the write can be
+ * scheduled for the future, the resulting stall might be larger than one
+ * cycle. The register maintains two variables for the value: The stable value
+ * is the one read, while the temporary value is used for the duration of the
+ * write cycle, and propagated to the stable value at the clock cycle edge.
+ */
+template <typename DATATYPE>
+class RegisterCAGlobal : public RegisterAbstraction<DATATYPE> {
+  public:
+  typedef std::tuple<void* /* instr* */, unsigned /* stage */, unsigned /* latency */> lock_type;
+  typedef std::list<lock_type> lock_list_type;
+  typedef lock_list_type::iterator lock_list_iterator;
+
+  /// @name Constructors and Destructors
+  /// @{
+
+  public:
+  RegisterCAGlobal(DATATYPE& value, DATATYPE& used_mask, DATATYPE& read_mask, DATATYPE& write_mask, unsigned num_stages)
+    : m_value(value),
+      m_used_mask(used_mask),
+      m_read_mask(read_mask),
+      m_write_mask(write_mask),
+      m_num_stages(num_stages),
+      m_has_to_propagate(false),
+      m_temp_value(value) {}
+
+  /// @} Constructors and Destructors
+  /// --------------------------------------------------------------------------
+  /// @name Access and Modification Methods
+  /// @{
+
+  public:
+  const DATATYPE read_dbg() const {
+    return this->m_value & this->m_read_mask;
+  }
+
+  bool write_dbg(const DATATYPE& data) {
+    this->m_temp_value = data & this->m_write_mask;
+    this->m_has_to_propagate = true;
+    return true;
+  }
+
+void clock_cycle() {
+    // Update list of instructions currently writing or intending to write.
+    for (lock_list_iterator it = this->m_lock_list.begin(); it != this->m_lock_list.end(); ++it) {
+      // Instruction will lock in the future: Decrease lock duration.
+      if (std::get<2>(*it) > 0)
+        std::get<2>(*it)--;
+      // Instruction has lock: Remove instruction from lock queue.
+      else
+        it = this->m_lock_list.erase(it);
+    }
+
+    // Execute propagation logic generated by TRAP.
+    if (this->m_has_to_propagate) {
+      this->m_value = this->m_temp_value;
+      this->m_has_to_propagate = false;
+    }
+  }
+
+  /// @} Access and Modification Methods
+  /// --------------------------------------------------------------------------
+  /// @name Observer Methods
+  /// @{
+
+  unsigned is_locked(unsigned stage, unsigned latency) {
+    assert(stage < this->m_num_stages);
+    int instr_lock, max_lock = -1;
+    for (lock_list_iterator it = this->m_lock_list.begin(); it != this->m_lock_list.end(); ++it) {
+      // An instruction scheduled previously is writing or intends to write.
+      // Calculate when the new value will be available. Since this is a global
+      // register, the value is available to all stages by the end of the write
+      // clock cycle.
+      // + write latency
+      // - read latency
+      // + distance(write->read) = 0 (global register)
+      // + 1cc (end of current clock cycles)
+      instr_lock = std::get<2>(*it) /* write latency */ - latency /* read latency */;
+      if (instr_lock > max_lock)
+        max_lock = instr_lock;
+    }
+
+    // If an instruction is currently writing, the latency is 0 but we still
+    // have to wait until the next clock cycle edge.
+    if (max_lock >= 0) return (unsigned)(max_lock+1);
+    // A negative latency indicates that the write will have terminated before
+    // the read.
+    return 0;
+  }
+
+  bool lock(void* instr, unsigned stage, unsigned latency) {
+    assert(stage < this->m_num_stages);
+    // The stage the calling instruction currently is in. This could be negative
+    // if an instruction schedules the write far in advance (Will not happen
+    // with our current model though).
+    int cur_stage = stage - latency;
+    for (lock_list_iterator it = this->m_lock_list.begin(); it != this->m_lock_list.end(); ++it) {
+      // An instruction scheduled previously will write later than we would. We have to wait.
+      if (((int)(std::get<1>(*it) /* stage */) - (int)(std::get<2>(*it) /* latency */)) <= cur_stage) {
+        return false;
+      }
+    }
+
+    this->m_lock_list.push_back(std::make_tuple(instr, stage, latency));
+    return true;
+  }
+
+  bool unlock(void* instr) {
+    for (lock_list_iterator it = this->m_lock_list.begin(); it != this->m_lock_list.end(); ++it) {
+      // Found locking instruction.
+      if (std::get<0>(*it) == instr) {
+        this->m_lock_list.erase(it);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// @} Observer Methods
+  /// --------------------------------------------------------------------------
+  /// @name Data
+  /// @{
+
+  protected:
+  DATATYPE& m_value;
+  DATATYPE& m_used_mask;
+  DATATYPE& m_read_mask;
+  DATATYPE& m_write_mask;
+
+  // Stages and propagation
+  const unsigned m_num_stages;
+  bool m_has_to_propagate;
+
+  // Latch values
+  DATATYPE& m_temp_value;
+
+  // Locking scheduling queue: Saves a list of (instr*, stage, latency) tuples.
+  lock_list_type m_lock_list;
+
+  /// @} Data
+}; // class RegisterCAGlobal
 
 } // namespace trap
 

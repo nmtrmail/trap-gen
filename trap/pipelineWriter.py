@@ -36,15 +36,6 @@
 #
 # (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
 #
-# @todo
-# The logic for hazard detection is way too simple:
-# - Only one hazard sequence is allowed. Ok, maybe this is sufficient, but we
-#   should at least have proper checks to verify that the user has given a
-#   sensible sequence (start < end, only one start, only one end).
-# - Special write-back sequences (forwarding-paths) are not honored. A linear
-#   flow is assumed, which leads to many unnecessary stalls which should have
-#   been prevented by forwarding.
-#
 ################################################################################
 
 import cxx_writer
@@ -53,7 +44,7 @@ import cxx_writer
 ################################################################################
 # Globals and Helpers
 ################################################################################
-from procWriter import hash_map_include, getFetchDataCode, getFetchAddressCode, getCacheInstrFetchCode, getInstrFetchCode, getPipeInstrIssueCode, getInterruptCode
+from procWriter import hash_map_include, getFetchAddressCode, getDoFetchCode, getCacheInstrFetchCode, getDoDecodeCode, getPipeInstrIssueCode, getInterruptCode
 
 
 ################################################################################
@@ -63,7 +54,7 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
     # Returns the class representing a pipeline stage.
 
     from registerWriter import registerType, aliasType, registerContainerType
-    InstructionType = cxx_writer.Type('Instruction', includes = ['#include \"instructions.hpp\"'])
+    InstructionType = cxx_writer.Type('Instruction', includes = ['#include \"instructions.hpp\"', 'iomanip'])
     pipeType = cxx_writer.Type('BasePipeStage')
 
     #---------------------------------------------------------------------------
@@ -118,17 +109,9 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
     pipeBaseMembers.append(hasToFlushAttr)
     pipeBaseCtorCode += 'this->has_to_flush = false;\n'
 
-    chStalledAttr = cxx_writer.Attribute('ch_stalled', cxx_writer.boolType, 'public')
-    pipeBaseMembers.append(chStalledAttr)
-    pipeBaseCtorCode += 'this->ch_stalled = false;\n'
-
     stalledAttr = cxx_writer.Attribute('stalled', cxx_writer.boolType, 'public')
     pipeBaseMembers.append(stalledAttr)
     pipeBaseCtorCode += 'this->stalled = false;\n'
-    unlockQueueType = cxx_writer.TemplateType('std::map', ['unsigned', cxx_writer.TemplateType('std::vector', [registerType.makePointer()], 'vector')], 'map')
-
-    unlockQueueAttr = cxx_writer.Attribute('unlock_queue', unlockQueueType, 'protected', static = True)
-    pipeBaseMembers.append(unlockQueueAttr)
 
     latencyAttr = cxx_writer.Attribute('latency', cxx_writer.sc_timeType, 'protected')
     pipeBaseMembers.append(latencyAttr)
@@ -158,7 +141,7 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
 
     curInstrAttr = cxx_writer.Attribute('cur_instr', InstructionType.makePointer(), 'public')
     pipeBaseMembers.append(curInstrAttr)
-    pipeBaseCtorCode += 'this->cur_instr = NULL;\n'
+    pipeBaseCtorCode += 'cur_instr = NULL;\n'
     nextInstrAttr = cxx_writer.Attribute('next_instr', InstructionType.makePointer(), 'public')
     pipeBaseMembers.append(nextInstrAttr)
     pipeBaseCtorCode += 'this->next_instr = NULL;\n'
@@ -186,94 +169,98 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
     #  @{
 
     from procWriter import pipeFetchAttrs, pipeCtorParams, pipeFetchCtorParams
-    fetchStage = self.pipes[0]
-    hasCheckHazard = False
-    hasWb = False
-    checkHazardsSeen = False
+    hasHazard = False
+    hazardStarted = False
     seenStages = 0
 
-    # NOTE: hasCheckHazard will equal hasWb for all well-formed cases, i.e.
-    # where each checkHazard is eventually followed by a endHazard. All cases
-    # where they are different imply an error:
-    # - Only one of either check- or endHazard is declared.
-    # - Both check- and endHazard are declared, but in wrong order, and one of
-    #   them is the last/first pipeline stage, respectively.
-    # - There is an odd number of either check- or endHazard stages.
-    # Note that this does not catch the equally erroneous case of wrong order,
-    # where both are in the middle of the pipeline or both are at the borders.
     for pipeStage in self.pipes:
-        if pipeStage.fetch:
-            fetchStage = pipeStage
-        if pipeStage.checkHazard:
+        if pipeStage.regsStage:
             if self.pipes.index(pipeStage) + 1 < len(self.pipes):
                 # There exist stages between the beginning and the end of the hazard.
-                if not self.pipes[self.pipes.index(pipeStage) + 1].endHazard:
-                    hasCheckHazard = True
-        if pipeStage.endHazard:
-            if self.pipes.index(pipeStage) - 1 >= 0:
-                # There exist stages between the beginning and the end of the hazard.
-                if not self.pipes[self.pipes.index(pipeStage) - 1].checkHazard:
-                    hasWb = True
+                if not self.pipes[self.pipes.index(pipeStage) + 1].wbStage:
+                    hasHazard = True
 
-    # Now lets determine the stages which need a call to check hazard
-    #checkHazadsStagesDecl = []
-    #if hasCheckHazard:
-        #for instr in self.isa.instructions.values():
-            #for stageName in instr.specialInRegs.keys():
-                #if not stageName in checkHazadsStagesDecl:
-                    #checkHazadsStagesDecl.append(stageName)
-    # Remember that all the stages preceding the last one where we check for
-    # hazards have to check if the following stages are stalled.
-
-    # Now I have to actually declare the different pipeline stages, all of them
-    # being equal apart from the fetch stage which has to fetch instructions and
-    # check interrupts before calling the appropriate behavior method.
     for pipeStage in self.pipes:
         seenStages += 1
         pipeMembers = []
         pipeCtorInit = []
-        if pipeStage == fetchStage:
+        if pipeStage.fetchStage:
             for attr in pipeFetchAttrs:
                 pipeMembers.append(attr)
                 pipeCtorInit.append(attr.name + '(' + attr.name + ')')
         pipeCtorCode = ''
 
         # Methods: behavior()
-        Code = """this->cur_instr = this->NOP_instr;
+        Code = """cur_instr = this->NOP_instr;
         this->next_instr = this->NOP_instr;
 
         // Wait for SystemC infrastructure, otherwise register callbacks will crash.
         wait(SC_ZERO_TIME);
         """
 
-        # Methods: behavior() for fetch stage
-        if pipeStage == fetchStage:
-            # This is the fetch pipeline stage, I have to fetch instructions
+        if pipeStage.fetchStage:
             Code += 'unsigned num_NOPs = 0;\n'
             if self.instructionCache:
                 Code += 'template_map< ' + str(self.bitSizes[1]) + ', CacheElem>::iterator icache_end = this->instr_cache.end();\n\n'
 
-            Code += 'while(true) {\n'
+        Code += """while(true) {
+        // Wait for other pipeline stages to begin.
+        this->wait_pipe_begin();
 
-            # Here is the code to notify start of the instruction execution
-            Code += 'this->instr_executing = true;\n'
-            Code += 'unsigned num_cycles = 0;\n'
-            if hasCheckHazard:
-                Code += 'if (!this->ch_stalled) {\n'
+        unsigned num_cycles = 0;
+        """
 
-            Code += '\n// Wait for the pipeline to begin.\nthis->wait_pipe_begin();\n'
+        if pipeStage.fetchStage:
+            Code +='this->instr_executing = true;\n'
+        else:
+            Code += """cur_instr = this->next_instr;
+            bool instr_annulled = false;
+            """
 
-            # Here is the code to deal with interrupts; note one problem: if an interrupt is raised, we need to
-            # deal with it in the correct stage, i.e. we need to create a special instruction reaching the correct
-            # stage and dealing with it properly.
+        # Hazard Detection
+        if hasHazard and pipeStage.decodeStage:
+            Code += """
+            // Hazard Detection
+            bool was_stalled = this->stalled, will_stall = false;
+            // Check read registers.
+            if (cur_instr->check_regs() > 0) {
+                will_stall = true;
+            // Lock write registers: Only if read registers are available, otherwise do not lock yet.
+            } else if (!cur_instr->lock_regs()) {
+                will_stall = true;
+            }
+
+            // Just discovered stall: Stall registers:
+            if (!was_stalled && will_stall) {
+              R.stall(""" + str(self.pipes.index(pipeStage)) + """);
+            // Just discovered end of stall: Advance registers.
+            } else if (was_stalled && !will_stall) {
+              this->next_instr = this->prev_stage->cur_instr;
+              R.advance();
+            }
+
+            // Stall this pipeline stage.
+            this->stalled = will_stall;
+            """
+
+        if hasHazard:
+            Code += 'if (!this->stalled) {\n'
+
+        if pipeStage.fetchStage:
+            # Interrupts
+            # If an interrupt is raised, we need to deal with it in the correct
+            # stage, i.e. we need to create a special instruction that reaches
+            # the correct stage and deals with the interrupt properly.
             Code += getInterruptCode(self, trace, pipeStage)
             if self.irqs:
-                Code += 'else {\n'
-            # computes the address from which the next instruction shall be fetched
+                Code += 'else /* !IRQ */ {\n'
+
+            # Instruction Fetch Address
             Code += getFetchAddressCode(self, model)
 
-            # Here is the code for updating cycle counts
-            Code += """if (cur_PC == this->profiler_start_addr) {
+            # Logging and Tracing: Update cycle count.
+            Code += """// Logging and Tracing: Update cycle count.
+            if (cur_PC == this->profiler_start_addr) {
                 this->profiler_time_start = sc_time_stamp();
             }
             if (cur_PC == this->profiler_end_addr) {
@@ -281,8 +268,8 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
             }
             """
 
-            # Now lets start with the code necessary to check the tools, to see if they need
-            # the pipeline to be empty before being able to procede with execution
+            # Tools: Check whether the tools require the pipeline to be empty
+            # before proceeding with execution.
             Code += """
                 #ifndef DISABLE_TOOLS
                 // Check whether the tools require the pipeline to be empty before proceeding with execution.
@@ -292,19 +279,22 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
                     num_NOPs = 0;
                 }
                 if (num_NOPs > 0 && num_NOPs < """ + str(len(self.pipes)) + """) {
-                    this->cur_instr = this->NOP_instr;
+                    cur_instr = this->NOP_instr;
                 """
+
             if trace and not combinedTrace:
-                Code += 'std::cerr << \"PC \" << std::hex << std::showbase << cur_PC << " propagating NOP because tools need it." << std::endl;\n'
+                Code += 'std::cerr << std::setw(15) << std::left << \"Stage=' + pipeStage.name + '\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_PC << \", Instruction=NOP       , Mnemonic=NOP: Propagating NOP as required by tools.\" << std::endl;\n'
             Code += """} else {
                     num_NOPs = 0;
                 #endif
-                    wait(this->latency);
                     // Either the pipeline is actually empty or no tool requires it to be so. Proceed with execution.
+                    wait((""" + str(1 - float(seenStages - 1)/(len(self.pipes) - 1)) + """)*this->latency);
             """
 
-            # Lets start with the code for the instruction queue
-            Code += """#ifdef ENABLE_HISTORY
+            # Tools: Instruction History
+            Code += """
+            // Tools: Instruction History
+            #ifdef ENABLE_HISTORY
             HistoryInstrType instr_queue_elem;
             if (this->history_en) {
                 instr_queue_elem.cycle = (unsigned)(sc_time_stamp()/this->latency);
@@ -313,31 +303,53 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
             #endif
             """
 
-            # computes the correct memory and/or memory port from which fetching the instruction stream
-            fetchCode = getFetchDataCode(self)
-            # We need to fetch the instruction ... only if the cache is not used or if
-            # the index of the cache is the current instruction
+            # Instruction Fetch and Issue
+            # Computes the correct memory and/or memory port from which to
+            # perform the fetch.
+            doFetchCode = getDoFetchCode(self)
+            # Perform the fetch only if the cache is not used or if the index of
+            # the cache is the current instruction.
             if not (self.instructionCache and self.fastFetch):
-                Code += fetchCode
-            if trace and not combinedTrace:
-                Code += 'std::cerr << \"Fetching PC \" << std::hex << std::showbase << cur_PC << \'.\' << std::endl;\n'
+                Code += doFetchCode
 
-            # Now lets starts the real instruction fetch: two paths are possible: the instruction buffer
-            # and the normal instruction stream.
+            # Two fetch paths are possible: the instruction buffer or the normal
+            # instruction stream.
+            # getPipeInstrIssueCode() executes this stage's instruction behavior.
             if self.instructionCache:
-                Code += getCacheInstrFetchCode(self, fetchCode, trace, combinedTrace, getPipeInstrIssueCode, hasCheckHazard, pipeStage)
+                Code += getCacheInstrFetchCode(self, doFetchCode, trace, combinedTrace, getPipeInstrIssueCode, hasHazard, pipeStage)
             else:
-                Code += getInstrFetchCode(self, trace, combinedTrace, getPipeInstrIssueCode, hasCheckHazard, pipeStage)
+                Code += getDoDecodeCode(self, trace, combinedTrace, getPipeInstrIssueCode, hasHazard, pipeStage)
 
-            # User-defined operations are executed after the regular instruction behavior.
-            if pipeStage.operation:
-                Code += 'this->R.set_stage(' + str(self.pipes.index(pipeStage)) + ');\n'
-                Code += pipeStage.operation
-                Code += 'this->R.unset_stage();\n'
+            if trace:
+                if combinedTrace:
+                    Code += 'if (cur_instr != this->NOP_instr) {\n'
+                Code += 'std::cerr << std::setw(15) << std::left << \"Stage=' + pipeStage.name + '\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_PC << \", Instruction=\" << std::setw(10) << std::left << cur_instr->get_name() << \", Mnemonic=\" << cur_instr->get_mnemonic() << \'.\' << std::endl;\n'
+                Code += 'cur_instr->print_trace();\n'
+                if combinedTrace:
+                    Code += '}\n'
 
-            # Lets finish with the code for the instruction queue: I just still have to
-            # check if it is time to save to file the instruction queue
-            Code += """#ifdef ENABLE_HISTORY
+        else:
+            Code += 'wait((' + str(1 - float(seenStages - 1)/(len(self.pipes) - 1)) + ')*this->latency);\n'
+            if trace:
+                if not combinedTrace:
+                    Code += 'std::cerr << std::setw(15) << std::left << \"Stage=' + pipeStage.name + '\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_instr->fetch_PC << \", Instruction=\" << std::setw(10) << std::left << cur_instr->get_name() << \", Mnemonic=\" << cur_instr->get_mnemonic() << \'.\' << std::endl;\n'
+
+            # Instruction Issue: Execute this stage's instruction behavior.
+            Code += getPipeInstrIssueCode(self, trace, combinedTrace, hasHazard, pipeStage)
+
+        # User-defined Operations
+        if pipeStage.operation:
+            Code += '\n// User-defined Operations\n'
+            Code += 'this->R.set_stage(' + str(self.pipes.index(pipeStage)) + ');\n'
+            Code += pipeStage.operation
+            Code += 'this->R.unset_stage();\n'
+
+        if pipeStage.fetchStage:
+            # Tools: Instruction History
+            # Check if it is time to save to file the instruction queue.
+            Code += """
+            // Tools: Instruction History
+            #ifdef ENABLE_HISTORY
             if (this->history_en) {
                 // Add current instruction to history queue.
                 this->history_instr_queue.push_back(instr_queue_elem);
@@ -356,208 +368,128 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
             #endif
             """
 
-            # Finally we have completed waiting for the other cycles in order to be able to go on
-            # with this cycle.
             Code += """this->num_instructions++;
                 #ifndef DISABLE_TOOLS
-                }
+                } // Pipeline is empty or no tools require it to be so.
                 #endif
             """
+
+            # Interrupts
             if self.irqs:
                 Code += '} // if (!IRQ)\n'
-            Code += """wait(num_cycles*this->latency);
-            // Wait for all pipeline stages to end.
+
+        # Synchronize with other stages.
+        if pipeStage.fetchStage:
+            Code += """// Instruction-induced Latency
+            wait((num_cycles + """ + str(float(seenStages - 1)/(len(self.pipes) - 1)) + """)*this->latency);
+            // Wait for other pipeline stages to end.
+            this->wait_pipe_end();
+            """
+        else:
+            Code += """// Instruction-induced Latency
+            wait((num_cycles + """ + str(float(seenStages - 1)/(len(self.pipes) - 1)) + """)*this->latency);
+            // Wait for other pipeline stages to end.
             this->wait_pipe_end();
 
-            """
-
-            Code += """
-            // Propagate the instruction to the next cycle if the next stage has completed elaboration.
-            if (this->has_to_flush) {
-                if (this->cur_instr->to_destroy) {
-                    delete this->cur_instr;
-                } else {
-                    this->cur_instr->in_pipeline = false;
-                }
-                this->cur_instr = this->NOP_instr;
-                this->next_instr = this->NOP_instr;
-                this->has_to_flush = false;
-            }
-            """
-            Code += 'this->succ_stage->next_instr = this->cur_instr;\n'
-            if hasCheckHazard:
-                Code += """} else {
-                    // One of the following stages is blocked due to a data hazard, so the current stage is not doing anything.
-                    this->wait_pipe_begin();
-                    // The scheduler needs to be controlled, otherwise it will be impossible to proceed. This thread will always execute.
-                    wait(this->latency);
-                    this->wait_pipe_end();
-                    if (this->has_to_flush) {
-                        if (this->cur_instr->to_destroy) {
-                            delete this->cur_instr;
-                        } else {
-                            this->cur_instr->in_pipeline = false;
-                        }
-                        this->cur_instr = this->NOP_instr;
-                        this->next_instr = this->NOP_instr;
-                        this->has_to_flush = false;
-                    }
-                } // if (this->ch_stalled)"""
-            # Here is the code to notify start of the instruction execution
-            Code += """\nthis->refresh_registers();
-                this->instr_executing = false;
-                this->instr_end_event.notify();
-            """
-            # Now I have to insert the code for checking the presence of hazards;
-            # in particular I have to see if the instruction to be executed next in
-            # the checkHazardsStage will lock
-            if hasCheckHazard:
-                Code += 'Instruction* succ_instr = this->'
-                for pipeStageTemp in self.pipes:
-                    if pipeStageTemp.checkHazard:
-                        break
-                    else:
-                        Code += 'succ_stage->'
-                Code += 'next_instr;\n'
-                Code += 'if (!succ_instr->check_hazard_' + pipeStageTemp.name + '()) {\n'
-                codeTemp = 'this->'
-                for pipeStageTemp in self.pipes:
-                    Code += codeTemp + 'ch_stalled = true;\n'
-                    codeTemp += 'succ_stage->'
-                    if pipeStageTemp.checkHazard:
-                        break
-                Code += '} else {\n'
-                codeTemp = 'this->'
-                for pipeStageTemp in self.pipes:
-                    Code += codeTemp + 'ch_stalled = false;\n'
-                    codeTemp += 'succ_stage->'
-                    if pipeStageTemp.checkHazard:
-                        break
-                Code += '}\n'
-            if trace and not combinedTrace:
-                Code += 'std::cerr << \"---------------------------------------------------------------\" << std::endl << std::endl;\n'
-            Code += '} // while (true)\n'
-
-        # Methods: behavior() for all other stages
-        else:
-            # This is a normal pipeline stage
-
-            # First of all I have to wait for the completion of the other pipeline stages before being able
-            # to go on.
-            if hasCheckHazard and not checkHazardsSeen:
-                Code += 'Instruction* next_stage_instr;\n'
-            Code += """while(true) {
-            unsigned num_cycles = 0;
-            bool flush_annulled = false;
-
-            // Wait for the pipeline to begin.
-            this->wait_pipe_begin();
-
-            this->cur_instr = this->next_instr;
-            """
-
-            if hasCheckHazard and not checkHazardsSeen:
-                Code += 'if (!this->ch_stalled) {\n'
-            Code += 'wait((' + str(1 - float(seenStages - 1)/(len(self.pipes) - 1)) + ')*this->latency);\n'
-            if trace and not combinedTrace:
-                Code += 'std::cerr << \"Stage ' + pipeStage.name + ' instruction at PC \" << std::hex << std::showbase << this->cur_instr->fetch_PC << \'.\' << std::endl;\n'
-
-            #if hasCheckHazard and pipeStage.name in checkHazadsStagesDecl:
-            if hasCheckHazard and pipeStage.checkHazard:
-                Code += 'this->cur_instr->lock_regs_' + pipeStage.name + '();\n'
-
-            if trace and combinedTrace and pipeStage == self.pipes[-1]:
-                Code += 'if (this->cur_instr != this->NOP_instr) {\n'
-                Code += 'std::cerr << \"Current PC: \" << std::hex << std::showbase << this->cur_instr->fetch_PC << \'.\' << std::endl;\n'
-                Code += '}\n'
-
-            # Now we issue the instruction, i.e. we execute its behavior related to this pipeline stage
-            Code += getPipeInstrIssueCode(self, trace, combinedTrace, 'this->cur_instr', hasCheckHazard, pipeStage)
-            # Finally I finalize the pipeline stage by synchrnonizing with the others
-            Code += 'wait((num_cycles + ' + str(float(seenStages - 1)/(len(self.pipes) - 1)) + ')*this->latency);\n'
-            Code += """// Flush current pipeline stage.
-            if (this->cur_instr->flush_pipeline || flush_annulled) {
-                this->cur_instr->flush_pipeline = false;
+            // Flush pipeline.
+            if (instr_annulled) {
+                cur_instr->flush_pipeline = false;
                 // Flush preceding pipeline stages.
                 this->prev_stage->flush();
+                // Flush registers.
+                R.flush(""" + str(self.pipes.index(pipeStage)) + """);
+            } else if (cur_instr->flush_pipeline) {
+                cur_instr->flush_pipeline = false;
+                // Flush preceding pipeline stages.
+                this->prev_stage->flush();
+                // Flush registers.
+                R.flush(""" + str(self.pipes.index(pipeStage)-1) + """);
             }
             """
 
-            # User-defined operations are executed after the regular instruction behavior.
-            if pipeStage.operation:
-                Code += 'this->R.set_stage(' + str(self.pipes.index(pipeStage)) + ');\n'
-                Code += pipeStage.operation
-                Code += 'this->R.unset_stage();\n'
+        # Stalled Due to Hazard
+        if hasHazard:
+            Code += """} else {
+                // One of the following stages is blocked due to a data hazard, so the current stage is not doing anything.
+                wait(this->latency);
+            """
 
-            if not hasCheckHazard or checkHazardsSeen:
-                Code += """// Wait for all pipeline stages to end.
+            if trace:
+                if combinedTrace and pipeStage.fetchStage:
+                    Code += 'if (cur_instr != this->NOP_instr) {\n'
+                if not combinedTrace or pipeStage.fetchStage:
+                    Code += 'std::cerr << std::setw(15) << std::left << \"Stage=' + pipeStage.name + '\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_instr->fetch_PC << \", Instruction=\" << std::setw(10) << std::left << cur_instr->get_name() << \", Mnemonic=\" << cur_instr->get_mnemonic() << \": Stalled on a data hazard.\" << std::endl;\nstd::cerr << "Stalled registers: " << cur_instr->print_busy_regs() << std::endl;'
+                if pipeStage.fetchStage:
+                    Code += 'cur_instr->print_trace();\n'
+                if combinedTrace and pipeStage.fetchStage:
+                    Code += '}\n'
+
+            Code += """
                 this->wait_pipe_end();
+            } // if (this->stalled)
+            """
 
-                """
+        if hasHazard and pipeStage.decodeStage:
+            Code += """
+            // Stall pipeline stages.
+            BasePipeStage* stage = this;
+            while (stage) {
+                stage->stalled = will_stall;
+                stage = stage->prev_stage;
+            }
+            """
 
-            if pipeStage != self.pipes[-1]:
-                Code += """if (this->has_to_flush) {
-                        if (this->cur_instr->to_destroy) {
-                            delete this->cur_instr;
-                        } else {
-                            this->cur_instr->in_pipeline = false;
-                        }
-                        // Free any used resource, if any.
-                        this->cur_instr = this->NOP_instr;
-                        this->next_instr = this->NOP_instr;
-                        this->has_to_flush = false;
-                    }
-                """
-                if hasCheckHazard and not checkHazardsSeen:
-                    Code += 'next_stage_instr = this->cur_instr;\n'
+        Code += """
+        // Instruction Propagation
+        if (this->has_to_flush) {
+            if (cur_instr->to_destroy) {
+                delete cur_instr;
+            } else {
+                cur_instr->in_pipeline = false;
+            }
+            this->has_to_flush = false;
+            cur_instr = this->NOP_instr;
+            this->next_instr = this->NOP_instr;
+            this->succ_stage->next_instr = this->NOP_instr;
+        }"""
+        if hasHazard and pipeStage.decodeStage:
+            Code += """ else if (this->stalled) {
+                // All preceding stages will retain next_instr = cur_instr.
+                this->next_instr = cur_instr;
+                // Propagate NOP only because the stall is caused by the instruction in this stage. Otherwise the next stage will retain next_instr = cur_instr.
+                this->succ_stage->next_instr = this->NOP_instr;
+            } else {
+                this->succ_stage->next_instr = cur_instr;
+            }
+            """
+        elif hasHazard and pipeStage != self.pipes[-1]:
+            Code += """ else if (this->stalled) {
+                // All preceding stages will retain next_instr = cur_instr.
+                this->next_instr = cur_instr;
+            } else {
+                this->succ_stage->next_instr = cur_instr;
+            }
+            """
+        elif pipeStage != self.pipes[-1]:
+            Code += '\nthis->succ_stage->next_instr = cur_instr;\n'
 
-            if pipeStage == self.pipes[-1]:
-                # Here I have to check if it is the case of destroying the instruction
-                Code += 'if (this->cur_instr->to_destroy) {\n'
-                Code += 'delete this->cur_instr;\n'
-                Code += '} else {\n'
-                Code += 'this->cur_instr->in_pipeline = false;\n'
-                Code += '}\n'
-            if hasCheckHazard and not checkHazardsSeen:
-                Code += """} else {
-                    // One of the following stages is blocked due to a data hazard, so the current stage is not doing anything.
-                    // The scheduler needs to be controlled, otherwise it will be impossible to proceed. This thread will always execute.
-                    wait(this->latency);
-                """
-                if trace and hasCheckHazard and pipeStage.checkHazard and not combinedTrace:
-                    Code += """std::cerr << "Stage """ + pipeStage.name + """ - instruction " << this->cur_instr->get_name() << " with mnemonic " << this->cur_instr->get_mnemonic() << " at PC " << std::hex << std::showbase << this->cur_instr->fetch_PC << " stalled on a data hazard." << std::endl;
-                    std::cerr << "Stalled registers: " << this->cur_instr->print_busy_regs() << '.' << std::endl << std::endl;
-                    """
-                Code += """if (this->has_to_flush) {
-                        if (this->cur_instr->to_destroy) {
-                            delete this->cur_instr;
-                        } else {
-                            this->cur_instr->in_pipeline = false;
-                        }
-                        // Free any used resource, if any.
-                        this->cur_instr = this->NOP_instr;
-                        this->next_instr = this->NOP_instr;
-                        this->has_to_flush = false;
-                    }
-                    next_stage_instr = this->NOP_instr;
-                }
-                """
-            if hasCheckHazard and not checkHazardsSeen:
-                Code += """// Wait for all pipeline stages to end.
-                this->wait_pipe_end();
+        if pipeStage.fetchStage:
+            # Register Propagation
+            Code += """
+            // Register Propagation
+            this->refresh_registers();
+            this->instr_executing = false;
+            this->instr_end_event.notify();
+            """
 
-                """
-            if pipeStage != self.pipes[-1]:
-                if hasCheckHazard and not checkHazardsSeen:
-                    Code += 'this->succ_stage->next_instr = next_stage_instr;\n'
-                else:
-                    Code += 'this->succ_stage->next_instr = this->cur_instr;\n'
-            Code += '}\n'
+        if pipeStage.fetchStage and trace and not combinedTrace:
+            Code += 'std::cerr << \"------------------------------------------------------------------------\" << std::endl << std::endl;\n'
 
-        if pipeStage.checkHazard:
-            checkHazardsSeen = True
+        Code += '} // while (true)\n'
 
-        # Methods: behavior() for all stages
+        if pipeStage.regsStage:
+            hazardStarted = True
+
         behaviorMethod = cxx_writer.Method('behavior', cxx_writer.Code(Code), cxx_writer.voidType, 'public')
         pipeMembers.append(behaviorMethod)
         pipeCtorCode += 'SC_THREAD(behavior);\n'
@@ -591,31 +523,13 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
         pipeMembers.append(waitPipeEndMethod)
 
         # Methods: refresh_registers() for fetch stage
-        if pipeStage == fetchStage:
+        if pipeStage.fetchStage:
             # I create the refresh_registers method; note that in order to update the registers
             # i simply have to call the "propagate" method; I also have to deal with the update of the alias
             # by manually moving the pointer to the pipeline register from one stage alias to
             # the other to update the alias
-            Code = '// Update the registers to propagate the values in the pipeline.\n'
-            Code += 'R.clock_cycle();\n'
-
-            # Now I have to produce the code for unlocking the registers in the unlock_queue
-            Code += """
-            // Unlock registers, so that stalls due to data hazards can be resolved.
-            std::map<unsigned, std::vector<""" + str(registerType.makePointer()) + """> >::iterator unlock_queue_it, unlock_queue_end;
-            for (unlock_queue_it = BasePipeStage::unlock_queue.begin(), unlock_queue_end = BasePipeStage::unlock_queue.end(); unlock_queue_it != unlock_queue_end; unlock_queue_it++) {
-                std::vector<""" + str(registerType.makePointer()) + """>::iterator unlock_reg_it, unlock_reg_end;
-                if (unlock_queue_it->first == 0) {
-                    for (unlock_reg_it = unlock_queue_it->second.begin(), unlock_reg_end = unlock_queue_it->second.end(); unlock_reg_it != unlock_reg_end; unlock_reg_it++) {
-                        (*unlock_reg_it)->unlock();
-                    }
-                } else {
-                    for (unlock_reg_it = unlock_queue_it->second.begin(), unlock_reg_end = unlock_queue_it->second.end(); unlock_reg_it != unlock_reg_end; unlock_reg_it++) {
-                        (*unlock_reg_it)->unlock(unlock_queue_it->first);
-                    }
-                }
-                unlock_queue_it->second.clear();
-            }
+            Code = """// Update the registers to propagate the values in the pipeline.
+            R.clock_cycle();
             """
             refreshRegistersMethod = cxx_writer.Method('refresh_registers', cxx_writer.Code(Code), cxx_writer.voidType, 'private', noException = True)
             pipeMembers.append(refreshRegistersMethod)
@@ -694,7 +608,7 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
         pipeClass = cxx_writer.SCModule(pipeStage.name + 'PipeStage', pipeMembers, [pipeType], namespaces = [namespace])
         pipeClass.addDocString(brief = 'Pipeline Class', detail = 'Implements a pipeline stage. Addresses hazards.')
         pipeClass.addConstructor(pipeCtor)
-        if pipeStage == fetchStage:
+        if pipeStage.fetchStage:
             pipeClass.addDestructor(pipeDtor)
         pipeElements.append(pipeClass)
 
