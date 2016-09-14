@@ -40,15 +40,15 @@
 
 import cxx_writer
 
-
 ################################################################################
 # Globals and Helpers
 ################################################################################
 archWordType = None
 
 def toBinStr(intNum, maxLen = -1):
-    """Given an integer number it converts it to a bitstring; maxLen is used only
-    in case a negative number have to be converted"""
+    """Converts an integer to a bitstring. maxLen is used only if the number to
+    be converted is negative."""
+
     bitStr = []
     negative = (intNum < 0)
     intNum = abs(intNum)
@@ -72,7 +72,6 @@ def toBinStr(intNum, maxLen = -1):
     bitStr.reverse()
     return bitStr
 
-
 ################################################################################
 # HelperMethod Instruction Class Method
 ################################################################################
@@ -88,7 +87,6 @@ def getCPPInstrMethod(self, model, namespace):
     methodMethod = cxx_writer.Method(self.name, methodCode, self.retType, 'public', self.parameters, inline = self.inline, noException = not self.exception)
 
     return methodMethod
-
 
 ################################################################################
 # HelperOperation Class
@@ -124,7 +122,6 @@ def getCPPOperation(self, namespace):
 
     return operationClass
 
-
 ################################################################################
 # Instruction Classes
 ################################################################################
@@ -149,50 +146,45 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     #  @{
 
     from procWriter import instrAttrs, instrCtorParams
-    instructionElements = []
-
-    # Methods: HelperMethods
-    for helperMethod in self.methods:
-        if helperMethod:
-            instructionElements.append(helperMethod.getCPPInstrMethod(model, namespace))
-
-    # Methods: behavior()
-    if not model.startswith('acc'):
-        behaviorMethod = cxx_writer.Method('behavior', cxx_writer.Code('return 0;\n'), cxx_writer.uintType, 'public', virtual = True)
-        instructionElements.append(behaviorMethod)
-    else:
-        for pipeStage in processor.pipes:
-            behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, cxx_writer.Code('return 0;\n'), cxx_writer.uintType, 'public', virtual = True)
-            instructionElements.append(behaviorMethod)
-
-    # Methods: replicate()
-    replicateMethod = cxx_writer.Method('replicate', emptyBody, instructionType.makePointer(), 'public', parameters = [cxx_writer.Parameter('instr', instructionType.makePointer(), initValue = 'NULL')], noException = True, const = True, pure = True)
-    instructionElements.append(replicateMethod)
+    instructionMembers = []
 
     # Methods: set_params()
     setParamsParam = cxx_writer.Parameter('bitstring', processor.bitSizes[1].makeRef().makeConst())
     setParamsMethod = cxx_writer.Method('set_params', emptyBody, cxx_writer.voidType, 'public', [setParamsParam], noException = True, virtual = True)
-    instructionElements.append(setParamsMethod)
+    instructionMembers.append(setParamsMethod)
+
+    # Methods: replicate()
+    replicateMethod = cxx_writer.Method('replicate', emptyBody, instructionType.makePointer(), 'public', parameters = [cxx_writer.Parameter('instr', instructionType.makePointer(), initValue = 'NULL')], noException = True, const = True, pure = True)
+    instructionMembers.append(replicateMethod)
+
+    # Methods: behavior()
+    if not model.startswith('acc'):
+        behaviorMethod = cxx_writer.Method('behavior', cxx_writer.Code('return 0;\n'), cxx_writer.uintType, 'public', virtual = True)
+        instructionMembers.append(behaviorMethod)
+    else:
+        for pipeStage in processor.pipes:
+            behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, cxx_writer.Code('return 0;\n'), cxx_writer.uintType, 'public', virtual = True)
+            instructionMembers.append(behaviorMethod)
 
     # Methods: check_regs(), lock_regs(), unlock_regs()
     if model.startswith('acc'):
         checkRegsMethod = cxx_writer.Method('check_regs', cxx_writer.Code('return 0;\n'), cxx_writer.uintType, 'public', virtual = True)
-        instructionElements.append(checkRegsMethod)
+        instructionMembers.append(checkRegsMethod)
         lockRegsMethod = cxx_writer.Method('lock_regs', cxx_writer.Code('return true;\n'), cxx_writer.boolType, 'public', virtual = True)
-        instructionElements.append(lockRegsMethod)
+        instructionMembers.append(lockRegsMethod)
         unlockRegsMethod = cxx_writer.Method('unlock_regs', cxx_writer.Code('return true;\n'), cxx_writer.boolType, 'public', virtual = True)
-        instructionElements.append(unlockRegsMethod)
+        instructionMembers.append(unlockRegsMethod)
 
         # Attributes
         # I also have to add the program counter attribute
         fetchPCAttr = cxx_writer.Attribute('fetch_PC', processor.bitSizes[1], 'public')
-        instructionElements.append(fetchPCAttr)
+        instructionMembers.append(fetchPCAttr)
         # and the inInPipeline attribute, specifying if the instruction is currently already
         # in the pipeline or not
         inPipelineAttr = cxx_writer.Attribute('in_pipeline', cxx_writer.boolType, 'public')
-        instructionElements.append(inPipelineAttr)
+        instructionMembers.append(inPipelineAttr)
         toDestroyAttr = cxx_writer.Attribute('to_destroy', cxx_writer.boolType, 'public')
-        instructionElements.append(toDestroyAttr)
+        instructionMembers.append(toDestroyAttr)
 
     # Methods: print_trace(), print_busy_regs()
     if trace:
@@ -234,25 +226,25 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
             Code += 'R.unset_stage();\n'
         printTraceBody = cxx_writer.Code(Code)
         printTraceMethod = cxx_writer.Method('print_trace', printTraceBody, cxx_writer.voidType, 'public')
-        instructionElements.append(printTraceMethod)
+        instructionMembers.append(printTraceMethod)
 
         # Now we have to print the method for creating the data hazards
         if model.startswith('acc'):
             printBusyRegsMethod = cxx_writer.Method('print_busy_regs', cxx_writer.Code('return "";'), cxx_writer.stringType, 'public', virtual = True)
-            instructionElements.append(printBusyRegsMethod)
+            instructionMembers.append(printBusyRegsMethod)
 
     # Methods: annul()
     # Stops the execution of the current operation.
     annulBody = cxx_writer.Code('throw annul_exception();')
     annulBody.addInclude('common/report.hpp')
     annulMethod = cxx_writer.Method('annul', annulBody, cxx_writer.voidType, 'public', inline = True)
-    instructionElements.append(annulMethod)
+    instructionMembers.append(annulMethod)
 
     # Methods: flush()
     if not model.startswith('acc'): flushBody = emptyBody
     else: flushBody = cxx_writer.Code('this->flush_pipeline = true;')
     flushMethod = cxx_writer.Method('flush', flushBody, cxx_writer.voidType, 'public', inline = True)
-    instructionElements.append(flushMethod)
+    instructionMembers.append(flushMethod)
 
     # Methods: stall()
     stallParam = cxx_writer.Parameter('num_cycles', processor.bitSizes[1].makeRef().makeConst())
@@ -262,24 +254,29 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     Code += ' += num_cycles;\n'
     stallBody = cxx_writer.Code(Code)
     stallMethod = cxx_writer.Method('stall', stallBody, cxx_writer.voidType, 'public', [stallParam], inline = True)
-    instructionElements.append(stallMethod)
+    instructionMembers.append(stallMethod)
 
     # Methods: get_count_std_alloc()
     # TODO: To eliminate, only for statistics
     #returnStatsMethod = cxx_writer.Method('get_count_my_alloc', emptyBody, cxx_writer.uintType, 'public', virtual = True)
-    #instructionElements.append(returnStatsMethod )
+    #instructionMembers.append(returnStatsMethod )
     #returnStatsMethod = cxx_writer.Method('get_count_std_alloc', emptyBody, cxx_writer.uintType, 'public', virtual = True)
-    #instructionElements.append(returnStatsMethod )
+    #instructionMembers.append(returnStatsMethod )
+
+    # Methods: HelperMethods
+    for helperMethod in self.methods:
+        if helperMethod:
+            instructionMembers.append(helperMethod.getCPPInstrMethod(model, namespace))
 
     # Attributes
     # Now create references to the architectural elements contained in the processor and
     # initialize them through the constructor
     if not model.startswith('acc'):
-        instructionElements.append(cxx_writer.Attribute('num_instr_cycles', cxx_writer.uintType, 'public'))
+        instructionMembers.append(cxx_writer.Attribute('num_instr_cycles', cxx_writer.uintType, 'public'))
         instrCtorCode = 'this->num_instr_cycles = 0;'
     if model.startswith('acc'):
-        instructionElements.append(cxx_writer.Attribute('num_stage_cycles', cxx_writer.uintType, 'protected'))
-        instructionElements.append(cxx_writer.Attribute('flush_pipeline', cxx_writer.boolType, 'public'))
+        instructionMembers.append(cxx_writer.Attribute('num_stage_cycles', cxx_writer.uintType, 'protected'))
+        instructionMembers.append(cxx_writer.Attribute('flush_pipeline', cxx_writer.boolType, 'public'))
         instrCtorCode = 'this->num_stage_cycles = 0;\nthis->flush_pipeline = false;\nthis->fetch_PC = 0;\nthis->to_destroy = false;\nthis->in_pipeline = false;\n'
 
     # Constructors and Destructors
@@ -287,14 +284,14 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     for attr in instrAttrs:
         instrCtorInit.append(attr.name + '(' + attr.name + ')')
     for constant in self.constants:
-        instructionElements.append(cxx_writer.Attribute(constant[1], constant[0].makeConst(), 'protected'))
+        instructionMembers.append(cxx_writer.Attribute(constant[1], constant[0].makeConst(), 'protected'))
         instrCtorInit.append(constant[1] + '(' + str(constant[2]) + ')')
     instrCtor = cxx_writer.Constructor(cxx_writer.Code(instrCtorCode), 'public', parameters = instrCtorParams, initList = instrCtorInit)
     instrDtor = cxx_writer.Destructor(emptyBody, 'public', True)
 
     # Class
     instructionBaseType = cxx_writer.Type('InstructionBase', 'modules/instruction.hpp')
-    instructionClass = cxx_writer.ClassDeclaration('Instruction', instrAttrs + instructionElements, [instructionBaseType], namespaces = [namespace])
+    instructionClass = cxx_writer.ClassDeclaration('Instruction', instrAttrs + instructionMembers, [instructionBaseType], namespaces = [namespace])
     instructionClass.addDocString(brief = 'Instruction Class', detail = 'All individual instructions derive from this class.')
     instructionClass.addConstructor(instrCtor)
     instructionClass.addDestructor(instrDtor)
@@ -303,8 +300,29 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     ## @} Instruction Class
     #---------------------------------------------------------------------------
     ## @name InvalidInstruction Class
+    #  @{
 
-    invalidInstrElements = []
+    invalidInstrMembers = []
+
+    # Methods: get_id()
+    getIdBody = cxx_writer.Code('return ' + str(len(self.instructions)) + ';')
+    getIdMethod = cxx_writer.Method('get_id', getIdBody, cxx_writer.uintType, 'public', noException = True, const = True)
+    invalidInstrMembers.append(getIdMethod)
+
+    # Methods: get_name()
+    getNameBody = cxx_writer.Code('return \"Invalid\";')
+    getNameMethod = cxx_writer.Method('get_name', getNameBody, cxx_writer.stringType, 'public', noException = True, const = True)
+    invalidInstrMembers.append(getNameMethod)
+
+    # Methods: get_mnemonic()
+    getMnemonicBody = cxx_writer.Code('return \"invalid\";')
+    getMnemonicMethod = cxx_writer.Method('get_mnemonic', getMnemonicBody, cxx_writer.stringType, 'public', noException = True, const = True)
+    invalidInstrMembers.append(getMnemonicMethod)
+
+    # Methods: replicate()
+    replicateBody = cxx_writer.Code('return new InvalidInstruction(' + instrCtorValues + ');')
+    replicateMethod = cxx_writer.Method('replicate', replicateBody, instructionType.makePointer(), 'public', parameters = [cxx_writer.Parameter('instr', instructionType.makePointer(), initValue = 'NULL')], noException = True, const = True)
+    invalidInstrMembers.append(replicateMethod)
 
     # Methods: behavior()
     behaviorCode = ''
@@ -322,37 +340,17 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
         for pipeStage in processor.pipes:
             if pipeStage.checkUnknown:
                 behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'public')
-                invalidInstrElements.append(behaviorMethod)
+                invalidInstrMembers.append(behaviorMethod)
     else:
         behaviorMethod = cxx_writer.Method('behavior', behaviorBody, cxx_writer.uintType, 'public')
-        invalidInstrElements.append(behaviorMethod)
-
-    # Methods: replicate()
-    replicateBody = cxx_writer.Code('return new InvalidInstruction(' + instrCtorValues + ');')
-    replicateMethod = cxx_writer.Method('replicate', replicateBody, instructionType.makePointer(), 'public', parameters = [cxx_writer.Parameter('instr', instructionType.makePointer(), initValue = 'NULL')], noException = True, const = True)
-    invalidInstrElements.append(replicateMethod)
-
-    # Methods: get_name()
-    getNameBody = cxx_writer.Code('return \"Invalid\";')
-    getNameMethod = cxx_writer.Method('get_name', getNameBody, cxx_writer.stringType, 'public', noException = True, const = True)
-    invalidInstrElements.append(getNameMethod)
-
-    # Methods: get_mnemonic()
-    getMnemonicBody = cxx_writer.Code('return \"invalid\";')
-    getMnemonicMethod = cxx_writer.Method('get_mnemonic', getMnemonicBody, cxx_writer.stringType, 'public', noException = True, const = True)
-    invalidInstrElements.append(getMnemonicMethod)
-
-    # Methods: get_id()
-    getIdBody = cxx_writer.Code('return ' + str(len(self.instructions)) + ';')
-    getIdMethod = cxx_writer.Method('get_id', getIdBody, cxx_writer.uintType, 'public', noException = True, const = True)
-    invalidInstrElements.append(getIdMethod)
+        invalidInstrMembers.append(behaviorMethod)
 
     # Constructors and Destructors
     invalidInstrCtor = cxx_writer.Constructor(emptyBody, 'public', parameters = instrCtorParams, initList = ['Instruction(' + instrCtorValues + ')'])
     invalidInstrDtor = cxx_writer.Destructor(emptyBody, 'public', True)
 
     # Class
-    invalidInstrClass = cxx_writer.ClassDeclaration('InvalidInstruction', invalidInstrElements, [instructionClass.getType()], namespaces = [namespace])
+    invalidInstrClass = cxx_writer.ClassDeclaration('InvalidInstruction', invalidInstrMembers, [instructionClass.getType()], namespaces = [namespace])
     invalidInstrClass.addConstructor(invalidInstrCtor)
     invalidInstrClass.addDestructor(invalidInstrDtor)
     instrClasses.append(invalidInstrClass)
@@ -360,10 +358,31 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     ## @} InvalidInstruction Class
     #---------------------------------------------------------------------------
     ## @name NOPInstruction Class
+    #  @{
 
     if model.startswith('acc'):
-        # finally I print the NOP instruction, which I put in the pipeline when flushes occur.
-        NOPInstrElements = []
+        # The NOP instruction is used whenever the pipeline is flushed.
+        NOPInstrMembers = []
+
+        # Methods: get_id()
+        getIdBody = cxx_writer.Code('return (unsigned)-1;')
+        getIdMethod = cxx_writer.Method('get_id', getIdBody, cxx_writer.uintType, 'public', noException = True, const = True)
+        NOPInstrMembers.append(getIdMethod)
+
+        # Methods: get_name()
+        getNameBody = cxx_writer.Code('return \"NOP\";')
+        getNameMethod = cxx_writer.Method('get_name', getNameBody, cxx_writer.stringType, 'public', noException = True, const = True)
+        NOPInstrMembers.append(getNameMethod)
+
+        # Methods: get_mnemonic()
+        getMnemonicBody = cxx_writer.Code('return \"nop\";')
+        getMnemonicMethod = cxx_writer.Method('get_mnemonic', getMnemonicBody, cxx_writer.stringType, 'public', noException = True, const = True)
+        NOPInstrMembers.append(getMnemonicMethod)
+
+        # Methods: replicate()
+        replicateBody = cxx_writer.Code('return new NOPInstruction(' + instrCtorValues + ');')
+        replicateMethod = cxx_writer.Method('replicate', replicateBody, instructionType.makePointer(), 'public', parameters = [cxx_writer.Parameter('instr', instructionType.makePointer(), initValue = 'NULL')], noException = True, const = True)
+        NOPInstrMembers.append(replicateMethod)
 
         # Methods: behavior()
         for pipeStage in processor.pipes:
@@ -372,34 +391,14 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
                 undefineCode = 'R.unset_stage();\n'
                 behaviorBody = cxx_writer.Code(defineCode + '\n' + self.nopBeh[pipeStage.name] + '\n' + undefineCode)
                 behaviorMethod = cxx_writer.Method('behavior_' + pipeStage.name, behaviorBody, cxx_writer.uintType, 'public')
-                NOPInstrElements.append(behaviorMethod)
-
-        # Methods: replicate()
-        replicateBody = cxx_writer.Code('return new NOPInstruction(' + instrCtorValues + ');')
-        replicateMethod = cxx_writer.Method('replicate', replicateBody, instructionType.makePointer(), 'public', parameters = [cxx_writer.Parameter('instr', instructionType.makePointer(), initValue = 'NULL')], noException = True, const = True)
-        NOPInstrElements.append(replicateMethod)
-
-        # Methods: get_name()
-        getNameBody = cxx_writer.Code('return \"NOP\";')
-        getNameMethod = cxx_writer.Method('get_name', getNameBody, cxx_writer.stringType, 'public', noException = True, const = True)
-        NOPInstrElements.append(getNameMethod)
-
-        # Methods: get_mnemonic()
-        getMnemonicBody = cxx_writer.Code('return \"nop\";')
-        getMnemonicMethod = cxx_writer.Method('get_mnemonic', getMnemonicBody, cxx_writer.stringType, 'public', noException = True, const = True)
-        NOPInstrElements.append(getMnemonicMethod)
-
-        # Methods: get_id()
-        getIdBody = cxx_writer.Code('return (unsigned)-1;')
-        getIdMethod = cxx_writer.Method('get_id', getIdBody, cxx_writer.uintType, 'public', noException = True, const = True)
-        NOPInstrElements.append(getIdMethod)
+                NOPInstrMembers.append(behaviorMethod)
 
         # Constructors and Destructors
         NOPInstrCtor = cxx_writer.Constructor(emptyBody, 'public', parameters = instrCtorParams, initList = ['Instruction(' + instrCtorValues + ')'])
         NOPInstrDtor = cxx_writer.Destructor(emptyBody, 'public', True)
 
         # Class
-        NOPInstructionClass = cxx_writer.ClassDeclaration('NOPInstruction', NOPInstrElements, [instructionClass.getType()], namespaces = [namespace])
+        NOPInstructionClass = cxx_writer.ClassDeclaration('NOPInstruction', NOPInstrMembers, [instructionClass.getType()], namespaces = [namespace])
         NOPInstructionClass.addConstructor(NOPInstrCtor)
         NOPInstructionClass.addDestructor(NOPInstrDtor)
         instrClasses.append(NOPInstructionClass)
@@ -407,6 +406,7 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     ## @} NOPInstruction Class
     #---------------------------------------------------------------------------
     ## @name HelperOperation Classes
+    #  @{
 
     helperOpDone = []
     for instr in self.instructions.values():
@@ -422,6 +422,7 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     ## @} HelperOperation Class
     #---------------------------------------------------------------------------
     ## @name Instruction Classes
+    #  @{
 
     for instr in self.instructions.values():
         instrClasses += instr.getCPPClass(model, processor, trace, combinedTrace, namespace)
@@ -430,7 +431,6 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     #---------------------------------------------------------------------------
 
     return instrClasses
-
 
 ################################################################################
 # Instruction Classes
@@ -522,11 +522,145 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     instrMembers = []
     instrCtorInit = ['Instruction(' + instrCtorValues + ')']
 
+    archVars = []
+    for behaviors in self.postbehaviors.values() + self.prebehaviors.values():
+        for beh in behaviors:
+            if (model.startswith('acc') and beh.name in self.behaviorAcc) or (model.startswith('func') and beh.name in self.behaviorFun):
+                archVars += beh.archVars
+
     #---------------------------------------------------------------------------
-    ## @name Methods
+    ## @name Access and Modification Methods
     #  @{
 
-    # Methods: behavior()
+    # Methods: get_id()
+    getIdBody = cxx_writer.Code('return ' + str(self.id) + ';')
+    getIdMethod = cxx_writer.Method('get_id', getIdBody, cxx_writer.uintType, 'public', noException = True, const = True)
+    instrMembers.append(getIdMethod)
+
+    # Methods: get_name()
+    getNameBody = cxx_writer.Code('return \"' + self.name + '\";')
+    getNameMethod = cxx_writer.Method('get_name', getNameBody, cxx_writer.stringType, 'public', noException = True, const = True)
+    instrMembers.append(getNameMethod)
+
+    # Methods: get_mnemonic()
+    # The instruction mnemonic returns the assembly code of the instruction. The
+    # interface for defining mnemonics is powerful enough to enable some
+    # processing of the instruction fields before output.
+    Code = 'std::ostringstream oss (std::ostringstream::out);\n'
+    for i in self.mnemonic:
+        Code += getCPPInstrMnemonic(self, i)
+    Code += 'return oss.str();'
+    getMnemonicBody = cxx_writer.Code(Code)
+    getMnemonicBody.addInclude('sstream')
+    getMnemonicMethod = cxx_writer.Method('get_mnemonic', getMnemonicBody, cxx_writer.stringType, 'public', noException = True, const = True)
+    instrMembers.append(getMnemonicMethod)
+
+    # Methods: set_params()
+    # The instruction does not receive the full machine-code string. Instead,
+    # each instruction defines variables for the relevant fields, which are set
+    # here. Immediate-value fields are saved as unsigned, registers are saved
+    # twice: Both a variable for the register index as well as an alias to the
+    # register are created, Fixed-value fields are not saved, except where a
+    # HelperOperation, used by several similar instructions, uses these fields
+    # for disambiguation.
+    Code = ''
+    # Fields coming from the instruction coding.
+    for name, correspondence in self.machineCode.bitCorrespondence.items() + self.bitCorrespondence.items():
+        instrMembers.append(cxx_writer.Attribute(name, aliasType, 'private'))
+        instrMembers.append(cxx_writer.Attribute(name + '_bit', cxx_writer.uintType, 'private'))
+        mask = ''
+        for i in range(0, self.machineCode.bitPos[name]):
+            mask += '0'
+        for i in range(0, self.machineCode.bitLen[name]):
+            mask += '1'
+        for i in range(0, self.machineCode.instrLen - self.machineCode.bitPos[name] - self.machineCode.bitLen[name]):
+            mask += '0'
+        shiftAmm = self.machineCode.instrLen - self.machineCode.bitPos[name] - self.machineCode.bitLen[name]
+        Code += 'this->' + name + '_bit = (bitstring & ' + hex(int(mask, 2)) + ')'
+        if shiftAmm > 0:
+            Code += ' >> ' + str(shiftAmm)
+        Code += ';\n'
+        #if processor.instructionCache:
+            #updateMethodName = 'update_alias'
+        #else:
+            #updateMethodName = 'set_alias'
+        updateMethodName = 'set_alias'
+        if correspondence[1]:
+            Code += 'this->' + name + '.' + updateMethodName +  '(' + correspondence[0] + '[' + str(correspondence[1]) + ' + this->' + name + '_bit]);\n'
+        else:
+            Code += 'this->' + name + '.' + updateMethodName +  '(' + correspondence[0] + '[this->' + name + '_bit]);\n'
+    # Instruction-specific fields.
+    for name, length in self.machineCode.bitFields:
+        if name in self.machineCode.bitCorrespondence.keys() + self.bitCorrespondence.keys():
+            continue
+            # NOTE: This one-liner saved 50+ compilation errors:
+            # Fixed bitfields of an instruction would otherwise not be passed.
+            # This usually makes sense, except when we want to use a generic
+            # operation, where the calling instructions possibly have different
+            # fixed-values for a given bitfield, upon which the operation must
+            # decide what to do. So we add an additional check where we see
+            # whether the field will be used in some operation, in which case
+            # we do keep the fixed-value of the bitfield as an instruction
+            # member.
+        if name in self.machineBits.keys() + self.machineCode.bitValue.keys() and name not in archVars:
+            continue
+        instrMembers.append(cxx_writer.Attribute(name, cxx_writer.uintType, 'private'))
+        mask = ''
+        for i in range(0, self.machineCode.bitPos[name]):
+            mask += '0'
+        for i in range(0, self.machineCode.bitLen[name]):
+            mask += '1'
+        for i in range(0, self.machineCode.instrLen - self.machineCode.bitPos[name] - self.machineCode.bitLen[name]):
+            mask += '0'
+        shiftAmm = self.machineCode.instrLen - self.machineCode.bitPos[name] - self.machineCode.bitLen[name]
+        Code += 'this->' + name + ' = (bitstring & ' + hex(int(mask, 2)) + ')'
+        if shiftAmm > 0:
+            Code += ' >> ' + str(shiftAmm)
+        Code += ';\n'
+    setParamsBody = cxx_writer.Code(Code)
+    setParamsParam = cxx_writer.Parameter('bitstring', processor.bitSizes[1].makeRef().makeConst())
+    setParamsMethod = cxx_writer.Method('set_params', setParamsBody, cxx_writer.voidType, 'public', [setParamsParam], noException = True)
+    instrMembers.append(setParamsMethod)
+
+    # Methods: replicate()
+    Code = self.name + '* new_instr = new ' + self.name + '(' + instrCtorValues + ');\n'
+    Code += '\n// Set instruction fields.\n'
+    Code += 'if (instr) {\n'
+    Code += self.name + '* old_instr = dynamic_cast<' + self.name + '*>(instr);\n'
+    Code += 'if (old_instr) {\n'
+    for name, correspondence in self.machineCode.bitCorrespondence.items() + self.bitCorrespondence.items():
+        Code += 'new_instr->' + name + '_bit = old_instr->' + name + '_bit;\n'
+        if correspondence[1]:
+            Code += 'new_instr->' + name + '.set_alias(' + correspondence[0] + '[' + str(correspondence[1]) + ' + new_instr->' + name + '_bit]);\n'
+        else:
+            Code += 'new_instr->' + name + '.set_alias(' + correspondence[0] + '[new_instr->' + name + '_bit]);\n'
+    # now I need to declare the fields for the variable parts of the
+    # instruction
+    for name, length in self.machineCode.bitFields:
+        if name in self.machineCode.bitCorrespondence.keys() + self.bitCorrespondence.keys():
+            continue
+            # NOTE: This one-liner saved 50+ compilation errors:
+            # Fixed bitfields of an instruction would otherwise not be passed.
+            # This usually makes sense, except when we want to use a generic
+            # operation, where the calling instructions possibly have different
+            # fixed-values for a given bitfield, upon which the operation must
+            # decide what to do. So we add an additional check where we see
+            # whether the field will be used in some operation, in which case
+            # we do keep the fixed-value of the bitfield as an instruction
+            # member.
+        if name in self.machineBits.keys() + self.machineCode.bitValue.keys() and name not in archVars:
+            continue
+        Code += 'new_instr->' + name + ' = old_instr->' + name + ';\n'
+    Code += '}\n}\n'
+    Code += 'return new_instr;\n'
+    replicateMethod = cxx_writer.Method('replicate', cxx_writer.Code(Code), instructionType.makePointer(), 'public', parameters = [cxx_writer.Parameter('instr', instructionType.makePointer(), initValue = 'NULL')], noException = True, const = True)
+    instrMembers.append(replicateMethod)
+
+    ## @} Access and Modification Methods
+    #---------------------------------------------------------------------------
+    ## @name Behavior Method
+    #  @{
+
     helperOpInline = []
     helperOpVars = []
     for behaviors in self.postbehaviors.values() + self.prebehaviors.values():
@@ -638,9 +772,8 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
         if model.startswith('acc'):
             behaviorCode = 'this->num_stage_cycles = 0;\n'
             if behaviorUserCode:
-                # now I have to take all the resources and create a define which
-                # renames such resources so that their usage can be transparent
-                # to the developer
+                # Set the pipeline stage so that the usage of the registers is
+                # transparent to the user.
                 behaviorCode += '\nR.set_stage(' + str(processor.pipes.index(pipeStage)) + ');\n'
                 behaviorCode += behaviorUserCode
                 behaviorCode += '\nR.unset_stage();\n'
@@ -657,7 +790,12 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
         behaviorMethod = cxx_writer.Method('behavior', behaviorBody, cxx_writer.uintType, 'public')
         instrMembers.append(behaviorMethod)
 
-    # Methods: check_regs(), lock_regs(), unlock_regs(), print_busy_regs()
+    ## @} Behavior Method
+    #---------------------------------------------------------------------------
+    ## @name Hazard Detection Methods
+    #  check_regs(), lock_regs(), unlock_regs(), print_busy_regs()
+    #  @{
+
     # These methods deal with hazard detection and prevention. Different types
     # of hazards can occur depend on the combination of register type and
     # pipeline bypasses:
@@ -896,137 +1034,10 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
             printBusyRegsMethod = cxx_writer.Method('print_busy_regs', printBusyRegsBody, cxx_writer.stringType, 'public')
             instrMembers.append(printBusyRegsMethod)
 
-    # Methods: replicate()
-    archVars = []
-    for behaviors in self.postbehaviors.values() + self.prebehaviors.values():
-        for beh in behaviors:
-            if (model.startswith('acc') and beh.name in self.behaviorAcc) or (model.startswith('func') and beh.name in self.behaviorFun):
-                archVars += beh.archVars
-    Code = self.name + '* new_instr = new ' + self.name + '(' + instrCtorValues + ');\n'
-    Code += '\n// Set instruction fields.\n'
-    Code += 'if (instr) {\n'
-    Code += self.name + '* old_instr = dynamic_cast<' + self.name + '*>(instr);\n'
-    Code += 'if (old_instr) {\n'
-    for name, correspondence in self.machineCode.bitCorrespondence.items() + self.bitCorrespondence.items():
-        Code += 'new_instr->' + name + '_bit = old_instr->' + name + '_bit;\n'
-        if correspondence[1]:
-            Code += 'new_instr->' + name + '.set_alias(' + correspondence[0] + '[' + str(correspondence[1]) + ' + new_instr->' + name + '_bit]);\n'
-        else:
-            Code += 'new_instr->' + name + '.set_alias(' + correspondence[0] + '[new_instr->' + name + '_bit]);\n'
-    # now I need to declare the fields for the variable parts of the
-    # instruction
-    for name, length in self.machineCode.bitFields:
-        if name in self.machineCode.bitCorrespondence.keys() + self.bitCorrespondence.keys():
-            continue
-            # NOTE: This one-liner saved 50+ compilation errors:
-            # Fixed bitfields of an instruction would otherwise not be passed.
-            # This usually makes sense, except when we want to use a generic
-            # operation, where the calling instructions possibly have different
-            # fixed-values for a given bitfield, upon which the operation must
-            # decide what to do. So we add an additional check where we see
-            # whether the field will be used in some operation, in which case
-            # we do keep the fixed-value of the bitfield as an instruction
-            # member.
-        if name in self.machineBits.keys() + self.machineCode.bitValue.keys() and name not in archVars:
-            continue
-        Code += 'new_instr->' + name + ' = old_instr->' + name + ';\n'
-    Code += '}\n}\n'
-    Code += 'return new_instr;\n'
-    replicateMethod = cxx_writer.Method('replicate', cxx_writer.Code(Code), instructionType.makePointer(), 'public', parameters = [cxx_writer.Parameter('instr', instructionType.makePointer(), initValue = 'NULL')], noException = True, const = True)
-    instrMembers.append(replicateMethod)
-
-    # Methods: get_name()
-    getNameBody = cxx_writer.Code('return \"' + self.name + '\";')
-    getNameMethod = cxx_writer.Method('get_name', getNameBody, cxx_writer.stringType, 'public', noException = True, const = True)
-    instrMembers.append(getNameMethod)
-
-    # Methods: get_id()
-    getIdBody = cxx_writer.Code('return ' + str(self.id) + ';')
-    getIdMethod = cxx_writer.Method('get_id', getIdBody, cxx_writer.uintType, 'public', noException = True, const = True)
-    instrMembers.append(getIdMethod)
-
-    # Methods: set_params()
-    # We need to create the attribute for the variables referenced by the non-constant parts of the instruction;
-    # they are the bitCorrespondence variable of the machine code (they establish the correspondence with either registers
-    # or aliases); they other remaining undefined parts of the instruction are normal integer variables.
-    # Note, anyway, that I add the integer variable also for the parts of the instructions specified in
-    # bitCorrespondence.
-    Code = ''
-    for name, correspondence in self.machineCode.bitCorrespondence.items() + self.bitCorrespondence.items():
-        instrMembers.append(cxx_writer.Attribute(name, aliasType, 'private'))
-        instrMembers.append(cxx_writer.Attribute(name + '_bit', cxx_writer.uintType, 'private'))
-        mask = ''
-        for i in range(0, self.machineCode.bitPos[name]):
-            mask += '0'
-        for i in range(0, self.machineCode.bitLen[name]):
-            mask += '1'
-        for i in range(0, self.machineCode.instrLen - self.machineCode.bitPos[name] - self.machineCode.bitLen[name]):
-            mask += '0'
-        shiftAmm = self.machineCode.instrLen - self.machineCode.bitPos[name] - self.machineCode.bitLen[name]
-        Code += 'this->' + name + '_bit = (bitstring & ' + hex(int(mask, 2)) + ')'
-        if shiftAmm > 0:
-            Code += ' >> ' + str(shiftAmm)
-        Code += ';\n'
-        #if processor.instructionCache:
-            #updateMethodName = 'update_alias'
-        #else:
-            #updateMethodName = 'set_alias'
-        updateMethodName = 'set_alias'
-        if correspondence[1]:
-            Code += 'this->' + name + '.' + updateMethodName +  '(' + correspondence[0] + '[' + str(correspondence[1]) + ' + this->' + name + '_bit]);\n'
-        else:
-            Code += 'this->' + name + '.' + updateMethodName +  '(' + correspondence[0] + '[this->' + name + '_bit]);\n'
-    # now I need to declare the fields for the variable parts of the
-    # instruction
-    for name, length in self.machineCode.bitFields:
-        if name in self.machineCode.bitCorrespondence.keys() + self.bitCorrespondence.keys():
-            continue
-            # NOTE: This one-liner saved 50+ compilation errors:
-            # Fixed bitfields of an instruction would otherwise not be passed.
-            # This usually makes sense, except when we want to use a generic
-            # operation, where the calling instructions possibly have different
-            # fixed-values for a given bitfield, upon which the operation must
-            # decide what to do. So we add an additional check where we see
-            # whether the field will be used in some operation, in which case
-            # we do keep the fixed-value of the bitfield as an instruction
-            # member.
-        if name in self.machineBits.keys() + self.machineCode.bitValue.keys() and name not in archVars:
-            continue
-        instrMembers.append(cxx_writer.Attribute(name, cxx_writer.uintType, 'private'))
-        mask = ''
-        for i in range(0, self.machineCode.bitPos[name]):
-            mask += '0'
-        for i in range(0, self.machineCode.bitLen[name]):
-            mask += '1'
-        for i in range(0, self.machineCode.instrLen - self.machineCode.bitPos[name] - self.machineCode.bitLen[name]):
-            mask += '0'
-        shiftAmm = self.machineCode.instrLen - self.machineCode.bitPos[name] - self.machineCode.bitLen[name]
-        Code += 'this->' + name + ' = (bitstring & ' + hex(int(mask, 2)) + ')'
-        if shiftAmm > 0:
-            Code += ' >> ' + str(shiftAmm)
-        Code += ';\n'
-    setParamsBody = cxx_writer.Code(Code)
-    setParamsParam = cxx_writer.Parameter('bitstring', processor.bitSizes[1].makeRef().makeConst())
-    setParamsMethod = cxx_writer.Method('set_params', setParamsBody, cxx_writer.voidType, 'public', [setParamsParam], noException = True)
-    instrMembers.append(setParamsMethod)
-
-    # Methods: get_mnemonic()
-    # Here I declare the methods necessary to create the current instruction mnemonic given the current value of
-    # the variable parts of the instruction
-    Code = 'std::ostringstream oss (std::ostringstream::out);\n'
-    for i in self.mnemonic:
-        Code += getCPPInstrMnemonic(self, i)
-    Code += 'return oss.str();'
-    getMnemonicBody = cxx_writer.Code(Code)
-    getMnemonicBody.addInclude('sstream')
-    getMnemonicMethod = cxx_writer.Method('get_mnemonic', getMnemonicBody, cxx_writer.stringType, 'public', noException = True, const = True)
-    instrMembers.append(getMnemonicMethod)
-
-    # Attributes
-    # Now I declare the instruction variables
-    for var in self.variables:
-        if not var.name in helperOpVars:
-            instrMembers.append(cxx_writer.Attribute(var.name, var.varType, 'protected',  var.static))
+    ## @} Hazard Detection Methods
+    #---------------------------------------------------------------------------
+    ## @name Information and Helper Methods
+    #  @{
 
     # Finally now I have to override the basic new operator in
     # order to speed up memory allocation (***** Commented since it does not give any speedup ******)
@@ -1072,14 +1083,26 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     #instrMembers.append(returnStatsMethod)
     ########################################################################################
 
-    ## @} Methods
+    ## @} Information and Helper Methods
     #---------------------------------------------------------------------------
+    ## @name Attributes and Initialization
+    #  @{
 
-    # Constructors and Destructors
+    for var in self.variables:
+        if not var.name in helperOpVars:
+            instrMembers.append(cxx_writer.Attribute(var.name, var.varType, 'protected',  var.static))
+
+    ## @} Attributes and Initialization
+    #---------------------------------------------------------------------------
+    ## @name Constructors and Destructors
+    #  @{
+
     instrCtor = cxx_writer.Constructor(emptyBody, 'public', parameters = instrCtorParams, initList = instrCtorInit)
     instrDtor = cxx_writer.Destructor(emptyBody, 'public', True)
 
-    # Class
+    ## @} Constructors and Destructors
+    #---------------------------------------------------------------------------
+
     instrClass = cxx_writer.ClassDeclaration(self.name, instrMembers, superclasses = instrBases, namespaces = [namespace])
     instrClass.addDocString(brief = self.docbrief, detail = self.docdetail)
     instrClass.addConstructor(instrCtor)
@@ -1088,69 +1111,76 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     #return [poolVar, instrClass] *** Again removed, related to the instruction pre-allocation
     return [instrClass]
 
-
 ################################################################################
-# Instruction Test
+# Instruction Test Functions
 ################################################################################
 def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''):
-    """Returns the code testing the current instruction. A test consists of
+    """Returns the code for testing the current instruction. A test consists of
     setting the instruction variables, performing the instruction behavior and
-    then comparing the registers with the expected value."""
-    archElemsDeclStr = ''
-    baseInitElement = '('
-    destrDecls = ''
+    then comparing the registers with the expected value. Some custom code is
+    necessary at the beginning to be able to access the private members of the
+    instruction."""
 
+    # Code common to all tests of a single instruction: Variables are declared
+    # and the instruction instantiated with stub parameters.
+    declCode = ''
+    initInstrCode = '('
+
+    # Registers, Aliases and Register Banks
     if processor.regs or processor.regBanks:
         from registerWriter import registerContainerType
-        archElemsDeclStr += registerContainerType.name + ' R('
+        declCode += registerContainerType.name + ' R('
         # Register const or reset values could be processor variables.
         # Since we do not have the values for those (probably program-dependent),
         # we pass on zeros to the Registers ctor.
-        initRegCode = ''
+        Code = ''
         for reg in processor.regs:
             if isinstance(reg.constValue, str):
-                initRegCode += '0, '
+                Code += '0, '
             if isinstance(reg.defValue, str):
-                initRegCode += '0, '
+                Code += '0, '
 
         for regBank in processor.regBanks:
             for regConstValue in regBank.constValue.values():
                 if isinstance(regConstValue, str):
-                    initRegCode += '0, '
+                    Code += '0, '
             for regDefaultValue in regBank.defValues:
                 if isinstance(regDefaultValue, str):
-                    initRegCode += '0, '
-        if initRegCode:
-            archElemsDeclStr += initRegCode[:-2] + ');\n'
+                    Code += '0, '
+        if Code:
+            declCode += Code[:-2] + ');\n'
         else:
-            archElemsDeclStr += ');\n'
+            declCode += ');\n'
         # We also explicitly reset all regs to zero, instead of the reset value.
-        # Test writers tend to mask status registers apart from teh bits they
+        # Test writers tend to mask status registers apart from the bits they
         # are interested in, which is perhaps not quite correct but intuitive.
-        archElemsDeclStr += 'R.write_force(0);\n'
-        baseInitElement += 'R, '
+        declCode += 'R.write_force(0);\n'
+        initInstrCode += 'R, '
 
     #memAliasInit = ''
     #for alias in processor.memAlias:
         #memAliasInit += ', ' + alias.alias
 
+    # Memory
     if (trace or (processor.memory and processor.memory[2])) and not processor.systemc:
-        archElemsDeclStr += 'unsigned total_cycles;\n'
+        declCode += 'unsigned total_cycles;\n'
     if processor.memory:
-        memDebugInit = ''
-        memCyclesInit = ''
+        Code = ''
         if processor.memory[2]:
-            memCyclesInit += ', total_cycles'
+            Code += ', total_cycles'
         if processor.memory[3]:
-            memDebugInit += ', ' + processor.memory[3]
-        archElemsDeclStr += namespace + '::LocalMemory ' + processor.memory[0] + '(' + str(processor.memory[1]) + memCyclesInit + memDebugInit + ');\n'
-        baseInitElement += processor.memory[0] + ', '
-    # Note how I declare local memories even for TLM ports. I use 1MB as default dimension
+            Code += ', ' + processor.memory[3]
+        declCode += namespace + '::LocalMemory ' + processor.memory[0] + '(' + str(processor.memory[1]) + Code + ');\n'
+        initInstrCode += processor.memory[0] + ', '
+
+    # Ports
+    # Local memories are declared even for TLM ports. The default memory size is
+    # 1MB.
     for tlmPorts in processor.tlmPorts.keys():
-        archElemsDeclStr += namespace + '::LocalMemory ' + tlmPorts + '(' + str(1024*1024) + ');\n'
-        baseInitElement += tlmPorts + ', '
-    # Now I declare the PIN stubs for the outgoing PIN ports
-    # and alts themselves
+        declCode += namespace + '::LocalMemory ' + tlmPorts + '(' + str(1024*1024) + ');\n'
+        initInstrCode += tlmPorts + ', '
+
+    # Pins
     outPinPorts = []
     for pinPort in processor.pins:
         if not pinPort.inbound:
@@ -1164,22 +1194,41 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
             else:
                 pinPortTypeName += 'OutPin_'
             pinPortTypeName += str(pinPort.portWidth)
-            archElemsDeclStr += namespace + '::' + pinPortTypeName + ' ' + pinPort.name + '_pin(\"' + pinPort.name + '_pin\");\n'
-            archElemsDeclStr += 'PINTarget<' + str(pinPort.portWidth) + '> ' + pinPort.name + '_target_pin(\"' + pinPort.name + '_target_pin\");\n'
-            archElemsDeclStr += pinPort.name + '_pin.init_socket.bind(' + pinPort.name + '_target_pin.target_socket);\n'
-            baseInitElement += pinPort.name + '_pin, '
+            declCode += namespace + '::' + pinPortTypeName + ' ' + pinPort.name + '_pin(\"' + pinPort.name + '_pin\");\n'
+            declCode += 'PINTarget<' + str(pinPort.portWidth) + '> ' + pinPort.name + '_target_pin(\"' + pinPort.name + '_target_pin\");\n'
+            declCode += pinPort.name + '_pin.init_socket.bind(' + pinPort.name + '_target_pin.target_socket);\n'
+            initInstrCode += pinPort.name + '_pin, '
 
     if trace and not processor.systemc:
-        baseInitElement += 'total_cycles, '
-    baseInitElement = baseInitElement[:-2] + ')'
-    tests = []
+        initInstrCode += 'total_cycles, '
+    initInstrCode = initInstrCode[:-2] + ')'
+
+    # Individual tests of a single instruction.
+    from procWriter import testNames
+    instrTestFunctions = []
     for test in self.tests:
-        # First of all I create the instance of the instruction and of all the
-        # processor elements
-        code = archElemsDeclStr + '\n'
-        code += self.name + ' test_instruction' + baseInitElement + ';\n'
-        # Now I set the value of the instruction fields
-        instrCode = ['0' for i in range(0, self.machineCode.instrLen)]
+        # Instantiate architectural elements.
+        instrTestCode = declCode + '\n'
+
+        # Instantiate instruction under test.
+        instrTestCode += self.name + ' test_instruction' + initInstrCode + ';\n'
+
+        # Initialize global resources.
+        for resource, value in test[1].items():
+            bracket = resource.find('[')
+            memories = processor.tlmPorts.keys()
+            if processor.memory:
+                memories.append(processor.memory[0])
+            if bracket > 0 and resource[:bracket] in memories:
+                try:
+                    instrTestCode += resource[:bracket] + '.write_word_dbg(' + hex(int(resource[bracket + 1:-1])) + ', ' + hex(value) + ');\n'
+                except ValueError:
+                    instrTestCode += resource[:bracket] + '.write_word_dbg(' + hex(int(resource[bracket + 1:-1], 16)) + ', ' + hex(value) + ');\n'
+            else:
+                instrTestCode += resource + '.write_force(' + hex(value) + ');\n'
+
+        # Set instruction fields.
+        Code = ['0' for i in range(0, self.machineCode.instrLen)]
         for name, elemValue in test[0].items():
             if self.machineCode.bitLen.has_key(name):
                 curBitCode = toBinStr(elemValue, self.machineCode.bitLen[name])
@@ -1187,71 +1236,55 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
                 if len(curBitCode) > self.machineCode.bitLen[name]:
                     raise Exception('Cannot represent value ' + hex(elemValue) + ' of field ' + name + ' in test of instruction ' + self.name + ' in ' + str(self.machineCode.bitLen[name]) + ' bits.')
                 for i in range(0, len(curBitCode)):
-                    instrCode[self.machineCode.bitLen[name] + self.machineCode.bitPos[name] - i -1] = curBitCode[i]
+                    Code[self.machineCode.bitLen[name] + self.machineCode.bitPos[name] - i -1] = curBitCode[i]
             else:
                 raise Exception('Field ' + name + ' in test of instruction ' + self.name + ' does not exist in the machine code.')
-        for resource, value in test[1].items():
-            # I set the initial value of the global resources
-            bracket = resource.find('[')
-            memories = processor.tlmPorts.keys()
-            if processor.memory:
-                memories.append(processor.memory[0])
-            if bracket > 0 and resource[:bracket] in memories:
-                try:
-                    code += resource[:bracket] + '.write_word_dbg(' + hex(int(resource[bracket + 1:-1])) + ', ' + hex(value) + ');\n'
-                except ValueError:
-                    code += resource[:bracket] + '.write_word_dbg(' + hex(int(resource[bracket + 1:-1], 16)) + ', ' + hex(value) + ');\n'
-            else:
-                code += resource + '.write_force(' + hex(value) + ');\n'
-        code += 'test_instruction.set_params(' + hex(int(''.join(instrCode), 2)) + ');\n'
-        code += 'try {\n'
-        code += 'test_instruction.behavior();'
-        code += '\n}\ncatch(annul_exception& etc) {\n}\n\n'
+        instrTestCode += 'test_instruction.set_params(' + hex(int(''.join(Code), 2)) + ');\n'
+
+        # Run instruction behavior.
+        instrTestCode += 'try {\n'
+        instrTestCode += 'test_instruction.behavior();'
+        instrTestCode += '\n}\ncatch(annul_exception& etc) {\n}\n\n'
+
+        # Test the output values.
         for resource, value in test[2].items():
-            # I check the value of the listed resources to make sure that the
-            # computation executed correctly
-            code += 'BOOST_CHECK_EQUAL('
+            instrTestCode += 'BOOST_CHECK_EQUAL('
             bracket = resource.find('[')
             memories = processor.tlmPorts.keys()
             if processor.memory:
                 memories.append(processor.memory[0])
             if bracket > 0 and resource[:bracket] in memories:
                 try:
-                    code += resource[:bracket] + '.read_word_dbg(' + hex(int(resource[bracket + 1:-1])) + ')'
+                    instrTestCode += resource[:bracket] + '.read_word_dbg(' + hex(int(resource[bracket + 1:-1])) + ')'
                 except ValueError:
-                    code += resource[:bracket] + '.read_word_dbg(' + hex(int(resource[bracket + 1:-1], 16)) + ')'
+                    instrTestCode += resource[:bracket] + '.read_word_dbg(' + hex(int(resource[bracket + 1:-1], 16)) + ')'
             elif bracket > 0 and resource[:bracket] in outPinPorts:
                 try:
-                    code += resource[:bracket] + '_target_pin.read_pin(' + hex(int(resource[bracket + 1:-1])) + ')'
+                    instrTestCode += resource[:bracket] + '_target_pin.read_pin(' + hex(int(resource[bracket + 1:-1])) + ')'
                 except ValueError:
-                    code += resource[:bracket] + '_target_pin.read_pin(' + hex(int(resource[bracket + 1:-1], 16)) + ')'
+                    instrTestCode += resource[:bracket] + '_target_pin.read_pin(' + hex(int(resource[bracket + 1:-1], 16)) + ')'
             else:
-                code += resource + '.read_force()'
-            code += ', (' + str(processor.bitSizes[1]) + ')' + hex(value) + ');\n\n'
-        code += destrDecls
-        curTest = cxx_writer.Code(code)
-        wariningDisableCode = '#ifdef _WIN32\n#pragma warning(disable : 4101\n#endif\n'
+                instrTestCode += resource + '.read_force()'
+            instrTestCode += ', (' + str(processor.bitSizes[1]) + ')' + hex(value) + ');\n\n'
+
+        instrTestBody = cxx_writer.Code(instrTestCode)
+        disableWarningsCode = '#ifdef _WIN32\n#pragma warning(disable : 4101\n#endif\n'
         includeUnprotectedCode = '#define private public\n#define protected public\n#include \"instructions.hpp\"\n#include \"registers.hpp\"\n#include \"memory.hpp\"\n#undef private\n#undef protected\n'
-        curTest.addInclude(['boost/test/test_tools.hpp', 'common/report.hpp', wariningDisableCode, includeUnprotectedCode])
-        curTestFunction = cxx_writer.Function(self.name + '_' + str(len(tests)), curTest, cxx_writer.voidType)
-        from procWriter import testNames
-        testNames.append(self.name + '_' + str(len(tests)))
-        tests.append(curTestFunction)
-    return tests
+        instrTestBody.addInclude(['boost/test/test_tools.hpp', 'common/report.hpp', disableWarningsCode, includeUnprotectedCode])
 
+        testName = self.name + '_' + str(len(instrTestFunctions))
+        instrTestFunction = cxx_writer.Function(testName, instrTestBody, cxx_writer.voidType)
+        instrTestFunctions.append(instrTestFunction)
+        testNames.append(testName)
 
-################################################################################
-# Test Top Level
-################################################################################
+    return instrTestFunctions
+
 def getCPPInstrTests(self, processor, modelType, trace, combinedTrace, namespace):
     if not processor.memory:
         return None
-    # for each instruction I print the test: I do have to add some custom
-    # code at the beginning in order to being able to access the private
-    # part of the instructions
-    tests = []
+    testFunctions = []
     for instr in self.instructions.values():
-        tests += instr.getCPPTest(processor, modelType, trace, combinedTrace, namespace)
-    return tests
+        testFunctions += instr.getCPPTest(processor, modelType, trace, combinedTrace, namespace)
+    return testFunctions
 
 ################################################################################

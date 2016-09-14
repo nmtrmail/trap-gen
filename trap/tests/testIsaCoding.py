@@ -38,7 +38,6 @@
 #
 ################################################################################
 
-
 import processor
 import isa
 import cxx_writer
@@ -158,3 +157,5 @@ class TestCoding(unittest.TestCase):
         except:
             error = True
         self.assert_(error)
+
+################################################################################

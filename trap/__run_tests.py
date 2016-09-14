@@ -7,7 +7,7 @@
 #  _/      _/    _/     _/      _/    _/
 # _/      _/      _/  _/        _/   _/
 #
-# @file     startTests.py
+# @file     __run_tests.py
 # @brief    This file is part of the TRAP processor generator testsuite.
 # @details
 # @author   Luca Fossati
@@ -38,7 +38,6 @@
 #
 ################################################################################
 
-
 import unittest
 
 import sys, os
@@ -55,3 +54,5 @@ if __name__ == "__main__":
     runner = unittest.TextTestRunner()
     runner.verbosity = 2
     runner.run(suite)
+
+################################################################################

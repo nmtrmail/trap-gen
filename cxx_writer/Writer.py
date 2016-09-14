@@ -233,3 +233,5 @@ class CodeWriter:
         self.file.write(self.codeBuffer)
         self.codeBuffer = ''
         self.file.flush()
+
+################################################################################

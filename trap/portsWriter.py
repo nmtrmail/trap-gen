@@ -41,15 +41,159 @@
 import cxx_writer
 from registerWriter import registerContainerType
 
+################################################################################
+# PIN Classes
+################################################################################
+def getCPPPINPorts(self, namespace):
+    """Returns the classes implementing pins for communicating with the external
+    world. There are both incoming and outgoing external ports. For the
+    outgoing, I simply have to declare the port class (like memory ports). For
+    the incoming, I also have to specify the operation which has to be performed
+    when the port is triggered (they are like interrupt ports)."""
+
+    if len(self.pins) == 0:
+        return None
+
+    tlmDmiType = cxx_writer.Type('tlm::tlm_dmi', 'tlm.h')
+
+    SCInPorts = []
+    SCOutPorts = []
+    TLMInPorts = []
+    TLMOutPorts = []
+    declaredPorts = []
+
+    for port in self.pins:
+        # I add all the inbound ports since there is an action specified for
+        # each of them. In order to correctly execute the specified action the
+        # port needs references to all the architectural elements.
+        if port.inbound:
+            if port.systemc:
+                SCInPorts.append(port)
+            else:
+                TLMInPorts.append(port)
+        else:
+            if not (str(port.portWidth) + '_' + str(port.systemc)) in declaredPorts:
+                if port.systemc:
+                    SCOutPorts.append(port)
+                else:
+                    TLMOutPorts.append(port)
+                declaredPorts.append(str(port.portWidth) + '_' + str(self.systemc))
+
+    pinClasses = []
+
+    # Outbound TLM Ports
+    for port in TLMOutPorts:
+        pinPortType = cxx_writer.Type('TLMOutPin_' + str(port.portWidth))
+        tlmPayloadType = cxx_writer.Type('tlm::tlm_generic_payload', 'tlm.h')
+        tlmInitSocketType = cxx_writer.TemplateType('tlm_utils::multi_passthrough_initiator_socket', [pinPortType, port.portWidth, 'tlm::tlm_base_protocol_types', 1, 'sc_core::SC_ZERO_OR_MORE_BOUND'], 'tlm_utils/multi_passthrough_initiator_socket.h')
+
+        pinPortMembers = []
+        pinPortCtorParams = []
+        pinPortCtorInit = []
+
+        # Methods: send_pin_req()
+        sendPinReqBody = cxx_writer.Code("""tlm::tlm_generic_payload trans;
+        sc_time delay;
+        trans.set_address(address);
+        trans.set_write();
+        trans.set_data_ptr((unsigned char*)&datum);
+        trans.set_data_length(sizeof(datum));
+        trans.set_streaming_width(sizeof(datum));
+        trans.set_byte_enable_ptr(0);
+        trans.set_dmi_allowed(false);
+        trans.set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);
+        this->init_socket->b_transport(trans, delay);
+
+        if (trans.is_response_error()) {
+            std::string error_str("Error from b_transport, response status = " + trans.get_response_string());
+            SC_REPORT_ERROR("TLM-2", error_str.c_str());
+        }
+        """)
+        sendPinReqBody.addInclude('common/report.hpp')
+        sendPinReqBody.addInclude('tlm.h')
+        from isa import resolveBitType
+        PINWidthType = resolveBitType('BIT<' + str(port.portWidth) + '>')
+        addressParam = cxx_writer.Parameter('address', PINWidthType.makeRef().makeConst())
+        datumParam = cxx_writer.Parameter('datum', PINWidthType)
+        sendPinReqMethod = cxx_writer.Method('send_pin_req', sendPinReqBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+        pinPortMembers.append(sendPinReqMethod)
+
+        # Attributes and Initialization
+        pinPortCtorParams.append(cxx_writer.Parameter('pin_name', cxx_writer.sc_module_nameType))
+        pinPortCtorInit.append('sc_module(pin_name)')
+        initSocketAttr = cxx_writer.Attribute('init_socket', tlmInitSocketType, 'public')
+        pinPortMembers.append(initSocketAttr)
+        pinPortCtorInit.append('init_socket(\"init_socket\")')
+
+        # Constructors and Destructors
+        Code = 'end_module();'
+        pinPortCtor = cxx_writer.Constructor(cxx_writer.Code(Code), 'public', pinPortCtorParams, pinPortCtorInit)
+
+        # Class
+        pinPortClass = cxx_writer.ClassDeclaration('TLMOutPin_' + str(port.portWidth), pinPortMembers, [cxx_writer.sc_moduleType], namespaces = [namespace])
+        pinPortClass.addDocString(brief = 'Pin Class', detail = 'Defines the pins used by the core for communicating with other modules. Outgoing ports call a given interface of another module, while incoming ports need to define the interface to be used by other modules.')
+        pinPortClass.addConstructor(pinPortCtor)
+        pinClasses.append(pinPortClass)
+
+    # Outbound SystemC ports.
+    for port in SCOutPorts:
+        raise Exception('Outbound SystemC ports not yet supported.')
+
+    # Inbound TLM ports.
+    for port in TLMInPorts:
+        raise Exception('Inbound TLM ports not yet supported.')
+
+    # Inbound SystemC ports.
+    for port in SCInPorts:
+        raise Exception('Inbound SystemC ports not yet supported.')
+
+    return pinClasses
+
+################################################################################
+# Port Classes
+################################################################################
 def getCPPExternalPorts(self, model, namespace):
+    """Returns the code implementing TLM ports for communicating with the
+    external world."""
+
     if len(self.tlmPorts) == 0:
         return None
-    # creates the processor external TLM ports used for the
-    # communication with the external world
+
     archDWordType = self.bitSizes[0]
     archWordType = self.bitSizes[1]
     archHWordType = self.bitSizes[2]
     archByteType = self.bitSizes[3]
+
+    from registerWriter import registerType, aliasType
+    memIfType = cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"')
+    tlmMemoryType = cxx_writer.Type('TLMMemory')
+    memoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
+    tlmDmiType = cxx_writer.Type('tlm::tlm_dmi', 'tlm.h')
+    tlmPayloadType = cxx_writer.Type('tlm::tlm_generic_payload', 'tlm.h')
+    tlmPhaseType = cxx_writer.Type('tlm::tlm_phase', 'tlm.h')
+    tlmSyncEnumType = cxx_writer.Type('tlm::tlm_sync_enum', 'tlm.h')
+    tlmInitSocketType = cxx_writer.TemplateType('tlm_utils::simple_initiator_socket', [tlmMemoryType, self.wordSize*self.byteSize], 'tlm_utils/simple_initiator_socket.h')
+
+    extPortMembers = []
+    extPortCtorParams = []
+    extPortCtorInit = []
+    aliasAttrs = []
+    aliasParams = []
+    aliasInit = []
+    emptyBody = cxx_writer.Code('')
+
+    # Methods: Building Blocks
+    checkWatchPointCode = """if (this->debugger != NULL) {
+        this->debugger->notify_address(address, sizeof(datum));
+    }
+    """
+
+    swapEndianessCode = '// Endianess conversion: The processor is always modeled with the host endianess. In case they are different, the endianess is swapped.\n'
+    if self.isBigEndian:
+        swapEndianessDefine = '#ifdef LITTLE_ENDIAN_BO\n'
+    else:
+        swapEndianessDefine = '#ifdef BIG_ENDIAN_BO\n'
+    swapEndianessCode += swapEndianessDefine + 'this->swap_endianess(datum);\n#endif\n'
 
     if self.isBigEndian:
         swapDEndianessCode = '#ifdef LITTLE_ENDIAN_BO\n'
@@ -59,61 +203,26 @@ def getCPPExternalPorts(self, model, namespace):
     swapDEndianessCode += str(archWordType) + ' datum2 = (' + str(archWordType) + ')(datum >> ' + str(self.wordSize*self.byteSize) + ');\nthis->swap_endianess(datum2);\n'
     swapDEndianessCode += 'datum = datum1 | (((' + str(archDWordType) + ')datum2) << ' + str(self.wordSize*self.byteSize) + ');\n#endif\n'
 
-    swapEndianessCode = '// Endianess conversion: The processor is always modeled with the host endianess. In case they are different, the endianess is swapped.\n'
-    if self.isBigEndian:
-        swapEndianessDefine = '#ifdef LITTLE_ENDIAN_BO\n'
-    else:
-        swapEndianessDefine = '#ifdef BIG_ENDIAN_BO\n'
-
-    swapEndianessCode += swapEndianessDefine + 'this->swap_endianess(datum);\n#endif\n'
-
-    tlmPortElements = []
-
-    aliasAttrs = []
-    aliasParams = []
-    aliasInit = []
-    from registerWriter import registerType, aliasType
-    if self.memAlias:
-        aliasAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'private'))
-        aliasParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
-        aliasInit.append('R(R)')
-
-    MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
-    tlmPortElements.append(cxx_writer.Attribute('debugger', MemoryToolsIfType.makePointer(), 'private'))
-    setDebuggerBody = cxx_writer.Code('this->debugger = debugger;')
-    tlmPortElements.append(cxx_writer.Method('set_debugger', setDebuggerBody, cxx_writer.voidType, 'public', [cxx_writer.Parameter('debugger', MemoryToolsIfType.makePointer())]))
-    checkWatchPointCode = """if (this->debugger != NULL) {
-        this->debugger->notify_address(address, sizeof(datum));
-    }
-    """
-
-    memIfType = cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"')
-    tlm_dmiType = cxx_writer.Type('tlm::tlm_dmi', 'tlm.h')
-    TLMMemoryType = cxx_writer.Type('TLMMemory')
-    tlminitsocketType = cxx_writer.TemplateType('tlm_utils::simple_initiator_socket', [TLMMemoryType, self.wordSize*self.byteSize], 'tlm_utils/simple_initiator_socket.h')
-    payloadType = cxx_writer.Type('tlm::tlm_generic_payload', 'tlm.h')
-    phaseType = cxx_writer.Type('tlm::tlm_phase', 'tlm.h')
-    sync_enumType = cxx_writer.Type('tlm::tlm_sync_enum', 'tlm.h')
-    tlmPortInit = []
-    constructorParams = []
-
-    emptyBody = cxx_writer.Code('')
-
     if model.endswith('AT'):
-        # Some helper methods used only in the Approximate Timed coding style
-        helperCode = """// TLM-2 backward non-blocking transport method.
+        # Attributes
+        extPortMembers.append(cxx_writer.Attribute('request_in_progress', tlmPayloadType.makePointer(), 'private'))
+        extPortMembers.append(cxx_writer.Attribute('end_request_event', cxx_writer.sc_eventType, 'private'))
+        extPortMembers.append(cxx_writer.Attribute('end_response_event', cxx_writer.sc_eventType, 'private'))
+
+        # Methods: nb_transport_bw()
+        Code = """// TLM-2 backward non-blocking transport method.
             // The timing annotation must be honored.
             m_peq.notify(trans, phase, delay);
             return tlm::TLM_ACCEPTED;
             """
-        helperBody = cxx_writer.Code(helperCode)
-        transParam = cxx_writer.Parameter('trans', payloadType.makeRef())
-        phaseParam = cxx_writer.Parameter('phase', phaseType.makeRef())
+        transParam = cxx_writer.Parameter('trans', tlmPayloadType.makeRef())
+        phaseParam = cxx_writer.Parameter('phase', tlmPhaseType.makeRef())
         delayParam = cxx_writer.Parameter('delay', cxx_writer.sc_timeType.makeRef())
-        helperDecl = cxx_writer.Method('nb_transport_bw', helperBody, sync_enumType, 'public', [transParam, phaseParam, delayParam], inline = True, noException = True)
-        tlmPortElements.append(helperDecl)
+        helperMethod = cxx_writer.Method('nb_transport_bw', cxx_writer.Code(Code), tlmSyncEnumType, 'public', [transParam, phaseParam, delayParam], inline = True, noException = True)
+        extPortMembers.append(helperMethod)
 
-        helperCode = """// Payload event queue callback to handle transactions from target.
+        # Methods: peq_cb()
+        Code = """// Payload event queue callback to handle transactions from target.
             // Transaction could have arrived through return path or backward path.
             if (phase == tlm::END_REQ || (&trans == request_in_progress && phase == tlm::BEGIN_RESP)) {
                 // The end of the BEGIN_REQ phase.
@@ -139,15 +248,11 @@ def getCPPExternalPorts(self, model, namespace):
                 this->end_response_event.notify(delay);
             }
             """
-        helperBody = cxx_writer.Code(helperCode)
-        phaseParam = cxx_writer.Parameter('phase', phaseType.makeRef().makeConst())
-        helperDecl = cxx_writer.Method('peq_cb', helperBody, cxx_writer.voidType, 'public', [transParam, phaseParam])
-        tlmPortElements.append(helperDecl)
+        phaseParam = cxx_writer.Parameter('phase', tlmPhaseType.makeRef().makeConst())
+        helperMethod = cxx_writer.Method('peq_cb', cxx_writer.Code(Code), cxx_writer.voidType, 'public', [transParam, phaseParam])
+        extPortMembers.append(helperMethod)
 
-        tlmPortElements.append(cxx_writer.Attribute('request_in_progress', payloadType.makePointer(), 'private'))
-        tlmPortElements.append(cxx_writer.Attribute('end_request_event', cxx_writer.sc_eventType, 'private'))
-        tlmPortElements.append(cxx_writer.Attribute('end_response_event', cxx_writer.sc_eventType, 'private'))
-
+    # Methods: read()
     if model.endswith('LT'):
         readCode = """ datum = 0;
             if (this->dmi_ptr_valid) {
@@ -253,18 +358,21 @@ def getCPPExternalPorts(self, model, namespace):
     readBody = cxx_writer.Code(readMemAliasCode + str(archDWordType) + readCode + swapDEndianessCode + '\nreturn datum;')
     readBody.addInclude('common/report.hpp')
     readBody.addInclude('tlm.h')
-    readDecl = cxx_writer.Method('read_dword', readBody, archDWordType, 'public', [addressParam], noException = True)
-    tlmPortElements.append(readDecl)
+    readMethod = cxx_writer.Method('read_dword', readBody, archDWordType, 'public', [addressParam], noException = True)
+    extPortMembers.append(readMethod)
+
     readBody = cxx_writer.Code(readMemAliasCode + str(archWordType) + readCode + swapEndianessCode + '\nreturn datum;')
-    readDecl = cxx_writer.Method('read_word', readBody, archWordType, 'public', [addressParam], inline = True, noException = True)
-    tlmPortElements.append(readDecl)
+    readMethod = cxx_writer.Method('read_word', readBody, archWordType, 'public', [addressParam], inline = True, noException = True)
+    extPortMembers.append(readMethod)
+
     readMemAliasCode = ''
     for alias in self.memAlias:
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archHWordType) + ')' + alias.alias + '_temp;\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archHWordType) + ' *)&(' + alias.alias + '_temp)) + 1);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + str(archHWordType) + readCode + swapEndianessCode + '\nreturn datum;')
-    readDecl = cxx_writer.Method('read_half', readBody, archHWordType, 'public', [addressParam], noException = True)
-    tlmPortElements.append(readDecl)
+    readMethod = cxx_writer.Method('read_half', readBody, archHWordType, 'public', [addressParam], noException = True)
+    extPortMembers.append(readMethod)
+
     readMemAliasCode = ''
     for alias in self.memAlias:
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archByteType) + ')' + alias.alias + '_temp;\n}\n'
@@ -272,8 +380,10 @@ def getCPPExternalPorts(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 2);\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 3);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + str(archByteType) + readCode + '\nreturn datum;')
-    readDecl = cxx_writer.Method('read_byte', readBody, archByteType, 'public', [addressParam], noException = True)
-    tlmPortElements.append(readDecl)
+    readMethod = cxx_writer.Method('read_byte', readBody, archByteType, 'public', [addressParam], noException = True)
+    extPortMembers.append(readMethod)
+
+    # Methods: write()
     writeCode = ''
     if model.endswith('LT'):
         writeCode += """if (this->dmi_ptr_valid) {
@@ -369,18 +479,20 @@ def getCPPExternalPorts(self, model, namespace):
         }
         wait(this->end_response_event);
         """
+
     writeMemAliasCode = ''
     for alias in self.memAlias:
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n this->' + alias.alias + ' = datum;\nreturn;\n}\n'
     writeBody = cxx_writer.Code(swapDEndianessCode + writeMemAliasCode + checkWatchPointCode + writeCode)
     datumParam = cxx_writer.Parameter('datum', archDWordType)
-    writeDecl = cxx_writer.Method('write_dword', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
-    tlmPortElements.append(writeDecl)
+    writeMethod = cxx_writer.Method('write_dword', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    extPortMembers.append(writeMethod)
+
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + checkWatchPointCode + writeCode)
     datumParam = cxx_writer.Parameter('datum', archWordType)
-    writeDecl = cxx_writer.Method('write_word', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], inline = True, noException = True)
-    tlmPortElements.append(writeDecl)
-    datumParam = cxx_writer.Parameter('datum', archHWordType)
+    writeMethod = cxx_writer.Method('write_word', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], inline = True, noException = True)
+    extPortMembers.append(writeMethod)
+
     writeMemAliasCode = swapEndianessDefine
     for alias in self.memAlias:
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*((' + str(archHWordType) + ' *)&' + alias.alias + '_temp) = (' + str(archHWordType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
@@ -391,9 +503,10 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archHWordType) + ' *)&' + alias.alias + '_temp) + 1) = (' + str(archHWordType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
     writeMemAliasCode += '#endif\n'
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + checkWatchPointCode + writeCode)
-    writeDecl = cxx_writer.Method('write_half', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
-    tlmPortElements.append(writeDecl)
-    datumParam = cxx_writer.Parameter('datum', archByteType)
+    datumParam = cxx_writer.Parameter('datum', archHWordType)
+    writeMethod = cxx_writer.Method('write_half', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    extPortMembers.append(writeMethod)
+
     writeMemAliasCode = swapEndianessDefine
     for alias in self.memAlias:
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*((' + str(archByteType) + '*)&' + alias.alias + '_temp) = (' + str(archByteType) + ')datum;\nreturn;\n}\n'
@@ -408,9 +521,11 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + '*)&' + alias.alias + '_temp) + 3) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
     writeMemAliasCode += '#endif\n'
     writeBody = cxx_writer.Code(writeMemAliasCode + checkWatchPointCode + writeCode)
-    writeDecl = cxx_writer.Method('write_byte', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
-    tlmPortElements.append(writeDecl)
+    datumParam = cxx_writer.Parameter('datum', archByteType)
+    writeMethod = cxx_writer.Method('write_byte', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    extPortMembers.append(writeMethod)
 
+    # Methods: read_dbg()
     readCode1 = """tlm::tlm_generic_payload trans;
         trans.set_address(address);
         trans.set_read();
@@ -425,18 +540,21 @@ def getCPPExternalPorts(self, model, namespace):
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(' + str(self.wordSize*2) + ');\ntrans.set_streaming_width(' + str(self.wordSize*2) + ');\n' + str(archDWordType) + ' datum = 0;\n' + readCode2 + swapDEndianessCode + 'return datum;')
     readBody.addInclude('common/report.hpp')
     readBody.addInclude('tlm.h')
-    readDecl = cxx_writer.Method('read_dword_dbg', readBody, archDWordType, 'public', [addressParam], noException = True)
-    tlmPortElements.append(readDecl)
+    readMethod = cxx_writer.Method('read_dword_dbg', readBody, archDWordType, 'public', [addressParam], noException = True)
+    extPortMembers.append(readMethod)
+
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(' + str(self.wordSize) + ');\ntrans.set_streaming_width(' + str(self.wordSize) + ');\n' + str(archWordType) + ' datum = 0;\n' + readCode2 + swapEndianessCode + 'return datum;')
-    readDecl = cxx_writer.Method('read_word_dbg', readBody, archWordType, 'public', [addressParam], noException = True)
-    tlmPortElements.append(readDecl)
+    readMethod = cxx_writer.Method('read_word_dbg', readBody, archWordType, 'public', [addressParam], noException = True)
+    extPortMembers.append(readMethod)
+
     readMemAliasCode = ''
     for alias in self.memAlias:
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archHWordType) + ')' + alias.alias + '_temp;\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archHWordType) + ' *)&(' + alias.alias + '_temp)) + 1);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(' + str(self.wordSize/2) + ');\ntrans.set_streaming_width(' + str(self.wordSize/2) + ');\n' + str(archHWordType) + ' datum = 0;\n' + readCode2 + swapEndianessCode + 'return datum;')
-    readDecl = cxx_writer.Method('read_half_dbg', readBody, archHWordType, 'public', [addressParam], noException = True)
-    tlmPortElements.append(readDecl)
+    readMethod = cxx_writer.Method('read_half_dbg', readBody, archHWordType, 'public', [addressParam], noException = True)
+    extPortMembers.append(readMethod)
+
     readMemAliasCode = ''
     for alias in self.memAlias:
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archByteType) + ')' + alias.alias + '_temp;\n}\n'
@@ -444,8 +562,10 @@ def getCPPExternalPorts(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 2);\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 3);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(1);\ntrans.set_streaming_width(1);\n' + str(archByteType) + ' datum = 0;\n' + readCode2 + 'return datum;')
-    readDecl = cxx_writer.Method('read_byte_dbg', readBody, archByteType, 'public', [addressParam], noException = True)
-    tlmPortElements.append(readDecl)
+    readMethod = cxx_writer.Method('read_byte_dbg', readBody, archByteType, 'public', [addressParam], noException = True)
+    extPortMembers.append(readMethod)
+
+    # Methods: write_dbg()
     writeCode1 = """tlm::tlm_generic_payload trans;
         trans.set_address(address);
         trans.set_write();
@@ -458,12 +578,14 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n this->' + alias.alias + ' = datum;\nreturn;\n}\n'
     writeBody = cxx_writer.Code(swapDEndianessCode + writeMemAliasCode + writeCode1 + 'trans.set_data_length(' + str(self.wordSize*2) + ');\ntrans.set_streaming_width(' + str(self.wordSize*2) + ');\n' + writeCode2)
     datumParam = cxx_writer.Parameter('datum', archDWordType)
-    writeDecl = cxx_writer.Method('write_dword_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
-    tlmPortElements.append(writeDecl)
+    writeMethod = cxx_writer.Method('write_dword_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    extPortMembers.append(writeMethod)
+
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + writeCode1 + 'trans.set_data_length(' + str(self.wordSize) + ');\ntrans.set_streaming_width(' + str(self.wordSize) + ');\n' + writeCode2)
     datumParam = cxx_writer.Parameter('datum', archWordType)
-    writeDecl = cxx_writer.Method('write_word_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
-    tlmPortElements.append(writeDecl)
+    writeMethod = cxx_writer.Method('write_word_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    extPortMembers.append(writeMethod)
+
     writeMemAliasCode = swapEndianessDefine
     for alias in self.memAlias:
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*((' + str(archHWordType) + ' *)' + alias.alias + '_temp) = (' + str(archHWordType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
@@ -473,10 +595,11 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*((' + str(archHWordType) + ' *)' + alias.alias + '_temp) = (' + str(archHWordType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archHWordType) + ' *)&' + alias.alias + '_temp) + 1) = (' + str(archHWordType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
     writeMemAliasCode += '#endif\n'
-    datumParam = cxx_writer.Parameter('datum', archHWordType)
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + writeCode1 + 'trans.set_data_length(' + str(self.wordSize/2) + ');\ntrans.set_streaming_width(' + str(self.wordSize/2) + ');\n' + writeCode2)
-    writeDecl = cxx_writer.Method('write_half_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
-    tlmPortElements.append(writeDecl)
+    datumParam = cxx_writer.Parameter('datum', archHWordType)
+    writeMethod = cxx_writer.Method('write_half_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    extPortMembers.append(writeMethod)
+
     writeMemAliasCode = swapEndianessDefine
     for alias in self.memAlias:
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*((' + str(archByteType) + ' *)&' + alias.alias + '_temp) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
@@ -490,55 +613,78 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + ' *)&' + alias.alias + '_temp) + 2) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n*(((' + str(archByteType) + ' *)&' + alias.alias + '_temp) + 3) = (' + str(archByteType) + ')datum;\nthis->' + alias.alias + '= ' + alias.alias + '_temp;\nreturn;\n}\n'
     writeMemAliasCode += '#endif\n'
-    datumParam = cxx_writer.Parameter('datum', archByteType)
     writeBody = cxx_writer.Code(writeMemAliasCode + writeCode1 + 'trans.set_data_length(1);\ntrans.set_streaming_width(1);\n' + writeCode2)
-    writeDecl = cxx_writer.Method('write_byte_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
-    tlmPortElements.append(writeDecl)
+    datumParam = cxx_writer.Parameter('datum', archByteType)
+    writeMethod = cxx_writer.Method('write_byte_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    extPortMembers.append(writeMethod)
 
-    lockDecl = cxx_writer.Method('lock', emptyBody, cxx_writer.voidType, 'public')
-    tlmPortElements.append(lockDecl)
-    unlockDecl = cxx_writer.Method('unlock', emptyBody, cxx_writer.voidType, 'public')
-    tlmPortElements.append(unlockDecl)
+    # Methods: lock(), unlock()
+    lockMethod = cxx_writer.Method('lock', emptyBody, cxx_writer.voidType, 'public')
+    extPortMembers.append(lockMethod)
+    unlockMethod = cxx_writer.Method('unlock', emptyBody, cxx_writer.voidType, 'public')
+    extPortMembers.append(unlockMethod)
 
-    constructorParams.append(cxx_writer.Parameter('port_name', cxx_writer.sc_module_nameType))
-    tlmPortInit.append('sc_module(port_name)')
-    initSockAttr = cxx_writer.Attribute('init_socket', tlminitsocketType, 'public')
-    tlmPortElements.append(initSockAttr)
-    constructorCode = 'this->debugger = NULL;\n'
+    # Methods: set_debugger()
+    Code = 'this->debugger = debugger;'
+    extPortMembers.append(cxx_writer.Method('set_debugger', cxx_writer.Code(Code), cxx_writer.voidType, 'public', [cxx_writer.Parameter('debugger', memoryToolsIfType.makePointer())]))
+
+    # Attributes and Initialization
+    if self.memAlias:
+        aliasAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'private'))
+        aliasParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
+        aliasInit.append('R(R)')
+
+    extPortMembers.append(cxx_writer.Attribute('debugger', memoryToolsIfType.makePointer(), 'private'))
+    extPortCtorCode = 'this->debugger = NULL;\n'
+
+    initSocketAttr = cxx_writer.Attribute('init_socket', tlmInitSocketType, 'public')
+    extPortMembers.append(initSocketAttr)
+
+    extPortCtorParams.append(cxx_writer.Parameter('port_name', cxx_writer.sc_module_nameType))
+    extPortCtorInit.append('sc_module(port_name)')
+
     if model.endswith('LT'):
         if not model.startswith('acc'):
             quantumKeeperType = cxx_writer.Type('tlm_utils::tlm_quantumkeeper', 'tlm_utils/tlm_quantumkeeper.h')
-            quantumKeeperAttribute = cxx_writer.Attribute('quant_keeper', quantumKeeperType.makeRef(), 'private')
-            tlmPortElements.append(quantumKeeperAttribute)
-            tlmPortInit.append('quant_keeper(quant_keeper)')
-            constructorParams.append(cxx_writer.Parameter('quant_keeper', quantumKeeperType.makeRef()))
-        dmi_ptr_validAttribute = cxx_writer.Attribute('dmi_ptr_valid', cxx_writer.boolType, 'private')
-        tlmPortElements.append(dmi_ptr_validAttribute)
-        dmi_dataAttribute = cxx_writer.Attribute('dmi_data', tlm_dmiType, 'private')
-        tlmPortElements.append(dmi_dataAttribute)
-        constructorCode += 'this->dmi_ptr_valid = false;\n'
+            quantumKeeperAttr = cxx_writer.Attribute('quant_keeper', quantumKeeperType.makeRef(), 'private')
+            extPortMembers.append(quantumKeeperAttr)
+            extPortCtorParams.append(cxx_writer.Parameter('quant_keeper', quantumKeeperType.makeRef()))
+            extPortCtorInit.append('quant_keeper(quant_keeper)')
+        dmiPtrValidAttr = cxx_writer.Attribute('dmi_ptr_valid', cxx_writer.boolType, 'private')
+        extPortMembers.append(dmiPtrValidAttr)
+        dmiDataAttr = cxx_writer.Attribute('dmi_data', tlmDmiType, 'private')
+        extPortMembers.append(dmiDataAttr)
+        extPortCtorCode += 'this->dmi_ptr_valid = false;\n'
     else:
-        peqType = cxx_writer.TemplateType('tlm_utils::peq_with_cb_and_phase', [TLMMemoryType], 'tlm_utils/peq_with_cb_and_phase.h')
-        tlmPortElements.append(cxx_writer.Attribute('m_peq', peqType, 'private'))
-        tlmPortInit.append('m_peq(this, &TLMMemory::peq_cb)')
-        tlmPortInit.append('request_in_progress(NULL)')
-        constructorCode += """// Register callbacks for incoming interface method calls.
+        peqType = cxx_writer.TemplateType('tlm_utils::peq_with_cb_and_phase', [tlmMemoryType], 'tlm_utils/peq_with_cb_and_phase.h')
+        extPortMembers.append(cxx_writer.Attribute('m_peq', peqType, 'private'))
+        extPortCtorInit.append('m_peq(this, &TLMMemory::peq_cb)')
+        extPortCtorInit.append('request_in_progress(NULL)')
+        extPortCtorCode += """// Register callbacks for incoming interface method calls.
             this->init_socket.register_nb_transport_bw(this, &TLMMemory::nb_transport_bw);
             """
 
-    tlmPortElements += aliasAttrs
+    # Constructors and Destructors
+    extPortCtorBody = cxx_writer.Code(extPortCtorCode + 'end_module();')
+    extPortCtor = cxx_writer.Constructor(extPortCtorBody, 'public', extPortCtorParams + aliasParams, extPortCtorInit + aliasInit)
 
-    extPortDecl = cxx_writer.ClassDeclaration('TLMMemory', tlmPortElements, [memIfType, cxx_writer.sc_moduleType], namespaces = [namespace])
-    extPortDecl.addDocString(brief = 'Port Class', detail = 'Defines the TLM ports used by the core for communicating with other modules.')
-    constructorBody = cxx_writer.Code(constructorCode + 'end_module();')
-    publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams + aliasParams, tlmPortInit + aliasInit)
-    extPortDecl.addConstructor(publicExtPortConstr)
+    # Class
+    extPortClass = cxx_writer.ClassDeclaration('TLMMemory', extPortMembers + aliasAttrs, [memIfType, cxx_writer.sc_moduleType], namespaces = [namespace])
+    extPortClass.addDocString(brief = 'Port Class', detail = 'Defines the TLM ports used by the core for communicating with other modules.')
+    extPortClass.addConstructor(extPortCtor)
 
-    return extPortDecl
+    return extPortClass
 
+################################################################################
+# Interrupt Port Classes
+################################################################################
 def getCPPIRQPorts(self, namespace):
-    """Returns the classes implementing the interrupt ports; there can
-    be two different kind of ports: systemc based or TLM based"""
+    """Returns the classes implementing the interrupt ports. There can be two
+    different kind of ports: SystemC-based or TLM-based."""
+
+    tlmPayloadType = cxx_writer.Type('tlm::tlm_generic_payload', 'tlm.h')
+    tlmSyncEnumType = cxx_writer.Type('tlm::tlm_sync_enum', 'tlm.h')
+
     TLMWidth = []
     SyscWidth = []
     for i in self.irqs:
@@ -550,15 +696,20 @@ def getCPPIRQPorts(self, namespace):
                 if not i.portWidth in SyscWidth:
                     SyscWidth.append(i.portWidth)
 
-    # Lets now create the potyrt classes:
-    classes = []
-    for width in TLMWidth:
-        # TLM ports: I declare a normal TLM slave
-        tlmsocketType = cxx_writer.TemplateType('tlm_utils::multi_passthrough_target_socket', ['TLMIntrPort_' + str(width), str(width), 'tlm::tlm_base_protocol_types', 1, 'sc_core::SC_ZERO_OR_MORE_BOUND'], 'tlm_utils/multi_passthrough_target_socket.h')
-        payloadType = cxx_writer.Type('tlm::tlm_generic_payload', 'tlm.h')
-        tlmPortElements = []
+    irqPortClasses = []
 
-        blockTransportCode = """unsigned char* ptr = trans.get_data_ptr();
+    # TLM Ports
+    # Declared as normal TLM slaves.
+    for portWidth in TLMWidth:
+        tlmTargetSocketType = cxx_writer.TemplateType('tlm_utils::multi_passthrough_target_socket', ['TLMIntrPort_' + str(portWidth), str(portWidth), 'tlm::tlm_base_protocol_types', 1, 'sc_core::SC_ZERO_OR_MORE_BOUND'], 'tlm_utils/multi_passthrough_target_socket.h')
+
+        irqPortMembers = []
+        irqPortCtorParams = []
+        irqPortCtorInit = []
+        irqPortCtorCode = ''
+
+        # Methods: b_transport()
+        bTransportCode = """unsigned char* ptr = trans.get_data_ptr();
             sc_dt::uint64 adr = trans.get_address();
             if (*ptr == 0) {
                 // Lower the interrupt.
@@ -569,222 +720,158 @@ def getCPPIRQPorts(self, namespace):
             }
             trans.set_response_status(tlm::TLM_OK_RESPONSE);
         """
-        blockTransportBody = cxx_writer.Code(blockTransportCode)
+        bTransportBody = cxx_writer.Code(bTransportCode)
         tagParam = cxx_writer.Parameter('tag', cxx_writer.intType)
-        payloadParam = cxx_writer.Parameter('trans', payloadType.makeRef())
+        payloadParam = cxx_writer.Parameter('trans', tlmPayloadType.makeRef())
         delayParam = cxx_writer.Parameter('delay', cxx_writer.sc_timeType.makeRef())
-        blockTransportDecl = cxx_writer.Method('b_transport', blockTransportBody, cxx_writer.voidType, 'public', [tagParam, payloadParam, delayParam])
-        tlmPortElements.append(blockTransportDecl)
+        bTransportMethod = cxx_writer.Method('b_transport', bTransportBody, cxx_writer.voidType, 'public', [tagParam, payloadParam, delayParam])
+        irqPortMembers.append(bTransportMethod)
 
-        debugTransportBody = cxx_writer.Code(blockTransportCode + 'return trans.get_data_length();')
-        debugTransportDecl = cxx_writer.Method('transport_dbg', debugTransportBody, cxx_writer.uintType, 'public', [tagParam, payloadParam])
-        tlmPortElements.append(debugTransportDecl)
+        # Methods: transport_dbg()
+        debugTransportBody = cxx_writer.Code(bTransportCode + 'return trans.get_data_length();')
+        debugTransportMethod = cxx_writer.Method('transport_dbg', debugTransportBody, cxx_writer.uintType, 'public', [tagParam, payloadParam])
+        irqPortMembers.append(debugTransportMethod)
 
-        nblockTransportCode = """THROW_EXCEPTION("Method not yet implemented.");
+        # Methods: nb_transport_fw()
+        nbTransportCode = """THROW_EXCEPTION("Method not yet implemented.");
         return tlm::TLM_COMPLETED;
         """
-        nblockTransportBody = cxx_writer.Code(nblockTransportCode)
-        nblockTransportBody.addInclude('common/report.hpp')
-        sync_enumType = cxx_writer.Type('tlm::tlm_sync_enum', 'tlm.h')
+        nbTransportBody = cxx_writer.Code(nbTransportCode)
+        nbTransportBody.addInclude('common/report.hpp')
         phaseParam = cxx_writer.Parameter('phase', cxx_writer.Type('tlm::tlm_phase').makeRef())
-        nblockTransportDecl = cxx_writer.Method('nb_transport_fw', nblockTransportBody, sync_enumType, 'public', [tagParam, payloadParam, phaseParam, delayParam])
-        tlmPortElements.append(nblockTransportDecl)
+        nbTransportMethod = cxx_writer.Method('nb_transport_fw', nbTransportBody, tlmSyncEnumType, 'public', [tagParam, payloadParam, phaseParam, delayParam])
+        irqPortMembers.append(nbTransportMethod)
 
-        socketAttr = cxx_writer.Attribute('target_socket', tlmsocketType, 'public')
-        tlmPortElements.append(socketAttr)
+        # Attributes and Initialization
+        irqPortCtorParams.append(cxx_writer.Parameter('port_name', cxx_writer.sc_module_nameType))
+        irqPortCtorInit.append('sc_module(port_name)')
+
         from isa import resolveBitType
-        widthType = resolveBitType('BIT<' + str(width) + '>')
+        widthType = resolveBitType('BIT<' + str(portWidth) + '>')
         irqSignalAttr = cxx_writer.Attribute('irq_signal', widthType.makeRef(), 'public')
-        tlmPortElements.append(irqSignalAttr)
-        constructorCode = ''
-        tlmPortInit = []
-        constructorParams = []
-        constructorParams.append(cxx_writer.Parameter('port_name', cxx_writer.sc_module_nameType))
-        constructorParams.append(cxx_writer.Parameter('irq_signal', widthType.makeRef()))
-        tlmPortInit.append('sc_module(port_name)')
-        tlmPortInit.append('irq_signal(irq_signal)')
-        tlmPortInit.append('target_socket(port_name)')
-        constructorCode += 'this->target_socket.register_b_transport(this, &TLMIntrPort_' + str(width) + '::b_transport);\n'
-        constructorCode += 'this->target_socket.register_transport_dbg(this, &TLMIntrPort_' + str(width) + '::transport_dbg);\n'
-        constructorCode += 'this->target_socket.register_nb_transport_fw(this, &TLMIntrPort_' + str(width) + '::nb_transport_fw);\n'
-        irqPortDecl = cxx_writer.ClassDeclaration('TLMIntrPort_' + str(width), tlmPortElements, [cxx_writer.sc_moduleType], namespaces = [namespace])
-        constructorBody = cxx_writer.Code(constructorCode + 'end_module();')
-        publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams, tlmPortInit)
-        irqPortDecl.addConstructor(publicExtPortConstr)
-        classes.append(irqPortDecl)
-    for width in SyscWidth:
-        # SystemC ports: I simply have a method listening for a signal; note that in order to lower the interrupt,
-        # the signal has to be equal to 0
+        irqPortMembers.append(irqSignalAttr)
+        irqPortCtorParams.append(cxx_writer.Parameter('irq_signal', widthType.makeRef()))
+        irqPortCtorInit.append('irq_signal(irq_signal)')
+
+        socketAttr = cxx_writer.Attribute('target_socket', tlmTargetSocketType, 'public')
+        irqPortMembers.append(socketAttr)
+        irqPortCtorInit.append('target_socket(port_name)')
+        irqPortCtorCode += 'this->target_socket.register_b_transport(this, &TLMIntrPort_' + str(portWidth) + '::b_transport);\n'
+        irqPortCtorCode += 'this->target_socket.register_nb_transport_fw(this, &TLMIntrPort_' + str(portWidth) + '::nb_transport_fw);\n'
+        irqPortCtorCode += 'this->target_socket.register_transport_dbg(this, &TLMIntrPort_' + str(portWidth) + '::transport_dbg);\n'
+
+        # Constructors and Destructors
+        irqPortCtorBody = cxx_writer.Code(irqPortCtorCode + 'end_module();')
+        irqPortCtor = cxx_writer.Constructor(irqPortCtorBody, 'public', irqPortCtorParams, irqPortCtorInit)
+
+        # Class
+        irqPortClass = cxx_writer.ClassDeclaration('TLMIntrPort_' + str(portWidth), irqPortMembers, [cxx_writer.sc_moduleType], namespaces = [namespace])
+        irqPortClass.addConstructor(irqPortCtor)
+        irqPortClasses.append(irqPortClass)
+
+    # SystemC Ports
+    # Contain a method sensitive to a signal. Note that in order to lower the
+    # interrupt the signal has to be 0.
+    for portWidth in SyscWidth:
+        irqPortMembers = []
+        irqPortCtorParams = []
+        irqPortCtorInit = []
+        irqPortCtorCode = ''
+
+        # Methods: irq_received()
+        irqReceivedCode = 'this->irq_signal = this->irq_received_signal.read();'
+        irqReceivedMethod = cxx_writer.Method('irq_received', cxx_writer.Code(irqReceivedCode), cxx_writer.voidType, 'public')
+        irqPortMembers.append(irqReceivedMethod)
+
+        # Attributes and Initialization
+        irqPortCtorParams.append(cxx_writer.Parameter('port_name', cxx_writer.sc_module_nameType))
+        irqPortCtorInit.append('sc_module(port_name)')
+
+        from isa import resolveBitType
+        widthType = resolveBitType('BIT<' + str(portWidth) + '>')
         widthSignalType = cxx_writer.TemplateType('sc_signal', [widthType], 'systemc.h')
-        systemcPortElements = []
-        sensitiveMethodCode = 'this->irq_signal = this->irq_received_signal.read();'
-        sensitiveMethodBody = cxx_writer.Code(sensitiveMethodCode)
-        sensitiveMethodDecl = cxx_writer.Method('irq_received', sensitiveMethodBody, cxx_writer.voidType, 'public')
-        systemcPortElements.append(sensitiveMethodDecl)
-        signalAttr = cxx_writer.Attribute('irq_received_signal', widthSignalType, 'public')
-        systemcPortElements.append(signalAttr)
         irqSignalAttr = cxx_writer.Attribute('irq_signal', widthType.makeRef(), 'public')
-        tlmPortElements.append(irqSignalAttr)
-        constructorCode = ''
-        tlmPortInit = []
-        constructorParams = []
-        constructorParams.append(cxx_writer.Parameter('port_name', cxx_writer.sc_module_nameType))
-        constructorParams.append(cxx_writer.Parameter('irq_signal', widthType.makeRef()))
-        tlmPortInit.append('sc_module(port_name)')
-        tlmPortInit.append('irq_signal(irq_signal)')
-        constructorCode += 'SC_METHOD();\nsensitive << this->irq_received_signal;\n'
-        irqPortDecl = cxx_writer.ClassDeclaration('SCIntrPort_' + str(width), systemcPortElements, [cxx_writer.sc_moduleType], namespaces = [namespace])
-        irqPortDecl.addDocString(brief = 'Interrupt Port Class', detail = 'Defines both SystemC and TLM ports for convenience.')
-        constructorBody = cxx_writer.Code(constructorCode + 'end_module();')
-        publicExtPortConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams, tlmPortInit)
-        irqPortDecl.addConstructor(publicExtPortConstr)
-        classes.append(irqPortDecl)
-    return classes
+        irqPortMembers.append(irqSignalAttr)
+        irqPortCtorParams.append(cxx_writer.Parameter('irq_signal', widthType.makeRef()))
+        irqPortCtorInit.append('irq_signal(irq_signal)')
 
-def getCPPPINPorts(self, namespace):
-    """Returns the code implementing pins for communication with external world.
-    there are both incoming and outgoing external ports. For the outgoing
-    I simply have to declare the port class (like memory ports), for the
-    incoming I also have to specify the operation which has to be performed
-    when the port is triggered (they are like interrupt ports)"""
-    if len(self.pins) == 0:
-        return None
+        irqSignalAttr = cxx_writer.Attribute('irq_received_signal', widthSignalType, 'public')
+        irqPortMembers.append(irqSignalAttr)
+        irqPortCtorCode += 'SC_METHOD();\nsensitive << this->irq_received_signal;\n'
 
-    alreadyDecl = []
-    inboundSysCPorts = []
-    outboundSysCPorts = []
-    inboundTLMPorts = []
-    outboundTLMPorts = []
-    for port in self.pins:
-        if port.inbound:
-            # I add all the inbound ports since there is an action specified for each
-            # of them. In order to correctly execute the specified action the
-            # port needs to have references to all the architectural elements
-            if port.systemc:
-                inboundSysCPorts.append(port)
-            else:
-                inboundTLMPorts.append(port)
-        else:
-            # I have to declare a new port only if there is not yet another
-            # port with same width and it is systemc or tlm.
-            if not (str(port.portWidth) + '_' + str(port.systemc)) in alreadyDecl:
-                if port.systemc:
-                    outboundSysCPorts.append(port)
-                else:
-                    outboundTLMPorts.append(port)
-                alreadyDecl.append(str(port.portWidth) + '_' + str(self.systemc))
+        # Constructors and Destructors
+        irqPortCtorBody = cxx_writer.Code(irqPortCtorCode + 'end_module();')
+        irqPortCtor = cxx_writer.Constructor(irqPortCtor, 'public', irqPortCtorParams, irqPortCtorInit)
 
-    pinClasses = []
-    # Now I have to actually declare the ports; I declare only
-    # blocking interfaces
-    # outgoing
-    for port in outboundTLMPorts:
-        pinPortElements = []
+        irqPortClass = cxx_writer.ClassDeclaration('SCIntrPort_' + str(portWidth), irqPortMembers, [cxx_writer.sc_moduleType], namespaces = [namespace])
+        irqPortClass.addDocString(brief = 'Interrupt Port Class', detail = 'Defines both SystemC and TLM ports for convenience.')
+        irqPortClass.addConstructor(irqPortCtor)
+        irqPortClasses.append(irqPortClass)
 
-        tlm_dmiType = cxx_writer.Type('tlm::tlm_dmi', 'tlm.h')
-        PinPortType = cxx_writer.Type('TLMOutPin_' + str(port.portWidth))
-        tlminitsocketType = cxx_writer.TemplateType('tlm_utils::multi_passthrough_initiator_socket', [PinPortType, port.portWidth, 'tlm::tlm_base_protocol_types', 1, 'sc_core::SC_ZERO_OR_MORE_BOUND'], 'tlm_utils/multi_passthrough_initiator_socket.h')
-        payloadType = cxx_writer.Type('tlm::tlm_generic_payload', 'tlm.h')
-        pinPortInit = []
-        constructorParams = []
+    return irqPortClasses
 
-        sendPINBody = cxx_writer.Code("""tlm::tlm_generic_payload trans;
-        sc_time delay;
-        trans.set_address(address);
-        trans.set_write();
-        trans.set_data_ptr((unsigned char*)&datum);
-        trans.set_data_length(sizeof(datum));
-        trans.set_streaming_width(sizeof(datum));
-        trans.set_byte_enable_ptr(0);
-        trans.set_dmi_allowed(false);
-        trans.set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);
-        this->init_socket->b_transport(trans, delay);
-
-        if (trans.is_response_error()) {
-            std::string error_str("Error from b_transport, response status = " + trans.get_response_string());
-            SC_REPORT_ERROR("TLM-2", error_str.c_str());
-        }
-        """)
-        sendPINBody.addInclude('common/report.hpp')
-        sendPINBody.addInclude('tlm.h')
-        from isa import resolveBitType
-        PINWidthType = resolveBitType('BIT<' + str(port.portWidth) + '>')
-        addressParam = cxx_writer.Parameter('address', PINWidthType.makeRef().makeConst())
-        datumParam = cxx_writer.Parameter('datum', PINWidthType)
-        sendPINDecl = cxx_writer.Method('send_pin_req', sendPINBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
-        pinPortElements.append(sendPINDecl)
-
-        constructorParams.append(cxx_writer.Parameter('pin_name', cxx_writer.sc_module_nameType))
-        pinPortInit.append('sc_module(pin_name)')
-        initSockAttr = cxx_writer.Attribute('init_socket', tlminitsocketType, 'public')
-        pinPortInit.append('init_socket(\"init_socket\")')
-        pinPortElements.append(initSockAttr)
-
-        pinPortDecl = cxx_writer.ClassDeclaration('TLMOutPin_' + str(port.portWidth), pinPortElements, [cxx_writer.sc_moduleType], namespaces = [namespace])
-        pinPortDecl.addDocString(brief = 'Pin Class', detail = 'Defines the pins used by the core for communicating with other modules. Outgoing ports call a given interface of another module, while incoming ports need to define the interface to be used by other modules.')
-        constructorBody = cxx_writer.Code('end_module();')
-        publicPINPortConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams, pinPortInit)
-        pinPortDecl.addConstructor(publicPINPortConstr)
-        pinClasses.append(pinPortDecl)
-
-    for port in outboundSysCPorts:
-        raise Exception('Outbound SystemC ports not yet supported.')
-
-    # incoming
-    for port in inboundTLMPorts:
-        raise Exception('Inbound TLM ports not yet supported.')
-
-    for port in inboundSysCPorts:
-        raise Exception('Inbound SystemC ports not yet supported.')
-
-    return pinClasses
-
+###############################################################################
+# Interrupt Port Test Functions
+################################################################################
 def getCPPIRQTests(self, trace, combinedTrace, namespace):
-    """Returns the code implementing the tests for the interrupts"""
-    from processor import extractRegInterval
-    from registerWriter import registerType
-    testFuns = []
-    global testNames
-    from procWriter import testNames, instrCtorValues
+    """Returns the code for testing the interrupt ports."""
 
-    archElemsDeclStr = ''
-    destrDecls = ''
-    for reg in self.regs:
-        archElemsDeclStr += registerType.name + ' ' + reg.name + ';\n'
-    for regB in self.regBanks:
-        if (regB.constValue and len(regB.constValue) < regB.numRegs)  or (regB.delay and len(regB.delay) < regB.numRegs):
-            archElemsDeclStr += registerType.name + ' ' + regB.name + '(' + str(regB.numRegs) + ');\n'
-            for i in range(0, regB.numRegs):
-                if regB.constValue.has_key(i) or regB.delay.has_key(i):
-                    archElemsDeclStr += regB.name + '.set_new_register(' + str(i) + ', new ' + registerType.name + '());\n'
-                else:
-                    archElemsDeclStr += regB.name + '.set_new_register(' + str(i) + ', new ' + registerType.name + '());\n'
+    # Code common to all tests of a single instruction: Variables are declared
+    # and the IRQ port instantiated with stub parameters.
+    declCode = ''
+
+    # Registers, Aliases and Register Banks
+    if self.regs or self.regBanks:
+        from registerWriter import registerContainerType
+        declCode += registerContainerType.name + ' R('
+        # Register const or reset values could be processor variables.
+        # Since we do not have the values for those (probably program-dependent),
+        # we pass on zeros to the Registers ctor.
+        Code = ''
+        for reg in self.regs:
+            if isinstance(reg.constValue, str):
+                Code += '0, '
+            if isinstance(reg.defValue, str):
+                Code += '0, '
+
+        for regBank in self.regBanks:
+            for regConstValue in regBank.constValue.values():
+                if isinstance(regConstValue, str):
+                    Code += '0, '
+            for regDefaultValue in regBank.defValues:
+                if isinstance(regDefaultValue, str):
+                    Code += '0, '
+        if Code:
+            declCode += Code[:-2] + ');\n'
         else:
-            archElemsDeclStr += registerType.name + ' ' + regB.name + ' = new ' + registerType.name + '[' + str(regB.numRegs) + '];\n'
-            destrDecls += 'delete [] ' + regB.name + ';\n'
-    for alias in self.aliasRegs:
-        archElemsDeclStr += registerType.name + ' ' + alias.name + ';\n'
-    for aliasB in self.aliasRegBanks:
-        archElemsDeclStr += str(registerType.makePointer()) + ' ' + aliasB.name + ' = new ' + registerType.name + '[' + str(aliasB.numRegs) + '];\n'
-        destrDecls += 'delete [] ' + aliasB.name + ';\n'
-    memAliasInit = ''
-    for alias in self.memAlias:
-        memAliasInit += ', ' + alias.alias
+            declCode += ');\n'
+        # We also explicitly reset all regs to zero, instead of the reset value.
+        # Test writers tend to mask status registers apart from the bits they
+        # are interested in, which is perhaps not quite correct but intuitive.
+        declCode += 'R.write_force(0);\n'
 
+    #Code = ''
+    #for alias in self.memAlias:
+        #Code += ', ' + alias.alias
+
+    # Memory
     if (trace or (self.memory and self.memory[2])) and not self.systemc:
-        archElemsDeclStr += 'unsigned total_cycles;\n'
+        declCode += 'unsigned total_cycles;\n'
     if self.memory:
-        memDebugInit = ''
+        Code = ''
         if self.memory[2]:
-            memDebugInit += ', total_cycles'
+            Code += ', total_cycles'
         if self.memory[3]:
-            memDebugInit += ', ' + self.memory[3]
-        archElemsDeclStr += 'LocalMemory ' + self.memory[0] + '(' + str(self.memory[1]) + memDebugInit + memAliasInit + ');\n'
-    # Note how I declare local memories even for TLM ports. I use 1MB as default dimension
+            Code += ', ' + self.memory[3]
+        declCode += namespace + '::LocalMemory ' + self.memory[0] + '(' + str(self.memory[1]) + Code + ');\n'
+
+    # Ports
+    # Local memories are declared even for TLM ports. The default memory size is
+    # 1MB.
     for tlmPorts in self.tlmPorts.keys():
-        archElemsDeclStr += 'LocalMemory ' + tlmPorts + '(' + str(1024*1024) + memAliasInit + ');\n'
-    # Now I declare the PIN stubs for the outgoing PIN ports
-    # and alts themselves
+        declCode += namespace + '::LocalMemory ' + tlmPorts + '(' + str(1024*1024) + ');\n'
+
+    # Pins
     for pinPort in self.pins:
         if not pinPort.inbound:
             if pinPort.systemc:
@@ -796,118 +883,97 @@ def getCPPIRQTests(self, trace, combinedTrace, namespace):
             else:
                 pinPortTypeName += 'OutPin_'
             pinPortTypeName += str(pinPort.portWidth)
-            archElemsDeclStr += pinPortTypeName + ' ' + pinPort.name + '_pin(\"' + pinPort.name + '_pin\");\n'
-            archElemsDeclStr += 'PINTarget<' + str(pinPort.portWidth) + '> ' + pinPort.name + '_target_pin(\"' + pinPort.name + '_target_pin\");\n'
-            archElemsDeclStr += pinPort.name + '_pin.init_socket.bind(' + pinPort.name + '_target_pin.target_socket);\n'
+            declCode += namespace + '::' + pinPortTypeName + ' ' + pinPort.name + '_pin(\"' + pinPort.name + '_pin\");\n'
+            declCode += 'PINTarget<' + str(pinPort.portWidth) + '> ' + pinPort.name + '_target_pin(\"' + pinPort.name + '_target_pin\");\n'
+            declCode += pinPort.name + '_pin.init_socket.bind(' + pinPort.name + '_target_pin.target_socket);\n'
 
-    # Now we perform the alias initialization; note that they need to be initialized according to the initialization graph
-    # (there might be dependences among the aliases)
-    aliasInit = ''
-    import networkx as NX
-    from registerWriter import aliasGraph
-    for alias in aliasGraph:
-        if isinstance(alias.initAlias, type('')):
-            index = extractRegInterval(alias.initAlias)
-            if index:
-                curIndex = index[0]
-                try:
-                    for i in range(0, alias.numRegs):
-                        aliasInit += alias.name + '[' + str(i) + '].update_alias(' + alias.initAlias[:alias.initAlias.find('[')] + '[' + str(curIndex) + ']);\n'
-                        curIndex += 1
-                except AttributeError:
-                    aliasInit += alias.name + '.update_alias(' + alias.initAlias[:alias.initAlias.find('[')] + '[' + str(curIndex) + '], ' + str(alias.offset) + ');\n'
-            else:
-                aliasInit += alias.name + '.update_alias(' + alias.initAlias + ', ' + str(alias.offset) + ');\n'
-        else:
-            curIndex = 0
-            for curAlias in alias.initAlias:
-                index = extractRegInterval(curAlias)
-                if index:
-                    for curRange in range(index[0], index[1] + 1):
-                        aliasInit += alias.name + '[' + str(curIndex) + '].update_alias(' + curAlias[:curAlias.find('[')] + '[' + str(curRange) + ']);\n'
-                        curIndex += 1
-                else:
-                    aliasInit += alias.name + '[' + str(curIndex) + '].update_alias(' + curAlias + ');\n'
-                    curIndex += 1
-
+    # IRQ Tests
+    from procWriter import testNames
+    irqTestFunctions = []
     for irq in self.irqs:
         from isa import resolveBitType
         irqType = resolveBitType('BIT<' + str(irq.portWidth) + '>')
-        archElemsDeclStr += '\n// Fake interrupt line ' + str(irqType) + ' ' + irq.name + ';\n'
+        declCode += '\n// Fake interrupt line ' + str(irqType) + ' ' + irq.name + ';\n'
+
+        # Individual tests of a single IRQ port.
         testNum = 0
         for test in irq.tests:
-            testName = 'irq_test_' + irq.name + '_' + str(testNum)
-            code = archElemsDeclStr
+            # Instantiate architectural elements.
+            irqTestCode = declCode
 
-            # Note that each test is composed of two parts: the first one
-            # containing the status of the processor before the interrupt and
-            # then the status of the processor after
+            # Initialize global resources.
+            # Note that each test is composed of two parts: The first contains
+            # the status of the processor before the interrupt and the second
+            # contains the status after.
             for resource, value in test[0].items():
-                # I set the initial value of the global resources
-                brackIndex = resource.find('[')
+                bracket = resource.find('[')
                 memories = self.tlmPorts.keys()
                 if self.memory:
                     memories.append(self.memory[0])
-                if brackIndex > 0 and resource[:brackIndex] in memories:
+                if bracket > 0 and resource[:bracket] in memories:
                     try:
-                        code += resource[:brackIndex] + '.write_word_dbg(' + hex(int(resource[brackIndex + 1:-1])) + ', ' + hex(value) + ');\n'
+                        irqTestCode += resource[:bracket] + '.write_word_dbg(' + hex(int(resource[bracket + 1:-1])) + ', ' + hex(value) + ');\n'
                     except ValueError:
-                        code += resource[:brackIndex] + '.write_word_dbg(' + hex(int(resource[brackIndex + 1:-1], 16)) + ', ' + hex(value) + ');\n'
+                        irqTestCode += resource[:bracket] + '.write_word_dbg(' + hex(int(resource[bracket + 1:-1], 16)) + ', ' + hex(value) + ');\n'
                 elif resource == irq.name:
-                    code += resource + ' = ' + hex(value) + ';\n'
+                    irqTestCode += resource + ' = ' + hex(value) + ';\n'
                 else:
-                    code += resource + '.write_force(' + hex(value) + ');\n'
+                    irqTestCode += resource + '.write_force(' + hex(value) + ');\n'
 
-            # Now I declare the actual interrupt code
-            code += 'if ('
+            # Set interrupts.
+            irqTestCode += 'if ('
             if (irq.condition):
-                code += '('
-            code += irq.name + ' != -1'
+                irqTestCode += '('
+            irqTestCode += irq.name + ' != -1'
             if (irq.condition):
-                code += ') && (' + irq.condition + ')'
-            code += ') {\n'
-            # Now here we insert the actual interrupt behavior by simply creating and calling the
-            # interrupt instruction
-            code += + irq.name + 'IntrInstruction test_instruction(' + instrCtorValues + ', ' + irq.name + ');\n'
-            code += """try {
+                irqTestCode += ') && (' + irq.condition + ')'
+            irqTestCode += ') {\n'
+
+            # Instantiate IRQ instruction under test.
+            irqTestCode += + irq.name + 'IntrInstruction test_instruction(' + instrCtorValues + ', ' + irq.name + ');\n'
+
+            # Run IRQ instruction behavior.
+            irqTestCode += """try {
                 test_instruction.behavior();
             }
             catch(annul_exception& etc) {
             }"""
-            code += '\n}\n'
+            irqTestCode += '\n}\n'
 
-            # finally I check the correctness of the executed operation
+            # Test the output values.
             for resource, value in test[1].items():
-                # I check the value of the listed resources to make sure that the
-                # computation executed correctly
-                code += 'BOOST_CHECK_EQUAL('
-                brackIndex = resource.find('[')
+                irqTestCode += 'BOOST_CHECK_EQUAL('
+                bracket = resource.find('[')
                 memories = self.tlmPorts.keys()
                 if self.memory:
                     memories.append(self.memory[0])
-                if brackIndex > 0 and resource[:brackIndex] in memories:
+                if bracket > 0 and resource[:bracket] in memories:
                     try:
-                        code += resource[:brackIndex] + '.read_word_dbg(' + hex(int(resource[brackIndex + 1:-1])) + ')'
+                        irqTestCode += resource[:bracket] + '.read_word_dbg(' + hex(int(resource[bracket + 1:-1])) + ')'
                     except ValueError:
-                        code += resource[:brackIndex] + '.read_word_dbg(' + hex(int(resource[brackIndex + 1:-1], 16)) + ')'
-                elif brackIndex > 0 and resource[:brackIndex] in outPinPorts:
+                        irqTestCode += resource[:bracket] + '.read_word_dbg(' + hex(int(resource[bracket + 1:-1], 16)) + ')'
+                elif bracket > 0 and resource[:bracket] in outPinPorts:
                     try:
-                        code += resource[:brackIndex] + '_target.read_pin(' + hex(int(resource[brackIndex + 1:-1])) + ')'
+                        irqTestCode += resource[:bracket] + '_target.read_pin(' + hex(int(resource[bracket + 1:-1])) + ')'
                     except ValueError:
-                        code += resource[:brackIndex] + '_target.read_pin(' + hex(int(resource[brackIndex + 1:-1], 16)) + ')'
+                        irqTestCode += resource[:bracket] + '_target.read_pin(' + hex(int(resource[bracket + 1:-1], 16)) + ')'
                 else:
-                    code += resource + '.read_force()'
-                code += ', (' + str(self.bitSizes[1]) + ')' + hex(value) + ');\n\n'
-            code += destrDecls
-            curTest = cxx_writer.Code(code)
-            curTest.addInclude('#include \"instructions.hpp\"')
-            wariningDisableCode = '#ifdef _WIN32\n#pragma warning(disable : 4101)\n#endif\n'
+                    irqTestCode += resource + '.read_force()'
+                irqTestCode += ', (' + str(self.bitSizes[1]) + ')' + hex(value) + ');\n\n'
+
+            irqTestBody = cxx_writer.Code(irqTestCode)
+            irqTestBody.addInclude('#include \"instructions.hpp\"')
+            disableWarningsCode = '#ifdef _WIN32\n#pragma warning(disable : 4101)\n#endif\n'
             includeUnprotectedCode = '#define private public\n#define protected public\n#include \"registers.hpp\"\n#include \"memory.hpp\"\n#undef private\n#undef protected\n'
-            curTest.addInclude(['boost/test/test_tools.hpp', 'common/report.hpp', wariningDisableCode, includeUnprotectedCode])
-            curTestFunction = cxx_writer.Function(testName, curTest, cxx_writer.voidType)
-            curTestFunction.addDocString(brief = 'IRQ Test Function', detail = 'Called by test/main.cpp::main() via the boost::test framework. Instantiates the required modules and tests correct IRQ handling.')
-            testFuns.append(curTestFunction)
+            irqTestBody.addInclude(['boost/test/test_tools.hpp', 'common/report.hpp', disableWarningsCode, includeUnprotectedCode])
+
+            testName = 'irq_test_' + irq.name + '_' + str(testNum)
+            irqTestFunction = cxx_writer.Function(testName, irqTestBody, cxx_writer.voidType)
+            irqTestFunction.addDocString(brief = 'IRQ Test Function', detail = 'Called by test/main.cpp::main() via the boost::test framework. Instantiates the required modules and tests correct IRQ handling.')
+            irqTestFunctions.append(irqTestFunction)
             testNames.append(testName)
             testNum += 1
 
-    return testFuns
+    return irqTestFunctions
+
+################################################################################

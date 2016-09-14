@@ -33,8 +33,9 @@
 * or see <http://www.gnu.org/licenses/>.
 *
 *******************************************************************************/
-#ifndef TRAP_REGISTER_ABSTRACTION_H_
-#define TRAP_REGISTER_ABSTRACTION_H_
+
+#ifndef TRAP_REGISTER_ABSTRACTION_H
+#define TRAP_REGISTER_ABSTRACTION_H
 
 #include "common/report.hpp"
 
@@ -1005,4 +1006,4 @@ void clock_cycle() {
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // TRAP_REGISTER_ABSTRACTION_H

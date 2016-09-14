@@ -59,6 +59,9 @@ except:
 
 import operator
 
+################################################################################
+# Globals and Helpers
+################################################################################
 def expandPatterns(curPattern, genericPattern, tablePattern):
     """taken in input the current pattern and the generic one,
     it computes all the possible combinations of the pattern"""
@@ -167,6 +170,9 @@ class SplitFunction:
     def __str__(self):
         return repr(self)
 
+################################################################################
+# Decoder Node
+################################################################################
 class DecodingNode:
     def __init__(self, patterns):
         self.patterns = patterns
@@ -232,6 +238,9 @@ class HuffmanNode:
     def __str__(self):
         return repr(self)
 
+################################################################################
+# Decoder
+################################################################################
 class decoderCreator:
     """Taking as input the different instructions with the associated
     bitstrings, this class contains all the necessary methods to create
@@ -919,3 +928,5 @@ class decoderCreator:
             import traceback
             traceback.print_exc()
             print ('Error in printing the decoding tree on file ' + filename)
+
+################################################################################

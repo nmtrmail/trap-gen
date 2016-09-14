@@ -38,7 +38,6 @@
 #
 ################################################################################
 
-
 try:
     import cxx_writer
 except ImportError:
@@ -298,3 +297,5 @@ class TestClassDecls(unittest.TestCase):
         self.assertEqual(lines[0], 'MyClass::MyClass() {\n')
         self.assertEqual(lines[1], '\n')
         self.assertEqual(lines[2], '} // MyClass()\n')
+
+################################################################################

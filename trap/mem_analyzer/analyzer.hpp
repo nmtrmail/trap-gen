@@ -37,8 +37,9 @@
 * (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
 *
 *******************************************************************************/
-#ifndef ANALYZER_HPP
-#define ANALYZER_HPP
+
+#ifndef ANALYZER_H
+#define ANALYZER_H
 
 #include <boost/filesystem.hpp>
 
@@ -82,4 +83,4 @@ class MemAnalyzer {
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // ANALYZER_H

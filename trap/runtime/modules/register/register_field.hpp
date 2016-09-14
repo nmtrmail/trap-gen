@@ -33,8 +33,9 @@
 * or see <http://www.gnu.org/licenses/>.
 *
 *******************************************************************************/
-#ifndef TRAP_REGISTER_FIELD_H_
-#define TRAP_REGISTER_FIELD_H_
+
+#ifndef TRAP_REGISTER_FIELD_H
+#define TRAP_REGISTER_FIELD_H
 
 #include "register_if.hpp"
 
@@ -309,4 +310,4 @@ class RegisterField
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // TRAP_REGISTER_FIELD_H

@@ -41,7 +41,6 @@
 import cxx_writer
 import procWriter, pipelineWriter, registerWriter, memWriter, interfaceWriter, portsWriter, irqWriter, licenses
 
-
 ################################################################################
 # Globals and Helpers
 ################################################################################
@@ -66,7 +65,6 @@ def extractRegInterval(regBankString):
     if int(interval[0]) > int(interval[1]):
         raise Exception('Invalid indices in registry bank identifier ' + regBankString + '.')
     return (int(interval[0]), int(interval[1]))
-
 
 ################################################################################
 # Processor
@@ -1151,7 +1149,6 @@ class Processor:
     ## @} Code Generation
     #---------------------------------------------------------------------------
 
-
 ################################################################################
 # Pipeline Model
 ################################################################################
@@ -1202,7 +1199,6 @@ class PipeStage:
 
     def setOperation(self, code):
         self.operation = code
-
 
 ################################################################################
 # Storage Models: Registers, Aliases, Register Banks and Memory
@@ -1492,7 +1488,6 @@ class MemoryAlias:
         self.address = address
         self.alias = alias
 
-
 ################################################################################
 # Interface Models: Interrupts, Ports, Pins and ABI
 ################################################################################
@@ -1717,7 +1712,6 @@ class ABI:
                 if (savedAddr[0] <= addr[0] and savedAddr[1] >= addr[0]) or (savedAddr[0] <= addr[1] and savedAddr[1] >= addr[1]):
                     raise Exception('Address range overlap between memories ' + name + ' and ' + memory + '.')
         self.memories[memory] = addr
-
 
 ################################################################################
 # Coprocessor Model

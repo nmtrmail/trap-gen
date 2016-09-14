@@ -1027,3 +1027,5 @@ class Folder:
                 printOnFile("    ctx.add_option('--" + option[0] + "', default=False, action='store_true', help='Defines the " + option[1] + " directive', dest='define_" + option[1].lower() + "')", wscriptFile)
 
         wscriptFile.close()
+
+################################################################################

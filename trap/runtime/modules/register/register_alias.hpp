@@ -33,8 +33,9 @@
 * or see <http://www.gnu.org/licenses/>.
 *
 *******************************************************************************/
-#ifndef TRAP_REGISTER_ALIAS_H_
-#define TRAP_REGISTER_ALIAS_H_
+
+#ifndef TRAP_REGISTER_ALIAS_H
+#define TRAP_REGISTER_ALIAS_H
 
 #include "register_if.hpp"
 #include "register_register.hpp"
@@ -793,4 +794,4 @@ class RegisterAlias
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // TRAP_REGISTER_ALIAS_H

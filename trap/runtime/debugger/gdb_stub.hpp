@@ -7,7 +7,7 @@
 *  _/      _/    _/     _/      _/    _/
 * _/      _/      _/  _/        _/   _/
 *
-* @file     gdb_stub->hpp
+* @file     gdb_stub.hpp
 * @brief    This file is part of the TRAP runtime library.
 * @details  Contains the methods necessary to communicate with GDB in order to
 *           debug software running on simulators. Source code takes inspiration
@@ -47,8 +47,9 @@
 *           still running. It seems there is a race condition with the GDB
 *           thread.
 *******************************************************************************/
-#ifndef TRAP_GDBSTUB_HPP
-#define TRAP_GDBSTUB_HPP
+
+#ifndef TRAP_GDB_STUB_H
+#define TRAP_GDB_STUB_H
 
 #include <csignal>
 #ifndef SIGTRAP
@@ -1137,4 +1138,4 @@ class GDBStub : public ToolsIf<IssueWidth>, public MemoryToolsIf<IssueWidth>, pu
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // TRAP_GDB_STUB_H

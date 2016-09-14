@@ -40,15 +40,13 @@
 
 import cxx_writer
 
-
 ################################################################################
 # Globals and Helpers
 ################################################################################
 from procWriter import hash_map_include, getFetchAddressCode, getDoFetchCode, getCacheInstrFetchCode, getDoDecodeCode, getPipeInstrIssueCode, getInterruptCode
 
-
 ################################################################################
-# Pipeline Class
+# Pipeline Classes
 ################################################################################
 def getCPPPipeline(self, trace, combinedTrace, model, namespace):
     # Returns the class representing a pipeline stage.
@@ -61,12 +59,12 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
     ## @name Pipeline Base Class
     #  @{
 
+    pipeClasses = []
     pipeBaseMembers = []
     pipeBaseCtorParams = []
     pipeBaseCtorValues = ''
     pipeBaseCtorInit = []
     pipeBaseCtorCode = ''
-    pipeElements = []
 
     # Attributes and Initialization
     for pipe in self.pipes:
@@ -132,7 +130,8 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
     pipeBaseMembers.append(NOPInstrAttr)
     pipeBaseCtorCode += 'this->NOP_instr = NULL;\n'
 
-    # Lets declare the interrupt instructions in case we have any and we also declare the signal attribute
+    # Declare the interrupt instructions if any and the corresponding signal
+    # attribute.
     for irq in self.irqs:
         IRQInstrType = cxx_writer.Type(irq.name + 'IntrInstruction', '#include \"instructions.hpp\"')
         IRQInstrAttr = cxx_writer.Attribute(irq.name + '_instr', IRQInstrType.makePointer(), 'public')
@@ -161,7 +160,7 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
     # Class
     pipeBaseClass = cxx_writer.ClassDeclaration('BasePipeStage', pipeBaseMembers, namespaces = [namespace])
     pipeBaseClass.addConstructor(pipeBaseCtor)
-    pipeElements.append(pipeBaseClass)
+    pipeClasses.append(pipeBaseClass)
 
     ## @} Pipeline Base Class
     #---------------------------------------------------------------------------
@@ -610,11 +609,11 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
         pipeClass.addConstructor(pipeCtor)
         if pipeStage.fetchStage:
             pipeClass.addDestructor(pipeDtor)
-        pipeElements.append(pipeClass)
+        pipeClasses.append(pipeClass)
 
     ## @} Pipeline Stage Classes
     #---------------------------------------------------------------------------
 
-    return pipeElements
+    return pipeClasses
 
 ################################################################################

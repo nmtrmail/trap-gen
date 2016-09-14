@@ -38,7 +38,6 @@
 #
 ################################################################################
 
-
 from SimpleDecls import *
 from CustomCode import *
 
@@ -529,3 +528,5 @@ class SCModule(ClassDeclaration):
     def __init__(self, className, members = [], superclasses = [], template = [], namespaces = []):
         ClassDeclaration.__init__(self, className, members, superclasses + [sc_moduleType], template, [], namespaces)
         self.data['public'] = [Define('SC_HAS_PROCESS(' + self.name + ');')] + self.data['public']
+
+################################################################################

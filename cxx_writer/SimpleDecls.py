@@ -45,37 +45,6 @@ import sys
 if sys.version_info >= (2,7):
     from collections import OrderedDict
 
-class DumpElement:
-    """Base element of all the elements which have to be dumped. All printable elements like
-    classes, attributes, methods .... derive from this class"""
-
-    def __init__(self,  name):
-        self.name = name
-        self.docbrief = ''
-        self.docdetail = ''
-
-    def addDocString(self, brief, detail):
-        self.docbrief = brief
-        self.docdetail = detail
-
-    def printDocString(self, writer, detail = True):
-      if self.docbrief == '' and self.docdetail == '': return
-      if detail and self.docdetail != '':
-          writer.write('/**\n* @brief ')
-          writer.write(self.docbrief + '\n', prefix = '*        ')
-          writer.write('*\n' + self.docdetail + '\n', prefix = '* ')
-          writer.write('*/\n')
-      else:
-          writer.write('/// ' + self.docbrief + '\n')
-
-    def __str__(self):
-        try:
-            stringWriter = Writer.StringWriter()
-            self.writeDeclaration(stringWriter)
-            return str(stringWriter)
-        except:
-            return self.name
-
 class Define:
     def __init__(self, defineStr, namespaces = [], includes = []):
         self.defineStr = defineStr
@@ -119,6 +88,37 @@ class UseNamespace:
 
     def __str__(self):
         return 'using namespace ' + self.namespace
+
+class DumpElement:
+    """Base element of all the elements which have to be dumped. All printable elements like
+    classes, attributes, methods .... derive from this class"""
+
+    def __init__(self,  name):
+        self.name = name
+        self.docbrief = ''
+        self.docdetail = ''
+
+    def addDocString(self, brief, detail):
+        self.docbrief = brief
+        self.docdetail = detail
+
+    def printDocString(self, writer, detail = True):
+      if self.docbrief == '' and self.docdetail == '': return
+      if detail and self.docdetail != '':
+          writer.write('/**\n* @brief ')
+          writer.write(self.docbrief + '\n', prefix = '*        ')
+          writer.write('*\n' + self.docdetail + '\n', prefix = '* ')
+          writer.write('*/\n')
+      else:
+          writer.write('/// ' + self.docbrief + '\n')
+
+    def __str__(self):
+        try:
+            stringWriter = Writer.StringWriter()
+            self.writeDeclaration(stringWriter)
+            return str(stringWriter)
+        except:
+            return self.name
 
 class Type(DumpElement):
     """Represents a type; this is use for variable declaration, function parameter declaration ..."""
@@ -670,3 +670,5 @@ class Typedef(DumpElement):
 
     def getType(self):
         return Type(self.name)
+
+################################################################################

@@ -38,7 +38,6 @@
 #
 ################################################################################
 
-
 import decoder
 
 import unittest
@@ -329,3 +328,5 @@ class TestDecoder(unittest.TestCase):
 
         #dec = decoder.decoderCreator(instructions, {})
         #dec.printDecoder('dec.dot')
+
+################################################################################

@@ -38,14 +38,11 @@
 #
 ################################################################################
 
-# This file contains the methods used to print on file the architectural
-# elements; this includes the processor structure, the registers, the
-# pipeline stages, etc..
-# Note how these methods are in a separate file, but they are actually part of the
-# processor class
-
 import cxx_writer
 
+################################################################################
+# Globals and Helpers
+################################################################################
 # Helper variables
 pipeFetchAttrs = []
 pipeCtorParams = []
@@ -87,10 +84,6 @@ hash_map_include = """
 #endif
 """
 
-
-################################################################################
-# Globals and Helpers
-################################################################################
 # Computes current program counter, in order to fetch instrutions from it.
 def getFetchAddressCode(self, model):
     """Sets cur_PC to the address of the instruction to be fetched."""
@@ -474,7 +467,6 @@ def initPipeline(self, processorMembers, processorCtorInit):
 
         processorCtorInit.append(pipeStage.name + '_stage(' + ', '.join(pipeCtorValues)  + ')')
 
-
 ################################################################################
 # Processor Class
 ################################################################################
@@ -607,7 +599,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
             abiAttrs.append(cxx_writer.Attribute(self.memory[0], cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"').makeRef(), 'private'))
             abiCtorValues.append('this->' + self.memory[0])
 
-    # Attributes and Initialization: Iterrupts
+    # Attributes and Initialization: Interrupts
     for irqPort in self.irqs:
         from isa import resolveBitType
         irqWidthType = resolveBitType('BIT<' + str(irqPort.portWidth) + '>')
@@ -1113,7 +1105,6 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     processorClass.addDestructor(processorDtor)
     return [processorClass]
 
-
 ################################################################################
 # Testbench Model
 ################################################################################
@@ -1588,7 +1579,6 @@ def getCPPMain(self, model, namespace):
         return [bannerVariable, debuggerVariable, signalFunction, cycleRangeFunction, tlmInitiatorClass, mainFunction]
     else:
         return [bannerVariable, debuggerVariable, signalFunction, cycleRangeFunction, mainFunction]
-
 
 ################################################################################
 # Testbench Model

@@ -33,8 +33,9 @@
 * or see <http://www.gnu.org/licenses/>.
 *
 *******************************************************************************/
-#ifndef TRAP_REGISTER_REGISTER_H_
-#define TRAP_REGISTER_REGISTER_H_
+
+#ifndef TRAP_REGISTER_REGISTER_H
+#define TRAP_REGISTER_REGISTER_H
 
 #include "register_if.hpp"
 #include "register_abstraction.hpp"
@@ -651,4 +652,4 @@ class Register
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // TRAP_REGISTER_REGISTER_H

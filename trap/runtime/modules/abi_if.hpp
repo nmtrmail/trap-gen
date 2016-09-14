@@ -37,8 +37,9 @@
 * (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
 *
 *******************************************************************************/
-#ifndef TRAP_ABIIF_HPP
-#define TRAP_ABIIF_HPP
+
+#ifndef TRAP_ABI_IF_H
+#define TRAP_ABI_IF_H
 
 #include "modules/instruction.hpp"
 #include "common/report.hpp"
@@ -155,4 +156,4 @@ class ABIIf {
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // TRAP_ABI_IF_H

@@ -7,7 +7,7 @@
 #  _/      _/    _/     _/      _/    _/
 # _/      _/      _/  _/        _/   _/
 #
-# @file     decoder.py
+# @file     __run_tests.py
 # @brief    This file is part of the TRAP CXX code generator testsuite.
 # @details
 # @author   Luca Fossati
@@ -38,7 +38,6 @@
 #
 ################################################################################
 
-
 import unittest
 from tests import testWriter
 from tests import testFileDumper
@@ -53,3 +52,5 @@ if __name__ == "__main__":
     runner = unittest.TextTestRunner()
     runner.verbosity = 2
     runner.run(suite)
+
+################################################################################

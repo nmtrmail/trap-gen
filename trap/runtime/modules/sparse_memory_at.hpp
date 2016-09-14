@@ -37,8 +37,11 @@
 * (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
 *
 *******************************************************************************/
-#ifndef TRAP_SPARSE_MEMORYAT_HPP
-#define TRAP_SPARSE_MEMORYAT_HPP
+
+#ifndef TRAP_SPARSE_MEMORY_AT_H
+
+#define TRAP_SPARSE_MEMORY_AT_H
+
 
 #include "common/report.hpp"
 
@@ -255,4 +258,5 @@ class SparseMemoryAT : public sc_module {
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // TRAP_SPARSE_MEMORY_AT_H
+

@@ -33,8 +33,9 @@
 * or see <http://www.gnu.org/licenses/>.
 *
 *******************************************************************************/
-#ifndef TRAP_REGISTER_BANK_H_
-#define TRAP_REGISTER_BANK_H_
+
+#ifndef TRAP_REGISTER_BANK_H
+#define TRAP_REGISTER_BANK_H
 
 #include "register_if.hpp"
 #include "register_register.hpp"
@@ -411,4 +412,4 @@ class RegisterBank
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // TRAP_REGISTER_BANK_H

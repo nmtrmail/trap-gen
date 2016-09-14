@@ -37,6 +37,7 @@
 * (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
 *
 *******************************************************************************/
+
 #include "analyzer.hpp"
 #include "common/report.hpp"
 

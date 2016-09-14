@@ -37,6 +37,7 @@
 * (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
 *
 *******************************************************************************/
+
 #ifndef TRAP_TOOLSIF_HPP
 #define TRAP_TOOLSIF_HPP
 
@@ -179,4 +180,4 @@ class ToolsManager {
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // TRAP_TOOLSIF_HPP

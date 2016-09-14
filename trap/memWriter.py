@@ -40,6 +40,9 @@
 
 import cxx_writer
 
+################################################################################
+# Globals and Helpers
+################################################################################
 readMethodNames = ['read_dword', 'read_word', 'read_half', 'read_byte']
 readMethodNames_dbg = ['read_dword_dbg', 'read_word_dbg', 'read_half_dbg', 'read_byte_dbg']
 writeMethodNames = ['write_dword', 'write_word', 'write_half', 'write_byte']
@@ -49,33 +52,37 @@ genericMethodNames = ['lock', 'unlock']
 methodTypes = None
 methodTypeLen = None
 
-def addMemoryMethods(self, memoryElements, methodsCode, methodsAttrs):
+def addMemoryMethods(self, localMemoryMembers, methodsCode, methodsAttrs):
     archDWordType = self.bitSizes[0]
     archWordType = self.bitSizes[1]
     archHWordType = self.bitSizes[2]
     archByteType = self.bitSizes[3]
 
     addressParam = cxx_writer.Parameter('address', archWordType.makeRef().makeConst())
+
     for methName in readMethodNames + readMethodNames_dbg:
         if methName in methodsCode.keys() and methName in methodsAttrs.keys():
-            readDecl = cxx_writer.Method(methName, methodsCode[methName], methodTypes[methName], 'public', [addressParam], inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], const = len(self.tlmPorts) == 0, noException = 'noexc'  in methodsAttrs[methName])
-            memoryElements.append(readDecl)
+            readMethod = cxx_writer.Method(methName, methodsCode[methName], methodTypes[methName], 'public', [addressParam], inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], const = len(self.tlmPorts) == 0, noException = 'noexc'  in methodsAttrs[methName])
+            localMemoryMembers.append(readMethod)
+
     for methName in writeMethodNames + writeMethodNames_dbg:
         if methName in methodsCode.keys() and methName in methodsAttrs.keys():
             datumParam = cxx_writer.Parameter('datum', methodTypes[methName])
-            writeDecl = cxx_writer.Method(methName, methodsCode[methName], cxx_writer.voidType, 'public', [addressParam, datumParam], inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], noException = 'noexc'  in methodsAttrs[methName])
-            memoryElements.append(writeDecl)
+            writeMethod = cxx_writer.Method(methName, methodsCode[methName], cxx_writer.voidType, 'public', [addressParam, datumParam], inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], noException = 'noexc'  in methodsAttrs[methName])
+            localMemoryMembers.append(writeMethod)
 
     for methName in genericMethodNames:
         if methName in methodsCode.keys() and methName in methodsAttrs.keys():
-            lockDecl = cxx_writer.Method(methName, methodsCode[methName], cxx_writer.voidType, 'public', inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], noException = 'noexc'  in methodsAttrs[methName])
-            memoryElements.append(lockDecl)
+            lockMethod = cxx_writer.Method(methName, methodsCode[methName], cxx_writer.voidType, 'public', inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], noException = 'noexc'  in methodsAttrs[methName])
+            localMemoryMembers.append(lockMethod)
 
+################################################################################
+# Memory Classes
+################################################################################
 def getCPPMemoryIf(self, model, namespace):
-    """Creates the necessary structures for communicating with the memory; an
-    array in case of an internal memory, the TLM port for the use with TLM
-    etc."""
-    from registerWriter import registerType, aliasType, registerContainerType
+    """Creates the necessary structures for communicating with the memory: An
+    array in case of an internal memory or a TLM port for TLM memories."""
+
     archDWordType = self.bitSizes[0]
     archWordType = self.bitSizes[1]
     archHWordType = self.bitSizes[2]
@@ -91,13 +98,15 @@ def getCPPMemoryIf(self, model, namespace):
                     'write_dword': self.wordSize*2, 'write_word': self.wordSize, 'write_half': self.wordSize/2, 'write_byte': 1,
                     'write_dword_dbg': self.wordSize*2, 'write_word_dbg': self.wordSize, 'write_half_dbg': self.wordSize/2, 'write_byte_dbg': 1}
 
-    classes = []
-    memoryIfElements = []
+    #---------------------------------------------------------------------------
+    ## @name Memory Interface Class
+    #  @{
+
+    memoryClasses = []
+    memoryIfMembers = []
     emptyBody = cxx_writer.Code('')
 
-    #############################################################
-    # Creation of the memory base class
-    #############################################################
+    # Methods: read(), write()
     methodsCode = {}
     methodsAttrs = {}
     for methName in readMethodNames + writeMethodNames:
@@ -112,8 +121,9 @@ def getCPPMemoryIf(self, model, namespace):
     for methName in genericMethodNames:
         methodsAttrs[methName] = ['pure']
         methodsCode[methName] = emptyBody
-    addMemoryMethods(self, memoryIfElements, methodsCode, methodsAttrs)
+    addMemoryMethods(self, memoryIfMembers, methodsCode, methodsAttrs)
 
+    # Methods: swap_endianess()
     for cur_type in [archWordType, archHWordType]:
         swapEndianessCode = str(archByteType) + """ helper_byte = 0;
         for (unsigned i = 0; i < sizeof(""" + str(cur_type) + """)/2; i++) {
@@ -123,37 +133,57 @@ def getCPPMemoryIf(self, model, namespace):
         }
         """
         swapEndianessBody = cxx_writer.Code(swapEndianessCode)
-        datumParam = cxx_writer.Parameter('datum', cur_type.makeRef())
-        swapEndianessDecl = cxx_writer.Method('swap_endianess', swapEndianessBody, cxx_writer.voidType, 'public', [datumParam], inline = True, noException = True, const = True)
-        memoryIfElements.append(swapEndianessDecl)
+        swapEndianessParam = cxx_writer.Parameter('datum', cur_type.makeRef())
+        swapEndianessMethod = cxx_writer.Method('swap_endianess', swapEndianessBody, cxx_writer.voidType, 'public', [swapEndianessParam], inline = True, noException = True, const = True)
+        memoryIfMembers.append(swapEndianessMethod)
 
-    memoryIfDecl = cxx_writer.ClassDeclaration('MemoryInterface', memoryIfElements, namespaces = [namespace])
-    publicDestr = cxx_writer.Destructor(emptyBody, 'public', True)
-    memoryIfDecl.addDestructor(publicDestr)
-    classes.append(memoryIfDecl)
+    # Constructors and Destructors
+    memoryIfDtor = cxx_writer.Destructor(emptyBody, 'public', True)
 
-    ############################################################
-    # Now I finally create an instance of the local memory
-    ############################################################
-    memoryElements = []
+    # Class
+    memoryIfClass = cxx_writer.ClassDeclaration('MemoryInterface', memoryIfMembers, namespaces = [namespace])
+    memoryIfClass.addDestructor(memoryIfDtor)
+    memoryClasses.append(memoryIfClass)
+
+    ## @} Memory Interface Class
+    #---------------------------------------------------------------------------
+    ## @name Local Memory Class
+    #  @{
+
+    from registerWriter import registerType, aliasType, registerContainerType
+    MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
+
+    localMemoryMembers = []
     aliasAttrs = []
     aliasParams = []
     aliasInit = []
-    MemoryToolsIfType = cxx_writer.TemplateType('MemoryToolsIf', [str(archWordType)], 'common/tools_if.hpp')
+
+    # Attributes and Initialization
     if self.memAlias:
         aliasAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'private'))
         aliasParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
         aliasInit.append('R(R)')
 
+    localMemoryMembers.append(cxx_writer.Attribute('debugger', MemoryToolsIfType.makePointer(), 'private'))
+
+    # Methods: set_debugger()
+    Code = 'this->debugger = debugger;'
+    localMemoryMembers.append(cxx_writer.Method('set_debugger', cxx_writer.Code(Code), cxx_writer.voidType, 'public', [cxx_writer.Parameter('debugger', MemoryToolsIfType.makePointer())]))
+
+    # Methods: Building Blocks
     checkAddressCode = 'if (address >= this->size) {\nTHROW_ERROR("Address " << std::hex << std::showbase << address << " out of memory.");\n}\n'
     checkAddressCodeException = 'if (address >= this->size) {\nTHROW_EXCEPTION("Address " << std::hex << std::showbase << address << " out of memory.");\n}\n'
+
+    checkWatchPointCode = """if (this->debugger != NULL) {
+        this->debugger->notify_address(address, sizeof(datum));
+    }
+    """
 
     swapEndianessCode = '// Endianess conversion: The processor is always modeled with the host endianess. In case they are different, the endianess is swapped.\n'
     if self.isBigEndian:
         swapEndianessDefine = '#ifdef LITTLE_ENDIAN_BO\n'
     else:
         swapEndianessDefine = '#ifdef BIG_ENDIAN_BO\n'
-
     swapEndianessCode += swapEndianessDefine + 'this->swap_endianess(datum);\n#endif\n'
 
     if self.isBigEndian:
@@ -164,17 +194,11 @@ def getCPPMemoryIf(self, model, namespace):
     swapDEndianessCode += str(archWordType) + ' datum2 = (' + str(archWordType) + ')(datum >> ' + str(self.wordSize*self.byteSize) + ');\nthis->swap_endianess(datum2);\n'
     swapDEndianessCode += 'datum = datum1 | (((' + str(archDWordType) + ')datum2) << ' + str(self.wordSize*self.byteSize) + ');\n#endif\n'
 
-    memoryElements.append(cxx_writer.Attribute('debugger', MemoryToolsIfType.makePointer(), 'private'))
-    setDebuggerBody = cxx_writer.Code('this->debugger = debugger;')
-    memoryElements.append(cxx_writer.Method('set_debugger', setDebuggerBody, cxx_writer.voidType, 'public', [cxx_writer.Parameter('debugger', MemoryToolsIfType.makePointer())]))
-    checkWatchPointCode = """if (this->debugger != NULL) {
-        this->debugger->notify_address(address, sizeof(datum));
-    }
-    """
     endianessCode = {'read_dword': swapDEndianessCode, 'read_word': swapEndianessCode, 'read_half': swapEndianessCode, 'read_byte': '',
                 'read_dword_dbg': swapDEndianessCode, 'read_word_dbg': swapEndianessCode, 'read_half_dbg': swapEndianessCode, 'read_byte_dbg': '',
                 'write_dword': swapDEndianessCode, 'write_word': swapEndianessCode, 'write_half': swapEndianessCode, 'write_byte': '',
                 'write_dword_dbg': swapDEndianessCode, 'write_word_dbg': swapEndianessCode, 'write_half_dbg': swapEndianessCode, 'write_byte_dbg': ''}
+
     readAliasCode = {}
     readMemAliasCode = ''
     for alias in self.memAlias:
@@ -197,6 +221,7 @@ def getCPPMemoryIf(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 3);\n}\n'
     readAliasCode['read_byte_dbg'] = readMemAliasCode
     readAliasCode['read_byte'] = readMemAliasCode
+
     writeAliasCode = {}
     writeMemAliasCode = ''
     for alias in self.memAlias:
@@ -232,8 +257,9 @@ def getCPPMemoryIf(self, model, namespace):
     writeAliasCode['write_byte'] = writeMemAliasCode
     writeAliasCode['write_byte_dbg'] = writeMemAliasCode
 
-    # If there is no memory or there is a memory and this has debugging disabled
+    # If there is no memory or debugging is disabled.
     if not self.memory or not self.memory[2]:
+        # Methods: read(), write(), lock(), unlock()
         methodsCode = {}
         methodsAttrs = {}
         for methName in readMethodNames + readMethodNames_dbg:
@@ -259,27 +285,34 @@ def getCPPMemoryIf(self, model, namespace):
         for methName in genericMethodNames:
             methodsAttrs[methName] = []
             methodsCode[methName] = emptyBody
-        addMemoryMethods(self, memoryElements, methodsCode, methodsAttrs)
+        addMemoryMethods(self, localMemoryMembers, methodsCode, methodsAttrs)
 
-        arrayAttribute = cxx_writer.Attribute('memory', cxx_writer.charPtrType, 'private')
-        memoryElements.append(arrayAttribute)
-        sizeAttribute = cxx_writer.Attribute('size', cxx_writer.uintType, 'private')
-        memoryElements.append(sizeAttribute)
-        memoryElements += aliasAttrs
-        localMemDecl = cxx_writer.ClassDeclaration('LocalMemory', memoryElements, [memoryIfDecl.getType()], namespaces = [namespace])
-        localMemDecl.addDocString(brief = 'Memory Interface Class', detail = 'Interface used by the core to communicate with memory. Defines the required TLM ports.')
-        constructorBody = cxx_writer.Code('this->memory = new char[size];\nthis->debugger = NULL;')
-        constructorParams = [cxx_writer.Parameter('size', cxx_writer.uintType)]
-        publicMemConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams + aliasParams, ['size(size)'] + aliasInit)
-        localMemDecl.addConstructor(publicMemConstr)
-        destructorBody = cxx_writer.Code('delete [] this->memory;')
-        publicMemDestr = cxx_writer.Destructor(destructorBody, 'public', True)
-        localMemDecl.addDestructor(publicMemDestr)
-        classes.append(localMemDecl)
+        # Attributes and Initialization
+        arrayAttr = cxx_writer.Attribute('memory', cxx_writer.charPtrType, 'private')
+        localMemoryMembers.append(arrayAttr)
+
+        sizeAttr = cxx_writer.Attribute('size', cxx_writer.uintType, 'private')
+        localMemoryMembers.append(sizeAttr)
+
+        # Constructors and Destructors
+        localMemoryCtorParams = [cxx_writer.Parameter('size', cxx_writer.uintType)]
+        localMemoryCtorBody = cxx_writer.Code('this->memory = new char[size];\nthis->debugger = NULL;')
+        localMemoryCtor = cxx_writer.Constructor(localMemoryCtorBody, 'public', localMemoryCtorParams + aliasParams, ['size(size)'] + aliasInit)
+        localMemoryDtorBody = cxx_writer.Code('delete [] this->memory;')
+        localMemoryDtor = cxx_writer.Destructor(localMemoryDtorBody, 'public', True)
+
+        # Class
+        localMemoryClass = cxx_writer.ClassDeclaration('LocalMemory', localMemoryMembers + aliasAttrs, [memoryIfClass.getType()], namespaces = [namespace])
+        localMemoryClass.addDocString(brief = 'Memory Interface Class', detail = 'Interface used by the core to communicate with memory. Defines the required TLM ports.')
+        localMemoryClass.addConstructor(localMemoryCtor)
+        localMemoryClass.addDestructor(localMemoryDtor)
+        memoryClasses.append(localMemoryClass)
+
+    # Debugging is enabled.
     else:
-        # Here I have a local memory with debugging enabled.
+        # Methods: read(), write(), lock()
         dumpCode1 = '\n\nMemAccessType dump_info;\n'
-        if not self.systemc and not model.startswith('acc')  and not model.endswith('AT'):
+        if not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
             dumpCode1 += 'dump_info.simulation_time = cur_cycle;\n'
         else:
             dumpCode1 += 'dump_info.simulation_time = sc_time_stamp().to_double();\n'
@@ -289,12 +322,11 @@ def getCPPMemoryIf(self, model, namespace):
             dumpCode1 += 'dump_info.program_counter = 0;\n'
         dumpCode1 += 'for (unsigned i = 0; i < '
         dumpCode2 = """; i++) {
-    dump_info.address = address + i;
-    dump_info.val = (char)((datum & (0xFF << i*8)) >> i*8);
-    this->dump_file.write((char*)&dump_info, sizeof(MemAccessType));
-}
-"""
-
+            dump_info.address = address + i;
+            dump_info.val = (char)((datum & (0xFF << i*8)) >> i*8);
+            this->dump_file.write((char*)&dump_info, sizeof(MemAccessType));
+        }
+        """
         methodsCode = {}
         methodsAttrs = {}
         for methName in readMethodNames + readMethodNames_dbg:
@@ -319,33 +351,33 @@ def getCPPMemoryIf(self, model, namespace):
         for methName in genericMethodNames:
             methodsAttrs[methName] = []
             methodsCode[methName] = emptyBody
-        addMemoryMethods(self, memoryElements, methodsCode, methodsAttrs)
+        addMemoryMethods(self, localMemoryMembers, methodsCode, methodsAttrs)
 
+        # Methods: end_of_simulation()
         endOfSimBody = cxx_writer.Code("""if (this->dump_file) {
            this->dump_file.flush();
            this->dump_file.close();
         }
         """)
-        endOfSimDecl = cxx_writer.Method('end_of_simulation', endOfSimBody, cxx_writer.voidType, 'public')
-        memoryElements.append(endOfSimDecl)
+        endOfSimMethod = cxx_writer.Method('end_of_simulation', endOfSimBody, cxx_writer.voidType, 'public')
+        localMemoryMembers.append(endOfSimMethod)
 
-        constructorParams = [cxx_writer.Parameter('size', cxx_writer.uintType)]
-        constructorInit = ['size(size)']
+        # Attributes and Initialization
+        arrayAttr = cxx_writer.Attribute('memory', cxx_writer.charPtrType, 'private')
+        localMemoryMembers.append(arrayAttr)
 
-        arrayAttribute = cxx_writer.Attribute('memory', cxx_writer.charPtrType, 'private')
-        memoryElements.append(arrayAttribute)
+        sizeAttr = cxx_writer.Attribute('size', cxx_writer.uintType, 'private')
+        localMemoryMembers.append(sizeAttr)
+
+        dumpFileAttribute = cxx_writer.Attribute('dump_file', cxx_writer.ofstreamType, 'private')
+        localMemoryMembers.append(dumpFileAttribute)
 
         if not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
             cycleAttribute = cxx_writer.Attribute('cur_cycle', cxx_writer.uintType.makeRef(), 'private')
-            constructorParams.append(cxx_writer.Parameter('cur_cycle', cxx_writer.uintType.makeRef()))
-            constructorInit.append('cur_cycle(cur_cycle)')
-            memoryElements.append(cycleAttribute)
+            localMemoryCtorParams.append(cxx_writer.Parameter('cur_cycle', cxx_writer.uintType.makeRef()))
+            localMemoryCtorInit.append('cur_cycle(cur_cycle)')
+            localMemoryMembers.append(cycleAttribute)
 
-        sizeAttribute = cxx_writer.Attribute('size', cxx_writer.uintType, 'private')
-        memoryElements.append(sizeAttribute)
-        dumpFileAttribute = cxx_writer.Attribute('dump_file', cxx_writer.ofstreamType, 'private')
-        memoryElements.append(dumpFileAttribute)
-        memoryElements += aliasAttrs
         if self.memory[3]:
             # Find out type of fetch register.
             from processor import extractRegInterval
@@ -357,28 +389,39 @@ def getCPPMemoryIf(self, model, namespace):
                 fetchType = registerType
             if fetchType == None and fetchReg in [i.name for i in self.aliasRegs + self.aliasRegBanks]:
                 fetchType = aliasType
-            memoryElements.append(cxx_writer.Attribute(self.memory[3], fetchType.makeRef(), 'private'))
+            localMemoryMembers.append(cxx_writer.Attribute(self.memory[3], fetchType.makeRef(), 'private'))
             pcRegParam = [cxx_writer.Parameter(self.memory[3], fetchType.makeRef())]
             pcRegInit = [self.memory[3] + '(' + self.memory[3] + ')']
-        localMemDecl = cxx_writer.ClassDeclaration('LocalMemory', memoryElements, [memoryIfDecl.getType()], namespaces = [namespace])
-        localMemDecl.addDocString(brief = 'Memory Interface Class', detail = 'Interface used by the core to communicate with memory. Defines the required TLM ports.')
-        constructorBody = cxx_writer.Code("""this->memory = new char[size];
+
+        # Constructors and Destructors
+        localMemoryCtorParams = [cxx_writer.Parameter('size', cxx_writer.uintType)]
+        localMemoryCtorInit = ['size(size)']
+        localMemoryCtorBody = cxx_writer.Code("""this->memory = new char[size];
             this->debugger = NULL;
             this->dump_file.open("memoryDump.dmp", ios::out | ios::binary | ios::ate);
             if (!this->dump_file) {
                 THROW_EXCEPTION("Cannot open file memoryDump.dmp for writing.");
             }
         """)
-        publicMemConstr = cxx_writer.Constructor(constructorBody, 'public', constructorParams + aliasParams + pcRegParam, constructorInit + aliasInit + pcRegInit)
-        localMemDecl.addConstructor(publicMemConstr)
-        destructorBody = cxx_writer.Code("""delete [] this->memory;
+        localMemoryCtor = cxx_writer.Constructor(localMemoryCtorBody, 'public', localMemoryCtorParams + aliasParams + pcRegParam, localMemoryCtorInit + aliasInit + pcRegInit)
+        localMemoryDtorBody = cxx_writer.Code("""delete [] this->memory;
         if (this->dump_file) {
            this->dump_file.flush();
            this->dump_file.close();
         }
         """)
-        publicMemDestr = cxx_writer.Destructor(destructorBody, 'public', True)
-        localMemDecl.addDestructor(publicMemDestr)
-        classes.append(localMemDecl)
+        localMemoryDtor = cxx_writer.Destructor(localMemoryDtorBody, 'public', True)
 
-    return classes
+        # Class
+        localMemoryClass = cxx_writer.ClassDeclaration('LocalMemory', localMemoryMembers + aliasAttrs, [memoryIfClass.getType()], namespaces = [namespace])
+        localMemoryClass.addDocString(brief = 'Memory Interface Class', detail = 'Interface used by the core to communicate with memory. Defines the required TLM ports.')
+        localMemoryClass.addConstructor(localMemoryCtor)
+        localMemoryClass.addDestructor(localMemoryDtor)
+        memoryClasses.append(localMemoryClass)
+
+    ## @} Local Memory Class
+    #---------------------------------------------------------------------------
+
+    return memoryClasses
+
+################################################################################

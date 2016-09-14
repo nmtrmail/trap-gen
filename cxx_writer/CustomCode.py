@@ -38,7 +38,6 @@
 #
 ################################################################################
 
-
 class Code:
     """Custom code element. it allows to add custom code in any place.
     This class is for example used to specify the behavior of a class method or
@@ -114,3 +113,5 @@ class Code:
                 if not j in VarIncludes:
                     VarIncludes.append(j)
         return VarIncludes
+
+################################################################################

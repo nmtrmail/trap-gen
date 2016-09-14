@@ -60,7 +60,6 @@ except:
     traceback.print_exc()
     raise Exception('Cannot determine networkx version. Try changing versions >= 0.36.')
 
-
 ################################################################################
 # Globals and Helpers
 ################################################################################
@@ -263,7 +262,6 @@ def getRegisterClockCycleFunction(self, regName, wbStageOrder, registerMaxBitwid
 
     return registerClockCycleFunction
 
-
 ################################################################################
 # Register Field Index Enums
 ################################################################################
@@ -288,7 +286,6 @@ def getCPPRegisterFields(self):
             registerFieldEnums.append(registerFieldEnum)
     return registerFieldEnums
 
-
 ################################################################################
 # Register Defines
 ################################################################################
@@ -306,7 +303,6 @@ def getCPPRegisterDefines(self):
     for reg in self.regs + self.regBanks + self.aliasRegs + self.aliasRegBanks:
         registerDefines.append(cxx_writer.Define('#define ' + reg.name + ' R.' + reg.name.lower()))
     return registerDefines
-
 
 ################################################################################
 # Register Container Class

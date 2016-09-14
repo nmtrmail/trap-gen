@@ -38,7 +38,6 @@
 #
 ################################################################################
 
-
 try:
     import cxx_writer
 except ImportError:
@@ -347,3 +346,5 @@ class TestFileDumper(unittest.TestCase):
         os.remove('temp/nested/wscript')
         import shutil
         shutil.rmtree('temp', True)
+
+################################################################################

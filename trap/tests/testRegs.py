@@ -38,7 +38,6 @@
 #
 ################################################################################
 
-
 import processor
 import isa
 import cxx_writer
@@ -440,3 +439,5 @@ class TestRegs(unittest.TestCase):
         except:
             foundError = True
         self.assert_(foundError)
+
+################################################################################

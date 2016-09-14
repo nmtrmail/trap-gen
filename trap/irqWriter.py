@@ -40,20 +40,41 @@
 
 import cxx_writer
 
+################################################################################
+# IntrInstruction Class
+################################################################################
 def getCPPIRQInstr(self, model, trace, namespace):
     from procWriter import instrCtorParams, instrCtorValues
     instructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
     from registerWriter import registerType
 
-    emptyBody = cxx_writer.Code('')
     IRQInstrClasses = []
+    emptyBody = cxx_writer.Code('')
 
     for irq in self.irqs:
         IRQInstrMembers = []
 
+        # Methods: get_id()
+        getIdBody = cxx_writer.Code('return (unsigned)-1;')
+        getIdMethod = cxx_writer.Method('get_id', getIdBody, cxx_writer.uintType, 'public', noException = True, const = True)
+        IRQInstrMembers.append(getIdMethod)
+
+        # Methods: get_name()
+        getNameBody = cxx_writer.Code('return \"' + irq.name + 'IntrInstruction\";')
+        getNameMethod = cxx_writer.Method('get_name', getNameBody, cxx_writer.stringType, 'public', noException = True, const = True)
+        IRQInstrMembers.append(getNameMethod)
+
+        # Methods: get_mnemonic()
+        getMnemonicBody = cxx_writer.Code('return \"' + irq.name + '\";')
+        getMnemonicMethod = cxx_writer.Method('get_mnemonic', getMnemonicBody, cxx_writer.stringType, 'public', noException = True, const = True)
+        IRQInstrMembers.append(getMnemonicMethod)
+
+        # Methods: replicate()
+        replicateBody = cxx_writer.Code('return new ' + irq.name + 'IntrInstruction(' + instrCtorValues + ', this->' + irq.name + ');')
+        replicateMethod = cxx_writer.Method('replicate', replicateBody, instructionType.makePointer(), 'public', parameters = [cxx_writer.Parameter('instr', instructionType.makePointer(), initValue = 'NULL')], noException = True, const = True)
+        IRQInstrMembers.append(replicateMethod)
+
         # Methods: behavior()
-        # now I have to go over the behavior of this interrupt and create, like for the instructions,
-        # the behavior for the different pipeline stages
         for pipeStage in self.pipes:
             behaviorUserCode = ''
             if irq.operation.has_key(pipeStage.name):
@@ -67,9 +88,8 @@ def getCPPIRQInstr(self, model, trace, namespace):
             if model.startswith('acc'):
                 behaviorCode = 'this->num_stage_cycles = 0;\n'
                 if behaviorUserCode:
-                    # now I have to take all the resources and create a define which
-                    # renames such resources so that their usage can be transparent
-                    # to the developer
+                    # Set the pipeline stage so that the usage of the registers
+                    # is transparent to the user.
                     behaviorCode += '\nR.set_stage(' + str(self.pipes.index(pipeStage)) + ');\n'
                     behaviorCode += behaviorUserCode
                     behaviorCode += '\nR.unset_stage();\n'
@@ -85,29 +105,8 @@ def getCPPIRQInstr(self, model, trace, namespace):
             behaviorMethod = cxx_writer.Method('behavior', behaviorBody, cxx_writer.uintType, 'public')
             IRQInstrMembers.append(behaviorMethod)
 
-        # Standard Instruction methods, there is not much to do since the IRQ instruction does nothing special
-        # Methods: replicate()
-        replicateBody = cxx_writer.Code('return new ' + irq.name + 'IntrInstruction(' + instrCtorValues + ', this->' + irq.name + ');')
-        replicateMethod = cxx_writer.Method('replicate', replicateBody, instructionType.makePointer(), 'public', parameters = [cxx_writer.Parameter('instr', instructionType.makePointer(), initValue = 'NULL')], noException = True, const = True)
-        IRQInstrMembers.append(replicateMethod)
-
-        # Methods: get_name()
-        getNameBody = cxx_writer.Code('return \"' + irq.name + 'IntrInstruction\";')
-        getNameMethod = cxx_writer.Method('get_name', getNameBody, cxx_writer.stringType, 'public', noException = True, const = True)
-        IRQInstrMembers.append(getNameMethod)
-
-        # Methods: get_mnemonic()
-        getMnemonicBody = cxx_writer.Code('return \"' + irq.name + '\";')
-        getMnemonicMethod = cxx_writer.Method('get_mnemonic', getMnemonicBody, cxx_writer.stringType, 'public', noException = True, const = True)
-        IRQInstrMembers.append(getMnemonicMethod)
-
-        # Methods: get_id()
-        getIdBody = cxx_writer.Code('return (unsigned)-1;')
-        getIdMethod = cxx_writer.Method('get_id', getIdBody, cxx_writer.uintType, 'public', noException = True, const = True)
-        IRQInstrMembers.append(getIdMethod)
-
         # Methods: set_interrupt_value()
-        # Here I add a method to specify the value of the received interrupt and the related attribute
+        # Sets the value of the received interrupt and the related attribute.
         from isa import resolveBitType
         irqWidthType = resolveBitType('BIT<' + str(irq.portWidth) + '>')
         IRQAttribute = cxx_writer.Attribute(irq.name, irqWidthType.makeRef(), 'public')
@@ -120,16 +119,14 @@ def getCPPIRQInstr(self, model, trace, namespace):
         IRQInstrMembers.append(setInterruptValueMethod)
 
         # Attributes
-        # Now I declare the instruction variables for this IRQ instruction
         for var in irq.variables:
             IRQInstrMembers.append(cxx_writer.Attribute(var.name, var.varType, 'protected',  var.static))
 
-        # Constructor and Destructor
-        IRQInstrCtor = cxx_writer.Constructor(emptyBody, 'public', instrCtorParams + IRQInstrCtorParams, ['Instruction(' + instrCtorValues + ')'] + IRQInstrCtorInit)
+        # Constructors and Destructors
+        IRQInstrCtor = cxx_writer.Constructor(emptyBody, 'public', parameters = instrCtorParams + IRQInstrCtorParams, initList = ['Instruction(' + instrCtorValues + ')'] + IRQInstrCtorInit)
         IRQInstrDtor = cxx_writer.Destructor(emptyBody, 'public', True)
 
         # Class
-        # Finally I can declare the IRQ class for this specific IRQ
         IRQInstrClass = cxx_writer.ClassDeclaration(irq.name + 'IntrInstruction', IRQInstrMembers, [instructionType], namespaces = [namespace])
         IRQInstrClass.addDocString(brief = 'IRQ Instruction Class', detail = 'Wraps IRQ exception handling behavior as a dummy instruction.')
         IRQInstrClass.addConstructor(IRQInstrCtor)

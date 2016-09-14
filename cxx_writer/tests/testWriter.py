@@ -189,3 +189,5 @@ class TestWriter(unittest.TestCase):
         self.assertEqual(lines[4], '        otherLine\n')
         self.assertEqual(lines[5], '    }\n')
         self.assertEqual(lines[6], '}')
+
+################################################################################

@@ -38,7 +38,6 @@
 #
 ################################################################################
 
-
 try:
     import cxx_writer
 except ImportError:
@@ -292,3 +291,5 @@ class TestSimpleDecls(unittest.TestCase):
         self.assertEqual(lines[2], 'int dummy_func(int param1) {\n')
         self.assertEqual(lines[3], '\n')
         self.assertEqual(lines[4], '} // dummy_func()\n')
+
+################################################################################

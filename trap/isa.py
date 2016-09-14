@@ -46,6 +46,9 @@ import sys
 if sys.version_info >= (2,7):
     from collections import OrderedDict
 
+################################################################################
+# Globals and Helpers
+################################################################################
 def resolveBitType(typeString):
     """Given a string representing a bit type it returns the more appropriate C++ type
     for the representation of such a type"""
@@ -86,6 +89,9 @@ def resolveBitType(typeString):
         else:
             return cxx_writer.TemplateType('sc_dt::sc_biguint', str(bitWidth), 'systemc.h')
 
+################################################################################
+# ISA
+################################################################################
 class ISA:
     """This class represents the instruction set of a processor;
     it mainly contains a list of instructions (each one with the
@@ -269,6 +275,9 @@ class ISA:
             hashCreator.update('sub' + name + ':')
         return hashCreator.hexdigest()
 
+################################################################################
+# Instructions
+################################################################################
 class Instruction:
     """Represents an instruction of the processor. The instruction
     is characterized by (a) machine code (b) behavior (both in terms
@@ -571,6 +580,9 @@ class Instruction:
     def getCPPTest(self, processor, model, trace, combinedTrace, namespace):
         return isaWriter.getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace)
 
+################################################################################
+# Operations and Methods
+################################################################################
 class HelperOperation:
     """Represents some code; this code can be shared among the
     instructions, in the sense that it can be part of more than
@@ -705,6 +717,9 @@ class HelperMethod:
     def __str__(self):
         return repr(self)
 
+################################################################################
+# Machine Code
+################################################################################
 class MachineCode:
     """Represents the coding of a group of instruction; it contains
     (b) the value of the bits which identify this
@@ -796,6 +811,9 @@ class MachineCode:
         self.bitCorrespondence[name] = correspondence
         self.bitDirection[name] = bitDir.lower()
 
+################################################################################
+# VLIW ISA
+################################################################################
 class VLIW:
     """There can be two types of VLIW architectures: the one which
     simply puts more codewords next to each other and the one which
@@ -808,3 +826,5 @@ class VLIW:
     priority, lower first."""
     def __init__(self):
         raise Exception('Description of VLIW architectures not yet supported.')
+
+################################################################################

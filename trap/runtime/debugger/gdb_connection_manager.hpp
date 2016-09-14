@@ -37,8 +37,9 @@
 * (c) Luca Fossati, fossati@elet.polimi.it, fossati.l@gmail.com
 *
 *******************************************************************************/
-#ifndef TRAP_GDBCONNECTIONMANAGER_HPP
-#define TRAP_GDBCONNECTIONMANAGER_HPP
+
+#ifndef TRAP_GDB_CONNECTION_MANAGER_H
+#define TRAP_GDB_CONNECTION_MANAGER_H
 
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0501
@@ -207,4 +208,4 @@ class GDBConnectionManager {
 } // namespace trap
 
 /// ****************************************************************************
-#endif
+#endif // TRAP_GDB_CONNECTION_MANAGER_H
