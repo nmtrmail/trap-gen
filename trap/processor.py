@@ -772,7 +772,7 @@ class Processor:
     ## @name Model Generation
     #  @{
 
-    def write(self, folder = '', models = validModels, namespace = '', dumpDecoderName = '', trace = False, combinedTrace = False, forceDecoderCreation = False, tests = True, memPenaltyFactor = 4):
+    def write(self, folder = '.', models = validModels, namespace = '', dumpDecoderName = '', trace = False, combinedTrace = False, forceDecoderCreation = False, tests = True, memPenaltyFactor = 4):
         """Ok: this method does two things: first of all it performs all
         the possible checks to ensure that the processor description is
         coherent. Second it actually calls the write method of the
@@ -873,7 +873,7 @@ class Processor:
 
         mainFolder = cxx_writer.Folder(os.path.expanduser(os.path.expandvars(folder)))
 
-        for model in models:
+        for model, modelFolder in models.items():
             # Here I add the define code, defining the type of the current model;
             # such define code has to be added to each created header file
             defString = '#define ' + model[:-2].upper() + '_MODEL\n'
@@ -894,7 +894,7 @@ class Processor:
             namespaceUse = cxx_writer.UseNamespace(namespace)
             namespaceTrapUse = cxx_writer.UseNamespace('trap')
 
-            curFolder = cxx_writer.Folder(os.path.join(folder, model))
+            curFolder = cxx_writer.Folder(os.path.join(folder, modelFolder))
             mainFolder.addSubFolder(curFolder)
 
             # Decoder Model Generation

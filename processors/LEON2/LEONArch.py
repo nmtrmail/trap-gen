@@ -7,7 +7,7 @@
 #  _/      _/    _/     _/      _/    _/
 # _/      _/      _/  _/        _/   _/
 #
-# @file     LEON2Arch.py
+# @file     LEONArch.py
 # @brief    This file is part of the TRAP example processors.
 # @details  This is the top-level TRAP definition of the LEON2.
 # @author   Luca Fossati
@@ -67,26 +67,26 @@ except ImportError:
     try:
         import trap
     except ImportError:
-        print ('Please specify location of core TRAP files in LEON2Arch.py.')
+        print ('Please specify location of core TRAP files in LEONArch.py.')
 
 import cxx_writer
 
 # It is nice to keep the ISA and the architecture separated
 # so we use the import trick
-import LEON2Isa
-import LEON2Tests
+import LEONIsa
+import LEONTests
 from LEONDefs import *
 # Code used to move to a new register window
-from LEON2Methods import updateAliasCode_exception
-from LEON2Methods import updateAliasCode_abi
+from LEONMethods import updateAliasCode_exception
+from LEONMethods import updateAliasCode_abi
 
 # Lets now start building the processor
 processor = trap.Processor('LEON2', version = '0.31', systemc = not standalone, instructionCache = True, cacheLimit = 256)
 processor.setIpRights('esa', 'Luca Fossati', 'fossati.l@gmail.com', banner)
 processor.setBigEndian() # big endian
 processor.setWordsize(4, 8) # 4 bytes per word, 8 bits per byte
-processor.setISA(LEON2Isa.isa) # lets set the instruction set
-processor.invalid_instr = LEON2Isa.isa.instructions['UNIMP'] # I set the instruction to be used when there is a decoding error
+processor.setISA(LEONIsa.isa) # lets set the instruction set
+processor.invalid_instr = LEONIsa.isa.instructions['UNIMP'] # I set the instruction to be used when there is a decoding error
 
 # Lets customize the compilation options: actually it is possible only to define pre-processor macros;
 # For example the following directive means that if the tsim-comp compilation option is activated,
@@ -107,24 +107,24 @@ WIM.write_force(2);
 # Here I add a constant to the instruction set so that it can be used from the code implementing
 # the various instructions
 # Number of defined register windows
-LEON2Isa.isa.addConstant(cxx_writer.uintType, 'NUM_REG_WIN', numRegWindows)
+LEONIsa.isa.addConstant(cxx_writer.uintType, 'NUM_REG_WIN', numRegWindows)
 # Specifies whether the multiplier unit is pipelined or not
 if pipelinedMult:
-    LEON2Isa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'true')
+    LEONIsa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'true')
 else:
-    LEON2Isa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'false')
+    LEONIsa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'false')
 if multiplier_size == 'i':
-    LEON2Isa.isa.addDefines('#define MULT_SIZE_ITERATIVE\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_ITERATIVE\n')
 elif multiplier_size == '16p':
-    LEON2Isa.isa.addDefines('#define MULT_SIZE_16_PIPE\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_16_PIPE\n')
 elif multiplier_size == '16':
-    LEON2Isa.isa.addDefines('#define MULT_SIZE_16\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_16\n')
 elif multiplier_size == '32_8':
-    LEON2Isa.isa.addDefines('#define MULT_SIZE_32_8\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_32_8\n')
 elif multiplier_size == '32_16':
-    LEON2Isa.isa.addDefines('#define MULT_SIZE_32_16\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_32_16\n')
 elif multiplier_size == '32_32':
-    LEON2Isa.isa.addDefines('#define MULT_SIZE_32_32\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_32_32\n')
 
 # There are 8 global register, and a variable number of
 # of 16-registers set; this number depends on the number of
@@ -197,12 +197,12 @@ processor.addAliasReg(SP)
 
 # Now I add the registers which I want to see printed in the instruction trace
 # COMMENT FOR COMPARISON
-#LEON2Isa.isa.addTraceRegister(pcReg)
-#LEON2Isa.isa.addTraceRegister(npcReg)
-LEON2Isa.isa.addTraceRegister(psrReg)
-LEON2Isa.isa.addTraceRegister(regs)
-LEON2Isa.isa.addTraceRegister(tbrReg)
-LEON2Isa.isa.addTraceRegister(wimReg)
+#LEONIsa.isa.addTraceRegister(pcReg)
+#LEONIsa.isa.addTraceRegister(npcReg)
+LEONIsa.isa.addTraceRegister(psrReg)
+LEONIsa.isa.addTraceRegister(regs)
+LEONIsa.isa.addTraceRegister(tbrReg)
+LEONIsa.isa.addTraceRegister(wimReg)
 
 
 # Memory alias: registers which are memory mapped; we
@@ -316,10 +316,10 @@ abi.setECallPreCode(pre_code)
 abi.setECallPostCode(post_code)
 abi.returnCall([('PC', 'LR', 8), ('NPC', 'LR', 12)])
 abi.addMemory('dataMem')
-abi.setCallInstr([LEON2Isa.call_Instr, None, None])
-abi.setReturnCallInstr([(LEON2Isa.restore_imm_Instr, LEON2Isa.restore_reg_Instr, LEON2Isa.jump_imm_Instr, LEON2Isa.jump_reg_Instr), (LEON2Isa.jump_imm_Instr, LEON2Isa.jump_reg_Instr, LEON2Isa.restore_imm_Instr, LEON2Isa.restore_reg_Instr)])
+abi.setCallInstr([LEONIsa.call_Instr, None, None])
+abi.setReturnCallInstr([(LEONIsa.restore_imm_Instr, LEONIsa.restore_reg_Instr, LEONIsa.jump_imm_Instr, LEONIsa.jump_reg_Instr), (LEONIsa.jump_imm_Instr, LEONIsa.jump_reg_Instr, LEONIsa.restore_imm_Instr, LEONIsa.restore_reg_Instr)])
 processor.setABI(abi)
 
 # Finally we can dump the processor on file
-#processor.write(folder = destFolderName, models = ['funcLT'], tests = True)
-processor.write(folder = destFolderName, models = ['accAT', 'funcLT'], trace = True)
+#processor.write(folder = destFolderName, models = {'funcLT': 'funcLT'}, tests = True)
+processor.write(folder = destFolderName, models = {'accAT':'accAT', 'funcLT': 'funcLT'}, trace = True)

@@ -7,7 +7,7 @@
 #  _/      _/    _/     _/      _/    _/
 # _/      _/      _/  _/        _/   _/
 #
-# @file     LEON3Arch.py
+# @file     LEONArch.py
 # @brief    This file is part of the TRAP example processors.
 # @details  This is the top-level TRAP definition of the LEON3.
 # @author   Luca Fossati
@@ -67,26 +67,26 @@ except ImportError:
     try:
         import trap
     except ImportError:
-        print ('Please specify location of core TRAP files in LEON3Arch.py.')
+        print ('Please specify location of core TRAP files in LEONArch.py.')
 
 import cxx_writer
 
 # It is nice to keep the ISA and the architecture separated
 # so we use the import trick
-import LEON3Isa
-import LEON3Tests
+import LEONIsa
+import LEONTests
 from LEONDefs import *
 # Code used to move to a new register window
-from LEON3Methods import updateAliasCode_exception
-from LEON3Methods import updateAliasCode_abi
+from LEONMethods import updateAliasCode_exception
+from LEONMethods import updateAliasCode_abi
 
 # Lets now start building the processor
 processor = trap.Processor('LEON3', version = '0.31', systemc = True, instructionCache = True, cacheLimit = 256)
 processor.setIpRights('esa', 'Luca Fossati', 'fossati.l@gmail.com', banner)
 processor.setBigEndian() # big endian
 processor.setWordsize(4, 8) # 4 bytes per word, 8 bits per byte
-processor.setISA(LEON3Isa.isa) # lets set the instruction set
-processor.invalid_instr = LEON3Isa.isa.instructions['UNIMP'] # I set the instruction to be used when there is a decoding error
+processor.setISA(LEONIsa.isa) # lets set the instruction set
+processor.invalid_instr = LEONIsa.isa.instructions['UNIMP'] # I set the instruction to be used when there is a decoding error
 
 # Lets customize the compilation options: actually it is possible only to define pre-processor macros;
 # For example the following directive means that if the tsim-comp compilation option is activated,
@@ -107,14 +107,14 @@ WIM.write_force(2);
 # Here I add a constant to the instruction set so that it can be used from the code implementing
 # the various instructions
 # Number of defined register windows
-LEON3Isa.isa.addConstant(cxx_writer.uintType, 'NUM_REG_WIN', numRegWindows)
+LEONIsa.isa.addConstant(cxx_writer.uintType, 'NUM_REG_WIN', numRegWindows)
 # Specifies whether the multiplier unit is pipelined or not
 if pipelinedMult:
-    LEON3Isa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'true')
+    LEONIsa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'true')
 else:
-    LEON3Isa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'false')
+    LEONIsa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'false')
 if multiplier_size == 16:
-    LEON3Isa.isa.addDefines('#define MULT_SIZE_16')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_16')
 
 # There are 8 global register, and a variable number of
 # of 16-registers set; this number depends on the number of
@@ -192,12 +192,12 @@ processor.addAliasReg(PCR)
 
 # Now I add the registers which I want to see printed in the instruction trace
 # COMMENT FOR COMPARISON
-#LEON3Isa.isa.addTraceRegister(pcReg)
-#LEON3Isa.isa.addTraceRegister(npcReg)
-LEON3Isa.isa.addTraceRegister(psrReg)
-LEON3Isa.isa.addTraceRegister(regs)
-LEON3Isa.isa.addTraceRegister(tbrReg)
-LEON3Isa.isa.addTraceRegister(wimReg)
+#LEONIsa.isa.addTraceRegister(pcReg)
+#LEONIsa.isa.addTraceRegister(npcReg)
+LEONIsa.isa.addTraceRegister(psrReg)
+LEONIsa.isa.addTraceRegister(regs)
+LEONIsa.isa.addTraceRegister(tbrReg)
+LEONIsa.isa.addTraceRegister(wimReg)
 
 # Register from which the instructions are fetched; note that in the
 # functional model there is an offset between the PC and the actual
@@ -315,12 +315,12 @@ abi.setECallPreCode(pre_code)
 abi.setECallPostCode(post_code)
 abi.returnCall([('PC', 'LR', 8), ('NPC', 'LR', 12)])
 abi.addMemory('dataMem')
-#abi.setCallInstr([LEON3Isa.call_Instr, None, (LEON3Isa.save_imm_Instr, LEON3Isa.save_reg_Instr)])
-abi.setCallInstr([LEON3Isa.call_Instr, None, None])
-abi.setReturnCallInstr([(LEON3Isa.restore_imm_Instr, LEON3Isa.restore_reg_Instr, LEON3Isa.jump_imm_Instr, LEON3Isa.jump_reg_Instr), (LEON3Isa.jump_imm_Instr, LEON3Isa.jump_reg_Instr, LEON3Isa.restore_imm_Instr, LEON3Isa.restore_reg_Instr)])
+#abi.setCallInstr([LEONIsa.call_Instr, None, (LEONIsa.save_imm_Instr, LEONIsa.save_reg_Instr)])
+abi.setCallInstr([LEONIsa.call_Instr, None, None])
+abi.setReturnCallInstr([(LEONIsa.restore_imm_Instr, LEONIsa.restore_reg_Instr, LEONIsa.jump_imm_Instr, LEONIsa.jump_reg_Instr), (LEONIsa.jump_imm_Instr, LEONIsa.jump_reg_Instr, LEONIsa.restore_imm_Instr, LEONIsa.restore_reg_Instr)])
 abi.addIgnoreStateReg('ASR[17]')
 processor.setABI(abi)
 
 # Finally we can dump the processor on file
-#processor.write(folder = destFolderName, models = ['funcLT'], tests = True)
-processor.write(folder = destFolderName, models = ['accAT', 'funcLT'], trace = True)
+#processor.write(folder = destFolderName, models = {'funcLT': 'funcLT'}, tests = True)
+processor.write(folder = destFolderName, models = {'accAT':'accAT', 'funcLT': 'funcLT'}, trace = True)

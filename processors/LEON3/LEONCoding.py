@@ -7,9 +7,9 @@
 #  _/      _/    _/     _/      _/    _/
 # _/      _/      _/  _/        _/   _/
 #
-# @file     LEON2Coding.py
+# @file     LEONCoding.py
 # @brief    This file is part of the TRAP example processors.
-# @details  Instruction coding definition file for the LEON2.
+# @details  Instruction coding definition file for the LEON3.
 # @author   Luca Fossati
 # @date     2008-2013 Luca Fossati
 # @copyright

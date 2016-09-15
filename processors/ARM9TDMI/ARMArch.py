@@ -219,5 +219,5 @@ abi.addIgnoreStateReg('MP_ID')
 processor.setABI(abi)
 
 # Finally we can dump the processor on file
-#processor.write(folder = 'processor', models = ['funcLT'], tests = True)
-processor.write(folder = 'processor', models = ['accAT', 'funcLT'], trace = True)
+#processor.write(folder = 'processor', models = {'funcLT': 'funcLT'}, tests = True)
+processor.write(folder = 'processor', models = {'accAT':'accAT', 'funcLT': 'funcLT'}, trace = True)

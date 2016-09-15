@@ -7,7 +7,7 @@
 #  _/      _/    _/     _/      _/    _/
 # _/      _/      _/  _/        _/   _/
 #
-# @file     LEON2Methods.py
+# @file     LEONMethods.py
 # @brief    This file is part of the TRAP example processors.
 # @details  Instruction helper methods for the LEON2.
 # @author   Luca Fossati

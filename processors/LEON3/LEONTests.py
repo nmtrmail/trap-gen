@@ -36,7 +36,7 @@
 #
 ################################################################################
 
-from LEON3Isa import *
+from LEONIsa import *
 
 ldsb_imm_Instr.addTest({'rd': 2, 'rs1': 3, 'simm13': 0x04}, {'REGS[2]': 0xaaaaaaaa, 'REGS[3]': 0, 'dataMem[0x4]': 0x11223355}, {'REGS[2]': 0x00000011})
 ldsb_imm_Instr.addTest({'rd': 2, 'rs1': 3, 'simm13': 0x04}, {'REGS[2]': 0xaaaaaaaa, 'REGS[3]': 1, 'dataMem[0x4]': 0x11223355}, {'REGS[2]': 0x00000022})
