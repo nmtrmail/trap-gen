@@ -38,8 +38,8 @@
 *
 *******************************************************************************/
 
-#ifndef TRAP_TOOLSIF_HPP
-#define TRAP_TOOLSIF_HPP
+#ifndef TRAP_TOOLS_IF_H
+#define TRAP_TOOLS_IF_H
 
 #include "modules/instruction.hpp"
 
@@ -180,4 +180,4 @@ class ToolsManager {
 } // namespace trap
 
 /// ****************************************************************************
-#endif // TRAP_TOOLSIF_HPP
+#endif // TRAP_TOOLS_IF_H

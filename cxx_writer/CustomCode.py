@@ -95,10 +95,7 @@ class Code:
             writer.write('{\n')
             for i in self.variables:
                 i.writeImplementation(writer)
-        else:
-            if self.code:
-                self.code += '\n'
-        writer.write(self.code.rstrip() + '\n')
+        writer.write('\n' + self.code.rstrip() + '\n')
         if self.variables:
             writer.write('}\n')
 
