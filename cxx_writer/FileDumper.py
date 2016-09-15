@@ -915,6 +915,9 @@ class Folder:
     if ctx.options.trapdir:
         trapDirLib = os.path.abspath(os.path.expandvars(os.path.expanduser(os.path.join(ctx.options.trapdir, 'lib'))))
         trapDirInc = os.path.abspath(os.path.expandvars(os.path.expanduser(os.path.join(ctx.options.trapdir, 'include'))))
+        if not os.path.exists(os.path.join(trapDirInc, 'trap.hpp')):
+            if os.path.exists(os.path.join(trapDirInc, 'trap')):
+                trapDirInc = os.path.join(trapDirInc , 'trap')
         ctx.check_cxx(lib='trap', use='ELF_LIB BOOST SYSTEMC', uselib_store='TRAP', mandatory=1, libpath=trapDirLib, errmsg=trapLibErrmsg)
         foundShared = glob.glob(os.path.join(trapDirLib, ctx.env['cxxshlib_PATTERN'] % 'trap'))
         if foundShared:
