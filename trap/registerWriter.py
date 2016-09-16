@@ -299,10 +299,10 @@ def getCPPRegisterDefines(self):
     # to cryptic compilation errors for name collisions, as was the case for
     # LEON2/LEON3 Y register, which I had to rename YREG since it collided with
     # a Y template parameter in boost! Very ugly and very hard to trace.
-    registerDefines = []
+    registerDefines = ''
     for reg in self.regs + self.regBanks + self.aliasRegs + self.aliasRegBanks:
-        registerDefines.append(cxx_writer.Define('#define ' + reg.name + ' R.' + reg.name.lower()))
-    return registerDefines
+        registerDefines += '#define ' + reg.name + ' R.' + reg.name.lower() + '\n'
+    return cxx_writer.Define(registerDefines)
 
 ################################################################################
 # Register Container Class

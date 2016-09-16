@@ -125,7 +125,7 @@ class ISA:
             self.traceRegs.append(register)
 
     def addDefines(self, defineCode):
-        self.defines += defineCode.split('\n')
+        self.defines.append(defineCode.strip() + '\n')
 
     def addConstant(self, varType, name, value):
         self.constants.append((varType, name, value))

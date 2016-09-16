@@ -139,7 +139,7 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
 
     # Any special defines
     for i in self.defines:
-        instrClasses.append(cxx_writer.Define(i + '\n'))
+        instrClasses.append(cxx_writer.Define(i))
 
     #---------------------------------------------------------------------------
     ## @name Instruction Class

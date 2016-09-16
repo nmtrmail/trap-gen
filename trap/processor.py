@@ -329,7 +329,7 @@ class Processor:
     # Behavior Configuration
 
     def addDefine(self, define, includes = []):
-        self.defines.append(cxx_writer.Define(define + '\n', includes = includes))
+        self.defines.append(cxx_writer.Define(define.strip() + '\n', includes = includes))
 
     def setPreProcMacro(self, wafOption, macro):
         self.preProcMacros.append( (wafOption, macro) )

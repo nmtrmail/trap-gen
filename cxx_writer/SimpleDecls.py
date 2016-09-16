@@ -60,7 +60,7 @@ class Define:
     def writeDeclaration(self, writer):
         #for namespace in self.namespaces:
         #    writer.write('namespace ' + namespace + ' {\n')
-        writer.write(self.defineStr + '\n')
+        writer.write(self.defineStr)
         #for namespace in self.namespaces:
         #    writer.write('} // namespace ' + namespace + '\n')
 

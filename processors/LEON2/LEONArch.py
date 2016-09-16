@@ -114,17 +114,17 @@ if pipelinedMult:
 else:
     LEONIsa.isa.addConstant(cxx_writer.boolType, 'PIPELINED_MULT', 'false')
 if multiplier_size == 'i':
-    LEONIsa.isa.addDefines('#define MULT_SIZE_ITERATIVE\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_ITERATIVE')
 elif multiplier_size == '16p':
-    LEONIsa.isa.addDefines('#define MULT_SIZE_16_PIPE\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_16_PIPE')
 elif multiplier_size == '16':
-    LEONIsa.isa.addDefines('#define MULT_SIZE_16\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_16')
 elif multiplier_size == '32_8':
-    LEONIsa.isa.addDefines('#define MULT_SIZE_32_8\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_32_8')
 elif multiplier_size == '32_16':
-    LEONIsa.isa.addDefines('#define MULT_SIZE_32_16\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_32_16')
 elif multiplier_size == '32_32':
-    LEONIsa.isa.addDefines('#define MULT_SIZE_32_32\n')
+    LEONIsa.isa.addDefines('#define MULT_SIZE_32_32')
 
 # There are 8 global register, and a variable number of
 # of 16-registers set; this number depends on the number of
