@@ -898,7 +898,7 @@ class Processor:
             mainFolder.addSubFolder(curFolder)
 
             # Decoder Model Generation
-            decoderClasses = dec.getCPPClass(self.bitSizes[1], self.instructionCache, namespace)
+            decoderClasses = dec.getCPPDecoder(self.bitSizes[1], self.instructionCache, namespace)
             decoderHeadFile = cxx_writer.FileDumper('decoder.hpp', True)
             decoderHeadFile.addMember(defCode)
             decoderImplFile = cxx_writer.FileDumper('decoder.cpp', False)

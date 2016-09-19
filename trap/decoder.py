@@ -310,7 +310,7 @@ class decoderCreator:
                     value += '1'
                 else:
                     value += '0'
-            code += 'if ((instr_code & ' + hex(int(mask, 2)) + ') == ' + hex(int(value, 2)) + ') {\n// Instruction ' + instr.name + '\nreturn ' + str(instr.id) + ';\n}\n'
+            code += 'if ((instr_code & ' + hex(int(mask, 2)) + 'U) == ' + hex(int(value, 2)) + ') {\n// Instruction ' + instr.name + '\nreturn ' + str(instr.id) + ';\n}\n'
         return code
 
     def createPatternDecoder(self, subtree):
@@ -350,7 +350,7 @@ class decoderCreator:
                 compareFun = '=='
             else:
                 compareFun = '!='
-        code = 'if ((instr_code & ' + mask + ') ' + compareFun + ' ' + value + ') {\n'
+        code = 'if ((instr_code & ' + mask + 'U) ' + compareFun + ' ' + value + ') {\n'
         if nodeIf.instrId != None:
             if nodeIf.instrId != -1:
                 #code += '\n' + str(nodeIf.patterns) + '\n'
@@ -414,7 +414,7 @@ class decoderCreator:
             if numFs == len(mask) - 2:
                 hasToDeclareMask = False
         if hasToDeclareMask:
-            code = 'switch(instr_code & ' + mask + ') {\n'
+            code = 'switch(instr_code & ' + mask + 'U) {\n'
         else:
             code = 'switch(instr_code) {\n'
         for edge in outEdges:
@@ -422,7 +422,7 @@ class decoderCreator:
                 decodePattern = edge[-1]['decodePattern'][0]
             else:
                 decodePattern = edge[-1][0]
-            code += 'case ' + hex(decodePattern) + ': {\n'
+            code += 'case ' + hex(decodePattern) + 'U: {\n'
             if edge[1].instrId != None:
                 if edge[1].instrId != -1:
                     #code += '\n' + str(edge[1].patterns) + '\n'
@@ -447,10 +447,10 @@ class decoderCreator:
         code += ';\n}\n}\n'
         return code
 
-    def getCPPClass(self, fetchSizeType, instructionCache, namespace = ''):
+    def getCPPDecoder(self, fetchSizeType, instructionCache, namespace = ''):
         """Creates the representation of the decoder as a C++ class"""
         import cxx_writer
-        from isa import resolveBitType
+
         # OK: now I simply have to go over the decoding tree
         if self.rootNode.splitFunction.pattern:
             codeString = self.createPatternDecoder(self.rootNode)

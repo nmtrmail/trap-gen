@@ -698,7 +698,8 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     # Individual Instructions
     for name, instr in self.isa.instructions.items():
         processorCtorCode += 'this->INSTRUCTIONS[' + str(instr.id) + '] = new ' + name + '(' + instrCtorValues + ');\n'
-    processorCtorCode += 'this->INSTRUCTIONS[' + str(instrMaxId) + '] = new InvalidInstruction(' + instrCtorValues + ');\n'
+    if not self.invalid_instr:
+        processorCtorCode += 'this->INSTRUCTIONS[' + str(instrMaxId) + '] = new InvalidInstruction(' + instrCtorValues + ');\n'
     if model.startswith('acc'):
         NOPIntructionType = cxx_writer.Type('NOPInstruction', '#include \"instructions.hpp\"')
         NOPinstructionsAttribute = cxx_writer.Attribute('NOP_instr', NOPIntructionType.makePointer(), 'public', True)
