@@ -345,7 +345,7 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
 
         if pipeStage.fetchStage:
             # Tools: Instruction History
-            # Check if it is time to save to file the instruction queue.
+            # Check if it is time to save the instruction queue to file.
             Code += """
             // Tools: Instruction History
             #ifdef ENABLE_HISTORY
@@ -473,7 +473,7 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
             Code += '\nthis->succ_stage->next_instr = cur_instr;\n'
 
         if pipeStage.fetchStage:
-            # Register Propagation
+            # Register Propagation and Instruction Execution State
             Code += """
             // Register Propagation
             this->refresh_registers();

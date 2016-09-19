@@ -870,21 +870,22 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         Code = ''
         if self.systemc:
             Code += '// Wait for SystemC infrastructure, otherwise register callbacks will crash.\nwait(SC_ZERO_TIME);\n'
+        Code += 'Instruction* cur_instr = NULL;\n'
         if self.instructionCache:
             # Declare an instruction buffer to speed up decoding.
             Code += 'template_map<' + str(self.bitSizes[1]) + ', CacheElem >::iterator icache_end = this->instr_cache.end();\n\n'
 
-        Code += 'while(true) {\n'
+        Code += """while(true) {
+            this->instr_executing = true;
+            unsigned num_cycles = 0;
+        """
 
-        # Here is the code to notify start of the instruction execution
-        Code += 'this->instr_executing = true;\n'
-        Code += 'unsigned num_cycles = 0;\n'
-
-        # Here is the code to deal with interrupts
+        # Interrupts
         Code += getInterruptCode(self, trace)
         if self.irqs:
-            Code += 'else {\n'
-        # computes the address from which the next instruction shall be fetched
+            Code += 'else /* !IRQ */ {\n'
+
+        # Instruction Fetch Address
         Code += getFetchAddressCode(self, model)
 
         # Tools: Profiler
@@ -897,8 +898,10 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
             }
             """
 
-        # Lets start with the code for the instruction queue
-        Code += """#ifdef ENABLE_HISTORY
+        # Tools: Instruction History
+        Code += """
+        // Tools: Instruction History
+        #ifdef ENABLE_HISTORY
         HistoryInstrType instr_queue_elem;
         if (this->history_en) {
         """
@@ -912,14 +915,16 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         #endif
         """
 
-        # computes the correct memory and/or memory port from which fetching the instruction stream
+        # Instruction Fetch and Issue
+        # Computes the correct memory and/or memory port from which to perform
+        # the fetch.
         doFetchCode = getDoFetchCode(self)
-        # We need to fetch the instruction ... only if the cache is not used or if
-        # the index of the cache is the current instruction
+        # Perform the fetch only if the cache is not used or if the index of the
+        # the cache is the current instruction.
         if not (self.instructionCache and self.fastFetch):
             Code += doFetchCode
         if trace:
-            Code += 'std::cerr << \"Current PC: \" << std::hex << std::showbase << cur_PC << \'.\' << std::endl;\n'
+            Code += 'std::cerr << \"PC = \" << std::hex << std::showbase << cur_PC << \'.\' << std::endl;\n'
 
         # Two fetch paths are possible: The instruction buffer or the normal
         # instruction stream.
@@ -930,14 +935,16 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         else:
             Code += getDoDecodeCode(self, trace, combinedTrace, getInstrIssueCode)
 
+        # User-defined Operations
         for pipeStage in self.pipes:
-            # User-defined operations are executed after the regular instruction behavior.
             if pipeStage.operation:
                 Code += pipeStage.operation
 
-        # Lets finish with the code for the instruction queue: I just still have to
-        # check if it is time to save to file the instruction queue
-        Code += """#ifdef ENABLE_HISTORY
+        # Tools: Instruction History
+        # Check if it is time to save the instruction queue to file.
+        Code += """
+        // Tools: Instruction History
+        #ifdef ENABLE_HISTORY
         if (this->history_en) {
             // Add current instruction to history queue.
             this->history_instr_queue.push_back(instr_queue_elem);
@@ -956,16 +963,19 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         #endif
         """
 
+        # Interrupts
         if self.irqs:
             Code += '} // if (!IRQ)\n'
+
+        # Synchronize
         if len(self.tlmPorts) > 0 and model.endswith('LT'):
-            Code += 'this->quant_keeper.inc((num_cycles + 1)*this->latency);\nif (this->quant_keeper.need_sync()) {\nthis->quant_keeper.sync();\n}\n'
+            Code += '// Instruction-induced Latency\nthis->quant_keeper.inc((num_cycles + 1)*this->latency);\nif (this->quant_keeper.need_sync()) {\nthis->quant_keeper.sync();\n}\n'
         elif model.startswith('acc') or self.systemc or model.endswith('AT'):
-            Code += 'wait((num_cycles + 1)*this->latency);\n'
+            Code += '// Instruction-induced Latency\nwait((num_cycles + 1)*this->latency);\n'
         else:
             Code += 'this->total_cycles += (num_cycles + 1);\n'
 
-        # Here is the code to notify start of the instruction execution
+        # Instruction Execution State
         Code += 'this->instr_executing = false;\n'
         if self.systemc:
             Code += 'this->instr_end_event.notify();\n'
