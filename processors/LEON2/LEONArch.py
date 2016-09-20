@@ -322,4 +322,4 @@ processor.setABI(abi)
 
 # Finally we can dump the processor on file
 #processor.write(folder = destFolderName, models = {'funcLT': 'funcLT'}, tests = True)
-processor.write(folder = destFolderName, models = {'accAT':'accAT', 'funcLT': 'funcLT'}, trace = True)
+processor.write(folder = destFolderName, models = {'accAT': 'accAT', 'funcLT': 'funcLT'}, trace = True)

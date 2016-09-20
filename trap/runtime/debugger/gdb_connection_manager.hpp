@@ -117,7 +117,7 @@ struct GDBResponse {
  * communicates with the processor. It is responsible for handling socket
  * connection and for the coding and decoding of the messages.
  *
- * @sa http://sourceware.org/gdb/current/onlinedocs/gdb_33.html
+ * @sa https://sourceware.org/gdb/current/onlinedocs/gdb/Remote-Protocol.html
  */
 class GDBConnectionManager {
   /// @name Constructors and Destructors

@@ -1284,7 +1284,7 @@ def getCPPMain(self, model, namespace):
     }
     if (vm.count("history") > 0) {
         #ifndef ENABLE_HISTORY
-        std::cout << std::endl << "Unable to initialize instruction history as it has " << "been disabled at compilation time." << std::endl << std::endl;
+        std::cout << std::endl << "Unable to initialize instruction history as it has been disabled at compilation time." << std::endl << std::endl;
         #endif
         processor.enable_history(vm["history"].as<std::string>());
     }
@@ -1424,7 +1424,7 @@ def getCPPMain(self, model, namespace):
         code += 'std::cout << "Elapsed time: " << std::dec << processor.total_cycles << " cycles" << std::endl;\n'
     code += 'std::cout << std::endl;\n'
     if self.shutdown:
-        code += '// Simulation ended. Call cleanup methods.\nprocInst.shutdown();\n'
+        code += '// Simulation ended. Call cleanup methods.\processor.shutdown();\n'
     code += """
     return 0;
     """

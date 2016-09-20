@@ -122,25 +122,51 @@ def getCPPIf(self, model, namespace):
     ## @name Interface Methods
     #  @{
 
-    # read_<>(), set_<>()
-    for elem in [self.abi.LR, self.abi.PC, self.abi.SP, self.abi.FP, self.abi.RetVal]:
-        if not elem:
-            continue
-        Code = 'return ' + elem
-        if self.abi.offset.has_key(elem):
-            Code += ' + ' + str(self.abi.offset[elem])
-        Code += ';'
-        readElemBody = cxx_writer.Code(Code)
-        readElemBody.addInclude(includes)
-        readElemMethod = cxx_writer.Method('read_' + self.abi.name[elem], readElemBody, wordType, 'public', noException = True, const = True)
-        abiMembers.append(readElemMethod)
+    # num_gdb_regs()
+    maxGDBId = 0
+    numGDBRegsBody = cxx_writer.Code('return ' + str(maxGDBId + 1) + ';')
+    numGDBRegsMethod = cxx_writer.Method('num_gdb_regs', numGDBRegsBody, cxx_writer.uintType, 'public', noException = True, const = True)
+    abiMembers.append(numGDBRegsMethod)
 
-        Code = elem + regWriteCode + '(new_value);'
-        setElemBody = cxx_writer.Code(Code)
-        setElemBody.addInclude(includes)
-        setElemParam = cxx_writer.Parameter('new_value', wordType.makeRef().makeConst())
-        setElemMethod = cxx_writer.Method('set_' + self.abi.name[elem], setElemBody, cxx_writer.voidType, 'public', [setElemParam], noException = True)
-        abiMembers.append(setElemMethod)
+    # read_gdb_reg()
+    Code = 'switch(gdb_id) {\n'
+    sortedGDBRegs = sorted(self.abi.regCorrespondence.items(), lambda x,y: cmp(x[1], y[1]))
+    for reg, gdbId in sortedGDBRegs:
+        if gdbId > maxGDBId:
+            maxGDBId = gdbId
+        Code += 'case ' + str(gdbId) + ': {\n'
+        Code += 'return ' + reg
+        if self.abi.offset.has_key(reg) and not model.startswith('acc'):
+            Code += ' + ' + str(self.abi.offset[reg])
+        Code += ';\nbreak;}\n'
+    Code += 'default: {\nreturn 0;\n}\n}\n'
+    readGDBRegBody = cxx_writer.Code(Code)
+    readGDBRegBody.addInclude(includes)
+    readGDBRegParam = cxx_writer.Parameter('gdb_id', cxx_writer.uintType.makeRef().makeConst())
+    readGDBRegMethod = cxx_writer.Method('read_gdb_reg', readGDBRegBody, wordType, 'public', [readGDBRegParam], noException = True, const = True)
+    abiMembers.append(readGDBRegMethod)
+
+    # num_gdb_regs()
+    maxGDBId = 0
+    numGDBRegsBody = cxx_writer.Code('return ' + str(maxGDBId + 1) + ';')
+    numGDBRegsMethod = cxx_writer.Method('num_gdb_regs', numGDBRegsBody, cxx_writer.uintType, 'public', noException = True, const = True)
+    abiMembers.append(numGDBRegsMethod)
+
+    # set_gdb_reg()
+    Code = 'switch(gdb_id) {\n'
+    for reg, gdbId in sortedGDBRegs:
+        Code += 'case ' + str(gdbId) + ': {\n'
+        Code += reg + regWriteCode + '(new_value'
+        Code += ');\nbreak;}\n'
+    Code += 'default: {\nTHROW_EXCEPTION(\"Register corresponding to GDB id \" << gdb_id << \" not found.\");\n}\n}\n'
+    setGDBRegBody = cxx_writer.Code(Code)
+    setGDBRegBody.addInclude(includes)
+    setGDBRegParam1 = cxx_writer.Parameter('new_value', wordType.makeRef().makeConst())
+    setGDBRegParam2 = cxx_writer.Parameter('gdb_id', cxx_writer.uintType.makeRef().makeConst())
+    setGDBRegMethod = cxx_writer.Method('set_gdb_reg', setGDBRegBody, cxx_writer.voidType, 'public', [setGDBRegParam1, setGDBRegParam2], noException = True)
+    abiMembers.append(setGDBRegMethod)
+
+    addressParam = cxx_writer.Parameter('address', wordType.makeRef().makeConst())
 
     # read_args()
     vectorType = cxx_writer.TemplateType('std::vector', [wordType], 'vector')
@@ -169,45 +195,25 @@ def getCPPIf(self, model, namespace):
     setArgsMethod = cxx_writer.Method('set_args', cxx_writer.Code(Code), cxx_writer.voidType, 'public', [setArgsParam], noException = True)
     abiMembers.append(setArgsMethod)
 
-    # num_gdb_regs()
-    maxGDBId = 0
-    nGDBRegsBody = cxx_writer.Code('return ' + str(maxGDBId + 1) + ';')
-    nGDBRegsMethod = cxx_writer.Method('num_gdb_regs', nGDBRegsBody, cxx_writer.uintType, 'public', noException = True, const = True)
-    abiMembers.append(nGDBRegsMethod)
+    # read_<>(), set_<>()
+    for elem in [self.abi.PC, self.abi.LR, self.abi.SP, self.abi.FP, self.abi.RetVal]:
+        if not elem:
+            continue
+        Code = 'return ' + elem
+        if self.abi.offset.has_key(elem):
+            Code += ' + ' + str(self.abi.offset[elem])
+        Code += ';'
+        readElemBody = cxx_writer.Code(Code)
+        readElemBody.addInclude(includes)
+        readElemMethod = cxx_writer.Method('read_' + self.abi.name[elem], readElemBody, wordType, 'public', noException = True, const = True)
+        abiMembers.append(readElemMethod)
 
-    # read_gdb_reg()
-    Code = 'switch(gdb_id) {\n'
-    sortedGDBRegs = sorted(self.abi.regCorrespondence.items(), lambda x,y: cmp(x[1], y[1]))
-    for reg, gdbId in sortedGDBRegs:
-        if gdbId > maxGDBId:
-            maxGDBId = gdbId
-        Code += 'case ' + str(gdbId) + ': {\n'
-        Code += 'return ' + reg
-        if self.abi.offset.has_key(reg) and not model.startswith('acc'):
-            Code += ' + ' + str(self.abi.offset[reg])
-        Code += ';\nbreak;}\n'
-    Code += 'default: {\nreturn 0;\n}\n}\n'
-    readGDBRegBody = cxx_writer.Code(Code)
-    readGDBRegBody.addInclude(includes)
-    readGDBRegParam = cxx_writer.Parameter('gdb_id', cxx_writer.uintType.makeRef().makeConst())
-    readGDBRegMethod = cxx_writer.Method('read_gdb_reg', readGDBRegBody, wordType, 'public', [readGDBRegParam], noException = True, const = True)
-    abiMembers.append(readGDBRegMethod)
-
-    # set_gdb_reg()
-    Code = 'switch(gdb_id) {\n'
-    for reg, gdbId in sortedGDBRegs:
-        Code += 'case ' + str(gdbId) + ': {\n'
-        Code += reg + regWriteCode + '(new_value'
-        Code += ');\nbreak;}\n'
-    Code += 'default: {\nTHROW_EXCEPTION(\"Register corresponding to GDB id \" << gdb_id << \" not found.\");\n}\n}\n'
-    setGDBRegBody = cxx_writer.Code(Code)
-    setGDBRegBody.addInclude(includes)
-    setGDBRegParam1 = cxx_writer.Parameter('new_value', wordType.makeRef().makeConst())
-    setGDBRegParam2 = cxx_writer.Parameter('gdb_id', cxx_writer.uintType.makeRef().makeConst())
-    setGDBRegMethod = cxx_writer.Method('set_gdb_reg', setGDBRegBody, cxx_writer.voidType, 'public', [setGDBRegParam1, setGDBRegParam2], noException = True)
-    abiMembers.append(setGDBRegMethod)
-
-    addressParam = cxx_writer.Parameter('address', wordType.makeRef().makeConst())
+        Code = elem + regWriteCode + '(new_value);'
+        setElemBody = cxx_writer.Code(Code)
+        setElemBody.addInclude(includes)
+        setElemParam = cxx_writer.Parameter('new_value', wordType.makeRef().makeConst())
+        setElemMethod = cxx_writer.Method('set_' + self.abi.name[elem], setElemBody, cxx_writer.voidType, 'public', [setElemParam], noException = True)
+        abiMembers.append(setElemMethod)
 
     # read_mem()
     Code = ''
@@ -272,11 +278,6 @@ def getCPPIf(self, model, namespace):
     datumParam = cxx_writer.Parameter('datum', cxx_writer.ucharType)
     writeMemMethod = cxx_writer.Method('write_char_mem', cxx_writer.Code(Code), cxx_writer.voidType, 'public', [addressParam, datumParam])
     abiMembers.append(writeMemMethod)
-
-    ## @} Interface Methods
-    #---------------------------------------------------------------------------
-    ## @name Observer Methods
-    #  @{
 
     # Methods necessary for saving and restoring the complete processor state.
     # Useful, for example, for implementing hardware context-switches, or
@@ -352,10 +353,16 @@ def getCPPIf(self, model, namespace):
     exitValueMethod = cxx_writer.Method('set_exit_value', cxx_writer.Code(Code), cxx_writer.voidType, 'public', [exitValueParam], noException = True)
     abiMembers.append(exitValueMethod)
 
-    # get_code_limit()
-    Code = 'return this->PROGRAM_LIMIT;'
-    codeLimitMethod = cxx_writer.Method('get_code_limit', cxx_writer.Code(Code), wordType, 'public')
-    abiMembers.append(codeLimitMethod)
+    # pre_call(), post_call(), return_from_call()
+    if self.abi.preCallCode:
+        abiMembers.append(cxx_writer.Method('pre_call', cxx_writer.Code(self.abi.preCallCode), cxx_writer.voidType, 'public', noException = True))
+    if self.abi.postCallCode:
+        abiMembers.append(cxx_writer.Method('post_call', cxx_writer.Code(self.abi.postCallCode), cxx_writer.voidType, 'public', noException = True))
+    if self.abi.returnCallReg:
+        returnCallCode = ''
+        for returnReg in self.abi.returnCallReg:
+            returnCallCode += returnReg[0] + regWriteCode + '(' + returnReg[1] + ' + ' + str(returnReg[2]) + ');\n'
+        abiMembers.append(cxx_writer.Method('return_from_call', cxx_writer.Code(returnCallCode), cxx_writer.voidType, 'public', noException = True))
 
     # is_executing_instr()
     isExecutingInstrBody = cxx_writer.Code('return this->instr_executing;')
@@ -371,17 +378,7 @@ def getCPPIf(self, model, namespace):
     waitInstrEndMethod = cxx_writer.Method('wait_instr_end', waitInstrEndBody, cxx_writer.voidType, 'public', noException = True, const = True)
     abiMembers.append(waitInstrEndMethod)
 
-    # pre_call(), post_call(), return_from_call()
-    if self.abi.preCallCode:
-        abiMembers.append(cxx_writer.Method('pre_call', cxx_writer.Code(self.abi.preCallCode), cxx_writer.voidType, 'public', noException = True))
-    if self.abi.postCallCode:
-        abiMembers.append(cxx_writer.Method('post_call', cxx_writer.Code(self.abi.postCallCode), cxx_writer.voidType, 'public', noException = True))
-    if self.abi.returnCallReg:
-        returnCallCode = ''
-        for returnReg in self.abi.returnCallReg:
-            returnCallCode += returnReg[0] + regWriteCode + '(' + returnReg[1] + ' + ' + str(returnReg[2]) + ');\n'
-        abiMembers.append(cxx_writer.Method('return_from_call', cxx_writer.Code(returnCallCode), cxx_writer.voidType, 'public', noException = True))
-
+    # is_routine_entry()
     # Here is the code for recognizing if we are in the routine entry or exit.
     # The ABI behaves like a state machine, moving to the beginning when an
     # instruction out of the sequence is met.
@@ -407,6 +404,7 @@ def getCPPIf(self, model, namespace):
     isRoutineEntryMethod = cxx_writer.Method('is_routine_entry', isRoutineEntryBody, cxx_writer.boolType, 'public', [InstructionParam], noException = True)
     abiMembers.append(isRoutineEntryMethod)
 
+    # is_routine_exit()
     isRoutineExitCode = """std::vector<std::string> next_names = this->routine_exit_sequence[this->routine_exit_state];
     std::vector<std::string>::const_iterator names_it, names_end;
     std::string cur_name = instr->get_name();
@@ -432,7 +430,12 @@ def getCPPIf(self, model, namespace):
     getInstructionHistoryMethod = cxx_writer.Method('get_history', cxx_writer.Code(Code), histQueueType.makeRef(), 'public')
     abiMembers.append(getInstructionHistoryMethod)
 
-    ## @} Observer Methods
+    # get_code_limit()
+    Code = 'return this->PROGRAM_LIMIT;'
+    codeLimitMethod = cxx_writer.Method('get_code_limit', cxx_writer.Code(Code), wordType, 'public')
+    abiMembers.append(codeLimitMethod)
+
+    ## @} Interface Methods
     #---------------------------------------------------------------------------
     ## @name Information and Helper Methods
     #  @{
