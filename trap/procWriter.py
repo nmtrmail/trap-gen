@@ -53,10 +53,9 @@ instrCtorValues = ''
 testNames = []
 abiAttrs = []
 
-# Note that even if we use a separate namespace for
-# every processor, it helps also having separate names
-# for the different processors, as some bugged versions
-# of the dynamic loader complains
+# Note that even if we use a separate namespace for every processor, it helps
+# also having separate names for the different processors, as some buggy
+# versions of dynamic loaders complain.
 processor_name = ''
 
 hash_map_include = """
@@ -84,9 +83,9 @@ hash_map_include = """
 #endif
 """
 
-# Computes current program counter, in order to fetch instrutions from it.
 def getFetchAddressCode(self, model):
-    """Sets cur_PC to the address of the instruction to be fetched."""
+    """Sets the current program counter to the address of the next instruction
+    to be fetched."""
     Code = ''
     if model.startswith('func'):
         Code += str(self.bitSizes[1]) + ' cur_PC = ' + 'this->' + self.fetchReg[0]
@@ -108,9 +107,9 @@ def getFetchAddressCode(self, model):
         Code += 'this->' + self.fetchReg[0] + '.unset_stage();\n'
     return Code
 
-# Computes the code for the fetch address
 def getDoFetchCode(self):
-    """Reads the instruction at the address pointed to by cur_PC."""
+    """Reads the instruction at the address pointed to by the current program
+    counter."""
     Code = str(self.bitSizes[1]) + ' bitstring = this->'
     # Fetching is either from memory or through TLM ports.
     if self.memory:
@@ -119,12 +118,13 @@ def getDoFetchCode(self):
         for name, isFetch in self.tlmPorts.items():
             if isFetch:
                 Code += name
-        if Code.endswith('this->'):
-            raise Exception('Neither TLM port nor internal memory defined for instruction fetch.')
+                break
     Code += '.read_word(cur_PC);\n'
     return Code
 
 def getCacheInstrFetchCode(self, doFetchCode, trace, combinedTrace, issueCodeFunction, hasHazard = False, pipeStage = None):
+    """Sets the current instruction pointer to a cached instruction, if found.
+    Otherwise, regular memory fetch is performed."""
     Code = ''
     if self.fastFetch:
         mapKey = 'cur_PC'
@@ -193,9 +193,8 @@ def getCacheInstrFetchCode(self, doFetchCode, trace, combinedTrace, issueCodeFun
     """
     return Code
 
-# Returns the code necessary for performing a standard instruction fetch: i.e.
-# read from memory and set the instruction parameters
 def getDoDecodeCode(self, trace, combinedTrace, issueCodeFunction, hasHazard = False, pipeStage = None, checkDestroyCode = ''):
+    """Sets the current instruction id by decoding an instruction string."""
     Code = 'int cur_instr_id = this->decoder.decode(bitstring);\n'
     if pipeStage:
         Code += 'cur_instr = this->INSTRUCTIONS[cur_instr_id];\n'
@@ -209,7 +208,6 @@ def getDoDecodeCode(self, trace, combinedTrace, issueCodeFunction, hasHazard = F
         Code += 'cur_instr = this->INSTRUCTIONS[cur_instr_id];\n'
     Code += 'cur_instr->set_params(bitstring);\n'
 
-    # Here we add the details about the instruction to the current history element
     Code += """#ifdef ENABLE_HISTORY
     if (this->history_en) {
         instr_queue_elem.name = cur_instr->get_name();
@@ -221,9 +219,8 @@ def getDoDecodeCode(self, trace, combinedTrace, issueCodeFunction, hasHazard = F
     Code += issueCodeFunction(self, trace, combinedTrace, hasHazard, pipeStage, checkDestroyCode)
     return Code
 
-# Computes the code defining the execution of an instruction and
-# of the processor tools.
 def getInstrIssueCode(self, trace, combinedTrace, hasHazard = False, pipeStage = None, checkDestroyCode = ''):
+    """Executes the behavior of the current instruction."""
     Code = """try {
             #ifndef DISABLE_TOOLS
             if (!(this->tool_manager.issue(cur_PC, cur_instr))) {
@@ -248,9 +245,8 @@ def getInstrIssueCode(self, trace, combinedTrace, hasHazard = False, pipeStage =
         """
     return Code
 
-# Computes the code defining the execution of an instruction and
-# of the processor tools.
 def getPipeInstrIssueCode(self, trace, combinedTrace, hasHazard, pipeStage, checkDestroyCode = ''):
+    """Executes the behavior of the current instruction for accurate models."""
     fetchStage = self.pipes[0]
     for i in self.pipes:
         if i.fetchStage:
@@ -311,8 +307,8 @@ def getPipeInstrIssueCode(self, trace, combinedTrace, hasHazard, pipeStage, chec
         """
     return Code
 
-# Computes and prints the code necessary for dealing with interrupts
 def getInterruptCode(self, trace, pipeStage = None):
+    """Returns the code dealing with interrupts."""
     interruptCode = ''
     orderedIrqList = sorted(self.irqs, lambda x,y: cmp(y.priority, x.priority))
     for irqPort in orderedIrqList:
@@ -325,11 +321,9 @@ def getInterruptCode(self, trace, pipeStage = None):
         if (irqPort.condition):
             interruptCode += ') && (' + irqPort.condition + ')'
         interruptCode += ') {\n'
-        # Now I have to call the actual interrrupt instruction: again, this
-        # depends on whether we are in the cycle accurate processor or
-        # in the functional one.
-        # Functional: we only need to call the instruction behavior
-        # Cycle accurate, we need to add the instruction to the pipeline
+        # Call the interrrupt instruction: This is different for functional and
+        # accurate models. In the former, we execute the behavior. In the
+        # latter, the instruction is added to the pipeline.
         if trace:
             interruptCode += 'std::cerr << "Received interrupt " << std::hex << std::showbase << IRQ << \'.\' << std::endl;'
         interruptCode += 'this->' + irqPort.name + '_instr->set_interrupt_value(' + irqPort.name + ');\n'
@@ -356,7 +350,7 @@ def getInterruptCode(self, trace, pipeStage = None):
     return interruptCode
 
 def initPipeline(self, processorMembers, processorCtorInit):
-    """Creates the pipeleine stages and the code necessary to initialize them"""
+    """Creates the pipeleine stages and the code necessary to initialize them."""
     from registerWriter import registerContainerType
     from isa import resolveBitType
     InstructionType = cxx_writer.Type('Instruction', includes = ['#include \"instructions.hpp\"'])
@@ -481,8 +475,8 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     InstructionTypePtr = IntructionType.makePointer()
     CacheElemType = cxx_writer.Type('CacheElem')
 
-    # fetchStage = [pipeIdx for pipeIdx, pipeStage in enumerate(self.pipes) if pipeStage.fetchStage][0]
-    # wbStage = [pipeIdx for pipeIdx, pipeStage in enumerate(self.pipes) if pipeStage.wbStage][0]
+    #fetchStage = [pipeIdx for pipeIdx, pipeStage in enumerate(self.pipes) if pipeStage.fetchStage][0]
+    #wbStage = [pipeIdx for pipeIdx, pipeStage in enumerate(self.pipes) if pipeStage.wbStage][0]
     fetchStage = self.pipes[0]
     wbStage = self.pipes[-1]
     for pipeStage in self.pipes:
@@ -702,8 +696,8 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         processorCtorCode += 'this->INSTRUCTIONS[' + str(instrMaxId) + '] = new InvalidInstruction(' + instrCtorValues + ');\n'
     if model.startswith('acc'):
         NOPIntructionType = cxx_writer.Type('NOPInstruction', '#include \"instructions.hpp\"')
-        NOPinstructionsAttribute = cxx_writer.Attribute('NOP_instr', NOPIntructionType.makePointer(), 'public', True)
-        processorMembers.append(NOPinstructionsAttribute)
+        NOPinstructionsAttr = cxx_writer.Attribute('NOP_instr', NOPIntructionType.makePointer(), 'public', True)
+        processorMembers.append(NOPinstructionsAttr)
         processorCtorCode += 'if (' + processor_name + '::num_instances == 1) {\n'
         processorCtorCode += processor_name + '::NOP_instr = new NOPInstruction(' + instrCtorValues + ');\n'
         for pipeStage in self.pipes:
@@ -839,7 +833,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         """
     for irq in self.irqs:
         Code += 'delete this->' + irq.name + '_instr;\n'
-    # Now, before the processor elements is destructed I have to make sure that the history dump file is correctly closed
+    # Close history dump file before destruction.
     if model.startswith('func'):
         Code += """#ifdef ENABLE_HISTORY
         if (this->history_en) {
@@ -877,7 +871,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         if self.systemc:
             Code += '// Wait for SystemC infrastructure, otherwise register callbacks will crash.\nwait(SC_ZERO_TIME);\n'
         if self.instructionCache:
-            # Declaration of the instruction buffer for speeding up decoding
+            # Declare an instruction buffer to speed up decoding.
             Code += 'template_map<' + str(self.bitSizes[1]) + ', CacheElem >::iterator icache_end = this->instr_cache.end();\n\n'
 
         Code += 'while(true) {\n'
@@ -893,7 +887,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         # computes the address from which the next instruction shall be fetched
         Code += getFetchAddressCode(self, model)
 
-        # Lets insert the code to keep statistics
+        # Tools: Profiler
         if self.systemc:
             Code += """if (cur_PC == this->profiler_start_addr) {
                 this->profiler_time_start = sc_time_stamp();
@@ -927,9 +921,10 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         if trace:
             Code += 'std::cerr << \"Current PC: \" << std::hex << std::showbase << cur_PC << \'.\' << std::endl;\n'
 
-        # Finally I declare the fetch, decode, execute loop, where the instruction is actually executed;
-        # Note the possibility of performing it with the instruction fetch
-        Code += 'Instruction* cur_instr = NULL;\n'
+        # Two fetch paths are possible: The instruction buffer or the normal
+        # instruction stream.
+        # getInstrIssueCode() executes the instruction behavior.
+        Code += 'cur_instr = NULL;\n'
         if self.instructionCache:
             Code += getCacheInstrFetchCode(self, doFetchCode, trace, combinedTrace, getInstrIssueCode)
         else:
@@ -976,7 +971,8 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
             Code += 'this->instr_end_event.notify();\n'
 
         Code += 'this->num_instructions++;\n\n'
-        # Now I have to call the update method for all the delayed registers
+        # Register Propagation
+        # Call the update method of all delayed registers.
         for reg in self.regs:
             if reg.delay:
                 Code += reg.name + '.clock_cycle();\n'
@@ -1110,8 +1106,8 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
 # Testbench Model
 ################################################################################
 def getCPPMain(self, model, namespace):
-    """Returns the code which instantiate the processor
-    in order to execute simulations"""
+    """Testbench that contains a standalone processor with minimal connections.
+    Required stub memories are created and ports connected."""
     wordType = self.bitSizes[1]
     code = 'using namespace ' + namespace + ';\nusing namespace trap;\n\n'
     code += 'std::cerr << banner << std::endl;\n'
@@ -1294,9 +1290,6 @@ def getCPPMain(self, model, namespace):
         code += """
         // Initialize the tools (e.g. debugger, os emulator, etc).
         """
-        #if model.startswith('acc'):
-            #code += 'OSEmulatorCA<' + str(wordType) + ', -' + str(execOffset*self.wordSize) + '> os_emulator(processor.ABIIf, Processor::NOP_instr, ' + str(self.abi.emulOffset) + ');\n'
-        #else:
         code += 'OSEmulator<' + str(wordType) + '> os_emulator(processor.ABIIf);\n'
         code += """GDBStub<""" + str(wordType) + """> gdb_stub(processor.ABIIf);
         Profiler<""" + str(wordType) + """> profiler(processor.ABIIf, vm["application"].as<std::string>(), vm.count("disable_fun_prof") > 0);
@@ -1469,9 +1462,6 @@ def getCPPMain(self, model, namespace):
     if self.abi:
         mainCode.addInclude('debugger/gdb_stub.hpp')
         mainCode.addInclude('profiler/profiler.hpp')
-        #if model.startswith('acc'):
-            #mainCode.addInclude('osemu_ca.hpp')
-        #else:
         mainCode.addInclude('osemu/osemu.hpp')
     parameters = [cxx_writer.Parameter('argc', cxx_writer.intType), cxx_writer.Parameter('argv', cxx_writer.charPtrType.makePointer())]
     mainFunction = cxx_writer.Function('sc_main', mainCode, cxx_writer.intType, parameters)
@@ -1535,11 +1525,9 @@ def getCPPMain(self, model, namespace):
     wordPairType = cxx_writer.TemplateType('std::pair', [wordType, wordType])
     cycleRangeFunction = cxx_writer.Function('get_cycle_range', getCycleRangeCode, wordPairType, parameters)
 
-    # Finally here lets declare the variable holding the global reference to the debugger
     debuggerType = cxx_writer.TemplateType('GDBStub', [wordType])
     debuggerVariable = cxx_writer.Variable('gdb_stub_ref', debuggerType.makePointer(), initValue = 'NULL')
 
-    # and here the variable holding the printable banner
     bannerInit = 'std::string("\\n\\\n'
     for bannerLine in self.banner.split('\n'):
         bannerInit += '\\t' + bannerLine.replace('\\', '\\\\') + '\\n\\\n'
@@ -1553,8 +1541,8 @@ def getCPPMain(self, model, namespace):
     bannerVariable = cxx_writer.Variable('banner', cxx_writer.stringType, initValue = bannerInit)
 
     """Returns the code for a stub initiator socket class to be connected with
-    interrupt ports. Sadly, TLM does not implement SC_ZERO_OR_MORE_BOUND properly,
-    so the interrupt ports have to be connected."""
+    interrupt ports. Sadly, TLM does not implement SC_ZERO_OR_MORE_BOUND
+    properly, so the interrupt ports have to be connected."""
     # Create socket classes for each unique port width.
     for portWidth in list(set([irq.portWidth for irq in self.irqs])):
         # multi_passthrough_initiator_socket init_socket;
@@ -1585,15 +1573,15 @@ def getCPPMain(self, model, namespace):
 # Testbench Model
 ################################################################################
 def getCPPTestMain(self):
-    """Returns the code for a formatting class called from within the boost
-    test framework that outputs values in hex."""
+    """Returns a formatting class called from within the boost test framework
+    that does some extra formatting, such as outputting values in hex."""
     code = """output << std::showbase << std::hex << value;"""
     formatCode = cxx_writer.Code(code)
     parameters = [cxx_writer.Parameter('output', cxx_writer.Type('std::ostream').makeRef()), cxx_writer.Parameter('value', cxx_writer.Type('::boost::unit_test::const_string'))]
     formatMethod = cxx_writer.Method('log_entry_value', formatCode, cxx_writer.voidType, 'public', parameters)
     formatClass = cxx_writer.ClassDeclaration('trap_log_formatter', [formatMethod], [cxx_writer.Type('::boost::unit_test::output::compiler_log_formatter')])
-    """Returns the code for the file which contains the main
-    routine for the execution of the tests."""
+
+    """Returns the main routine for running the tests."""
     global testNames
     code = 'trap_log_formatter* trap_log_formatter_ptr = new trap_log_formatter;\nboost::unit_test::unit_test_log.set_formatter(trap_log_formatter_ptr);\n'
     for test in testNames:

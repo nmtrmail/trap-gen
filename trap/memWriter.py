@@ -369,14 +369,14 @@ def getCPPMemoryIf(self, model, namespace):
         sizeAttr = cxx_writer.Attribute('size', cxx_writer.uintType, 'private')
         localMemoryMembers.append(sizeAttr)
 
-        dumpFileAttribute = cxx_writer.Attribute('dump_file', cxx_writer.ofstreamType, 'private')
-        localMemoryMembers.append(dumpFileAttribute)
+        dumpFileAttr = cxx_writer.Attribute('dump_file', cxx_writer.ofstreamType, 'private')
+        localMemoryMembers.append(dumpFileAttr)
 
         if not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
-            cycleAttribute = cxx_writer.Attribute('cur_cycle', cxx_writer.uintType.makeRef(), 'private')
+            cycleAttr = cxx_writer.Attribute('cur_cycle', cxx_writer.uintType.makeRef(), 'private')
             localMemoryCtorParams.append(cxx_writer.Parameter('cur_cycle', cxx_writer.uintType.makeRef()))
             localMemoryCtorInit.append('cur_cycle(cur_cycle)')
-            localMemoryMembers.append(cycleAttribute)
+            localMemoryMembers.append(cycleAttr)
 
         if self.memory[3]:
             # Find out type of fetch register.

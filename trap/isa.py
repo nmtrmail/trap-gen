@@ -50,8 +50,8 @@ if sys.version_info >= (2,7):
 # Globals and Helpers
 ################################################################################
 def resolveBitType(typeString):
-    """Given a string representing a bit type it returns the more appropriate C++ type
-    for the representation of such a type"""
+    """Given a string in the form BIT<value> it returns a suitable C++ type that
+    can represent such a type."""
     if isinstance(typeString, cxx_writer.Type):
       return typeString
     if not isinstance(typeString, str):
@@ -59,30 +59,28 @@ def resolveBitType(typeString):
     validBitType = '^( )*BIT( )*<( )*[0-9]+( )*>( )*$'
     if not re.match(validBitType, typeString):
         raise Exception('Invalid variable type ' + str(typeString) + ', expected \"BIT <BITWIDTH>\" for custom bit types.')
-    # Now I can finally get the bitwidth
     bitWidthRe = re.search('[0-9]+', typeString)
     if not bitWidthRe:
         raise Exception('Invalid variable type ' + str(typeString) + ', expected \"BIT <BITWIDTH>\" for custom bit types.')
     bitWidth = int(typeString[bitWidthRe.start():bitWidthRe.end()])
-    # Now I have to take decisions based on the bit-width and on the host machine in order
-    # to generate the appropriate variable; performance reasons can also affect the decision.
-    # In particular we decide that:
-    # 32 BIT: unsigned
+    # Decide on the type based on the bit-width and the host machine.
+    # 32 bit: unsigned
     # 64 bit: unsigned long long
-    # 1 bit: bool
     # 16 bit: unsigned short
-    # the other bit-width are described using SystemC types; also in case the host machine
-    # does not respect the cited convention I use SystemC types also for the basic bit width.
+    # 8 bit: unsigned char
+    # 1 bit: bool
+    # Other bit widths are described using SystemC types. If the host machine
+    # does not respect the cited convention we use SystemC types for all widths.
     if bitWidth == 32:
         return cxx_writer.uintType
     elif bitWidth == 64:
         return cxx_writer.sc_uint64Type
+    elif bitWidth == 16:
+        return cxx_writer.ushortType
     elif bitWidth == 8:
         return cxx_writer.ucharType
     elif bitWidth == 1:
         return cxx_writer.boolType
-    elif bitWidth == 16:
-        return cxx_writer.ushortType
     else:
         if bitWidth/8 <= tuple.__itemsize__:
             return cxx_writer.TemplateType('sc_dt::sc_uint', str(bitWidth), 'systemc.h')
@@ -93,11 +91,9 @@ def resolveBitType(typeString):
 # ISA
 ################################################################################
 class ISA:
-    """This class represents the instruction set of a processor;
-    it mainly contains a list of instructions (each one with the
-    coding, the behavior ...). It also contains the methods for
-    transforming the instructions into the C++ code which
-    implements them"""
+    """Represents the instruction set of a processor. Contains a list of
+    instructions (each one containing coding, behavior, etc) and provides
+    methods for generating the C++ classes implementing the instructions."""
     def __init__(self):
         if sys.version_info >= (2,7):
             self.instructions = OrderedDict()
@@ -108,13 +104,12 @@ class ISA:
         self.startup = None
         self.shutdown = None
         self.subInstructions = {}
-        # Definition of constant variables which can be accessed from the instructions
+        # Constant variables which can be accessed from the instructions.
         self.constants = []
-        # Definitions used inside the ISA to ease the description
         self.defines = []
-        # Registers which we wish to print in the instruction trace
+        # Registers which we wish to print in the instruction trace.
         self.traceRegs = []
-        # Behavior of the NOP operation; used only in the cycle accurate processor
+        # Behavior of the NOP operation, used only in the accurate model.
         self.nopBeh = {}
 
     def setNOPBehavior(self, behavior, stage):
@@ -152,27 +147,26 @@ class ISA:
         self.methods.append(method)
 
     def addBeginOp(self, operation):
-        """Operation executed at the beginning of every instruction
-        TODO: do we need to access the fields of the instructions? if so
-        which? the ones which have the same name and same position in all
-        the instructions?"""
+        """Operation executed at the beginning of every instruction.
+        TODO: Do we need to access the fields of the instructions? If so, which?
+        The ones which have the same name and same position in all
+        instructions?"""
         for i in self.helperOps + self.methods:
             if i.name == operation.name:
                 raise Exception('Operation ' + operation.name + ' already exists in the ISA.')
         self.startup = operation
 
     def addEndOp(self, operation):
-        """Operation executed at the end of every instruction
-        TODO: as for the begin op, do we need to access any
-        of the instruction fields?"""
+        """Operation executed at the end of every instruction.
+        TODO: As for beginOp, do we need to access any instruction fields?"""
         for i in self.helperOps + self.methods:
             if i.name == operation.name:
                 raise Exception('Operation ' + operation.name + ' already exists in the ISA.')
         self.shutdown = operation
 
     def computeCoding(self):
-        """for each instruction it puts together the machine code
-        and the identifier bits to create the instruction bitstring"""
+        """For each instruction it puts together the machine code and the
+        instruction identifier bits to create the instruction bitstring."""
         for instr in self.instructions.values():
             for i in range(0, instr.machineCode.instrLen):
                 instr.bitstring.append(None)
@@ -220,21 +214,21 @@ class ISA:
                         raise Exception('Coding of instructions ' + str(i) + ' and ' + str(j) + ' is ambiguous.')
 
     def checkRegisters(self, indexExtractor, checkerMethod):
-        """Checks that all the registers used in the instruction encoding are
-        existing and part of the architecture. It also check that there are
-        no name collisions among the registers, aliases and instruction
-        variables"""
+        """Checks that all the registers used in the instruction encoding exist.
+        Also checks that there are no name collisions among the registers,
+        aliases and instruction variables."""
         toCheck = []
         for i in self.instructions.values():
-            # check the machine code: the var fields must be existing registers
+            # Check the machine code: The variable fields must refer to existing
+            # registers.
             for reg in i.machineCode.bitCorrespondence.values():
                 if not reg in toCheck:
                     if isinstance(reg, str):
                         toCheck.append(reg)
                     else:
                         toCheck.append(reg[0] + '[' + str(reg[1]) + ']')
-            # check the instruction variables: there must be no collision with
-            # the register names
+            # Check the instruction variables for name collisions with
+            # registers.
             for var in i.variables:
                 if checkerMethod(var.name) != None:
                     raise Exception('Variable name ' + var.name + ' in instruction ' + i.name + ' already used for a processor register.')
@@ -242,15 +236,14 @@ class ISA:
                     raise Exception('Variable name ' + var.name + ' in instruction ' + i.name + ' already used for a processor register bank.')
         for reg in toCheck:
             index = indexExtractor(reg)
+            # Alias refers to one register inside a register bank or alias
+            # register bank.
             if index:
-                # I'm aliasing part of a register bank or another alias:
-                # I check that it exists and that I am still within
-                # boundaries
                 refName = reg[:reg.find('[')]
                 if checkerMethod(refName, index) is None:
                     raise Exception('Register bank ' + reg + ' specified in the machine code does not exist.')
+            # Alias refers to a single register or alias.
             else:
-                # Single register or alias: I check that it exists
                 if checkerMethod(reg) is None:
                     raise Exception('Register ' + reg + ' specified in the machine code does not exist.')
 
@@ -261,8 +254,8 @@ class ISA:
         return isaWriter.getCPPInstrTests(self, processor, model, trace, combinedTrace, namespace)
 
     def getInstructionSig(self):
-        """Returns the signature (in the form of a string) uniquely identifying the
-        encoding of the instructions"""
+        """Returns the signature (in the form of a string) uniquely identifying
+        the encoding of the instructions."""
         try:
             import hashlib
             hashCreator = hashlib.md5()
@@ -279,110 +272,94 @@ class ISA:
 # Instructions
 ################################################################################
 class Instruction:
-    """Represents an instruction of the processor. The instruction
-    is characterized by (a) machine code (b) behavior (both in terms
-    of explicit behavior and of helper operations); the behavior
-    is separated among the pipeline stages (c) abstract
-    behavior (as needed for the retargeting of gcc) (d) timing
-    details for each pipeline stage (they can be expressed in
-    function of the variables for that stage or of the global
-    instruction variables) (e) if the instruction is for the
-    coprocessor (f) if this instruction can modify the program
-    counter. Optionally a documentation string
-    can be provided, describing the instruction behavior.
-    Note that also I have to specify which are the pipeline
-    stage for which I stall waiting for hazards, where the wb
-    occurs and where I can start the bypassing in case (this
-    if the defaults for the pipeline are not used). Note that
-    it is possible to specify some behaviors as being only present
-    in the cycle accurate processor and not in the functional one
-    (useful for branch prediction for example)
-    Also forwardging can be disabled by the instruction"""
+    """Represents an instruction of the processor. The instruction is
+    characterized by (a) machine code (b) behavior (both explicit behavior and
+    helper operations). The behavior is assigned to the pipeline stages (c)
+    abstract behavior (as needed for retargeting gcc) (d) timing details for the
+    pipeline stages (can be expressed as a function of the stage variables or
+    the global instruction variables) (e) if the instruction is for the
+    coprocessor (f) if this instruction can modify the program counter.
+    The pipeline structure is taken into account, such as the stage for reading
+    registers/checking hazards and the write-back stage. It is possible to
+    specify some behaviors as being only present in the cycle-accurate processor
+    and (useful for branch prediction for example). Pipeline forwarding can also
+    be disabled by an instruction."""
     def __init__(self, name, modifyPc = True, isCoprocessor = False, frequency = 1):
         self.name = name
-        # Estimated frequency of the instruction. It is used to build the decoder.
-        # the more the frequency repspects the real frequency of the instruction
-        # in the better will be the decoder
+        # Estimated frequency of the instruction. It is used to build the
+        # decoder. The more accurate the given frequency, the faster the
+        # generated decoder.
         if frequency < 1:
             raise Exception('Invalid frequency value for instruction ' + name + ', expected non-zero, positive integer.')
         self.frequency = frequency
-        # Instruction id; note that the ID is automatically assigned to
-        # the instruction by the ISA class
+        # The instruction id is automatically assigned by the ISA class.
         self.id = 0
-        # Note how the code and the behavior is specified
-        # for each pipeline stage
+        # Both code and behaviors are assigned to pipeline stages.
         self.prebehaviors = {}
         self.postbehaviors = {}
         self.code = {}
         self.isCoprocessor = isCoprocessor
         self.modifyPc = modifyPc
-        # List of variables which are global to this instruction
-        # these variables are instances of the variables class as
-        # contained in cxx_writer.SimpleDecls
+        # List of variables (cxx_writer.Variable) that will be added to the
+        # instruction class members.
         self.variables = []
         self.docbrief = ''
         self.docdetail = ''
         self.machineCode = None
         self.machineBits = None
-        # The bits of the machine code of the instruction; the elements of
-        # this list can be 0, 1 or None (don't care)
+        # List of machine code bits that identify this instruction. The list
+        # elements can be 0, 1 or None (don't-care).
         self.bitstring = []
-        # Some testing information: each element of the list
-        # represents a test. For each test there are three maps:
-        # name of the instruction variables and their values,
-        # name of the resource and value to set in the second map and name
-        # of the resource and value that we expect to have in the third.
-        # For cycle accurate models, we execute the whole behavior at once
-        # (no timing test is done)
-        # Among the resources, MEM[ADDR] representes the memory at a
-        # particular address
+        # List of behavior tests of this instruction. Each test contains three
+        # dictionaries: 1. Instruction fields and their values, 2. Resources
+        # and their values 3. Expected resources values after instruction
+        # execution. For cycle accurate models, we execute the whole behavior at
+        # once, no timing test is done. In specifying resources, MEM[ADDR]
+        # represents the memory at a particular address.
         self.tests = []
         self.mnemonic = None
-        # Finally, these information are used for
-        # gcc retargeting:
-        # This is the name of the pattern as recognized by
-        # gcc. There is a fixed list of names recognized by gcc,
-        # for more informations look http://gcc.gnu.org/onlinedocs/gccint/index.html#toc_Machine-Desc
+        # Name of the pattern as recognized by gcc, used for gcc retargeting.
+        # @see http://gcc.gnu.org/onlinedocs/gccint/index.html#toc_Machine-Desc
         self.templateString = ''
         # In addition to the template string we need to know how each
-        # templateString reflects in the assembly of the target
-        # architecture. This information should be automatically derived
-        # from the machineCode
-        # Parts of the machine code which are valid only for this instrucion
+        # templateString reflects in the assembly of the target architecture.
+        # This information should be automatically derived from the machineCode.
+        # Parts of the machine code which are valid only for this instrucion.
         self.bitCorrespondence = {}
         self.bitDirection = {}
         # Registers which are read or written in addition to registers which are
-        # part of the instruction econding (usually these are the special processor
-        # registers)
+        # part of the instruction econding. Usually these are the special
+        # processor registers.
         self.specialInRegs = {}
         self.specialOutRegs = {}
-        # Specifies if the coding of this instruction is a special case of a more general
-        # instruction
+        # Specifies if the coding of this instruction is a special case of a
+        # more general instruction. A subinstruction's encoding is valid coding
+        # for the parent instruction, but needs to be treated differently.
         self.subInstr = False
-        # List of instruction which are subInstructions of the current one
+        # List of instruction which are sub instructions of the current one.
         self.subInstructions = []
-        # Specifies the list of behaviors that have to be printed respectively to the
-        # functional and cycle accurate models
+        # Indicates that a previously defined behavior (in self.(pre|post)
+        # behaviors) should only be executed in the accurate or functional
+        # model, respectively.
         self.behaviorAcc = []
         self.behaviorFun = []
-        # Here are the registers whose write back does not happen when the instruction
-        # leaves the pipeline, but much later, with a latency specified (in clock cycles)
-        # by the key of the map
+        # A list of registers where the write back does not happen when the
+        # instruction leaves the pipeline, but later. The map key is the latency
+        # in clock cycles.
         self.delayedWb = {}
-        # Here are the registers which should not be considered during lock and unlock
-        # operations
+        # A list of registers that should not be considered during lock and
+        # unlock operations.
         self.notLockRegs = []
         self.customCheckHazardOp = {}
 
     def setMachineCode(self, machineCode, machineBits = {}, mnemonic = [], subInstr = False):
-        """Sets the machine code for this instruction. Note that a machine
-        code may be generic for groups of instructions: the
-        machine bits are a specialization of it. machineBits
-        is a map: name of the field and bit string which
-        sets the value of that field"""
+        """Sets the machine code for this instruction. Note that machineCode
+        may be generic for groups of instructions, with machineBits specializing
+        it for an individual instruction. machineBits maps the name of the field
+        to the value bit string."""
         self.subInstr = subInstr
-        # Now I check that the mnemonic is valid all the parts starting with % must be existing in the current
-        # machine code
+        # Check that the mnemonic is valid. All parts starting with % must exist
+        # in the current machine code.
         bitFieldNames = []
         for i in machineCode.bitFields:
             bitFieldNames.append(i[0])
@@ -428,16 +405,55 @@ class Instruction:
                         break
                 if not found:
                     raise Exception('Architectural element ' + procElem + ' specified in operation ' + behavior.name + ' does not exist in the machine code of instruction ' + self.name + '.')
-                # Finally I separate the elements which are really constant from those which are, instead,
-                # only variable parts of the instruction
+                # Separate the instruction fields that are constant from those
+                # that are variable.
                 if procElem in self.machineCode.bitCorrespondence.keys():
                     newProcElem.append(procElem)
                 elif not procElem in behavior.archVars:
                     behavior.archVars.append(procElem)
             behavior.archElems = newProcElem
 
+    def setCode(self, code, stage):
+        """Code should be an instance of cxx_writer.CustomCode."""
+        if self.code.has_key(stage):
+            raise Exception('Code for stage ' + stage + ' in instruction ' + self.name + ' already set.')
+        self.code[stage] = code
+
+    def setVarField(self, name, correspondence, bitDir = 'inout'):
+        if not self.machineCode:
+            raise Exception('The machine code for instruction ' + self.name + ' must be set before calling method ' + setVarField + '.')
+        found = False
+        for i in self.machineCode.bitFields:
+            if name == i[0]:
+                found = True
+                break
+        if not found:
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Field does not exist in instruction.')
+        if self.machineCode.bitCorrespondence.has_key(name):
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Correspondence already set in machine code.')
+        if self.bitCorrespondence.has_key(name):
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Correspondence already set in instruction.')
+        if self.machineCode.bitValue.has_key(name):
+            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Bitfield value already set in machine code.')
+        self.bitCorrespondence[name] = correspondence
+        self.bitDirection[name] = bitDir.lower()
+
+    def addVariable(self, variable):
+        """Adds a variable (cxx_writer.Variable) as an instruction class
+        member."""
+        if isinstance(variable, type(())):
+            variable = cxx_writer.Variable(variable[0], resolveBitType(variable[1]))
+        for instrVar in self.variables:
+            if variable.name == instrVar.name:
+                if variable.varType.name != instrVar.varType.name:
+                    raise Exception('Cannot add variable ' + variable.name + ' of type ' + variable.varType.name + ' to instruction ' + self.name + '. Variable of type ' + instrVar.varType.name + 'already exists in the instruction.')
+                else:
+                    return
+        self.variables.append(variable)
+
     def addBehavior(self, behavior, stage, pre = True, accurateModel = True, functionalModel = True):
-        """adds a behavior (an instance of the class HelperOperation)"""
+        """Adds a predefined instruction behavior (instance of the class
+        HelperOperation)."""
         if accurateModel:
             self.behaviorAcc.append(behavior.name)
         if functionalModel:
@@ -478,54 +494,6 @@ class Instruction:
                     behavior.archVars.append(procElem)
             behavior.archElems = newProcElem
 
-    def setCode(self, code, stage):
-        """code is simply a string containing the code
-        Code must be an instance of cxx_writer.CustomCode"""
-        if self.code.has_key(stage):
-            raise Exception('Code for stage ' + stage + ' in instruction ' + self.name + ' already set.')
-        self.code[stage] = code
-
-    def addVariable(self, variable):
-        """adds a variable global to the instruction; note that
-        variable has to be an instance of cxx_writer.Variable"""
-        if isinstance(variable, type(())):
-            variable = cxx_writer.Variable(variable[0], resolveBitType(variable[1]))
-        for instrVar in self.variables:
-            if variable.name == instrVar.name:
-                if variable.varType.name != instrVar.varType.name:
-                    raise Exception('Cannot add variable ' + variable.name + ' of type ' + variable.varType.name + ' to instruction ' + self.name + '. Variable of type ' + instrVar.varType.name + 'already exists in the instruction.')
-                else:
-                    return
-        self.variables.append(variable)
-
-    def setVarField(self, name, correspondence, bitDir = 'inout'):
-        if not self.machineCode:
-            raise Exception('The machine code for instruction ' + self.name + ' must be set before calling method ' + setVarField + '.')
-        found = False
-        for i in self.machineCode.bitFields:
-            if name == i[0]:
-                found = True
-                break
-        if not found:
-            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Field does not exist in instruction.')
-        if self.machineCode.bitCorrespondence.has_key(name):
-            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Correspondence already set in machine code.')
-        if self.bitCorrespondence.has_key(name):
-            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Correspondence already set in instruction.')
-        if self.machineCode.bitValue.has_key(name):
-            raise Exception('Cannot set correspondence ' + str(correspondence) + ' for field ' + name + ' of instruction ' + self.name + '. Bitfield value already set in machine code.')
-        self.bitCorrespondence[name] = correspondence
-        self.bitDirection[name] = bitDir.lower()
-
-    def addDocString(self, brief, detail):
-        self.docbrief = brief
-        self.docdetail = detail
-
-    def setTemplateString(self, templateString):
-        """This information is used for gcc retargeting."""
-        raise Exception('GCC retargeting not yet supported')
-        self.templateString = templateString
-
     def addSpecialRegister(self, regName, direction, stage):
         if direction in ['inout', 'in']:
             if self.specialInRegs.has_key(stage):
@@ -540,32 +508,23 @@ class Instruction:
         if not direction in ['inout', 'out', 'in']:
             raise Exception('Invalid value ' + str(direction) + ' for direction of register ' + regName + ', expected \'inout\', \'in\', or \'out\'.')
 
-    def addTest(self, variables, inputState, expOut):
-        """input and expected output are two maps, each one containing the
-        register name and its value. if the name of the resource corresponds
-        to one one of the memories, then the value in brackets is the
-        address
-        TODO: think about the possbility of also changing what the aliases
-        point to"""
-        self.tests.append((variables, inputState, expOut))
-
     def setWbDelay(self, regName, delay):
-        """Sets the delay of a register, so that that register
-        is written that specified amount of cycles after the
-        instruction has exited the pipeline"""
+        """Sets the delay of a register, so that that register is written that
+        specified amount of cycles after the instruction has exited the
+        pipeline."""
         self.delayedWb[regName] = delay
 
     def removeLockRegRegister(self, regName):
-        """Specifies the registers which, despite being written
-        or read by the instruction, do not have to be automatically
-        locked/unlocked/checked for hazard. This means that no action
-        will be automatically performed on them and that
-        it is responsibility of the developer to manually perform such checks
-        inside the instruction body (if needed)"""
+        """Specifies the registers which, despite being written or read by the
+        instruction, do not have to be automatically locked/unlocked/checked for
+        hazards. This means that no action will be performed on them and that it
+        is the responsibility of the developer to manually perform such checks
+        inside the instruction body as needed."""
         self.notLockRegs.append(regName)
 
     def addCheckHazardCode(self, op, stage):
-        """Appends some code to the check hazard method for the specified stage"""
+        """Appends some code to the check hazard logic for the specified
+        stage."""
         self.customCheckHazardOp[stage] = op
 
     def __repr__(self):
@@ -573,6 +532,21 @@ class Instruction:
 
     def __str__(self):
         return repr(self)
+
+    def addDocString(self, brief, detail):
+        self.docbrief = brief
+        self.docdetail = detail
+
+    def setTemplateString(self, templateString):
+        """This information is used for gcc retargeting."""
+        raise Exception('GCC retargeting not yet supported')
+        self.templateString = templateString
+
+    def addTest(self, variables, inputState, expOut):
+        """Input and expected output are two maps, each containing register
+        names values. If the name of the resource corresponds to a memory,
+        the value in brackets is taken to be the address."""
+        self.tests.append((variables, inputState, expOut))
 
     def getCPPClass(self, model, processor, trace, combinedTrace, namespace):
         return isaWriter.getCPPInstr(self, model, processor, trace, combinedTrace, namespace)
@@ -584,17 +558,14 @@ class Instruction:
 # Operations and Methods
 ################################################################################
 class HelperOperation:
-    """Represents some code; this code can be shared among the
-    instructions, in the sense that it can be part of more than
-    one instruction. The code can reference its variables or the
-    variables of the instructions it is associated to (note that
-    all the instructions this piece of code is associated to must
-    have the referenced variables)"""
+    """Represents instruction behavior shared among several instructions. The
+    code can reference the fields or variables of the instructions it is
+    associated to. Thus, all instructions using this behavior should contain the
+    the referenced fields or variables."""
     def __init__(self, name, code, inline = False, model = 'all', exception = True):
-        """Code must be an instance of cxx_writer.CustomCode. Note
-        that even if inline is specified, in case this operation
-        is used only one, its code is directly put inside the
-        instruction itself and not in a separate function"""
+        """Code must be an instance of cxx_writer.CustomCode. Note that the
+        operation code is unpacked inside the instruction behavior either if
+        inline is set or if the operation is used only by one instruction."""
         self.name = name
         self.code = code
         self.inline = inline
@@ -606,15 +577,15 @@ class HelperOperation:
         self.archVars = []
         self.specialInRegs = []
         self.specialOutRegs = []
+        # An operation can be assigned to a subset of the generated models.
         validModel = ['all', 'func', 'acc']
-        # Now we check which model has to include the operation
         if not model in validModel:
             raise Exception('Invalid model ' + model + ', expected ' + str(validModel) + '.')
         self.model = model
 
     def addVariable(self, variable):
-        """adds a variable global to the operation; note that
-        variable has to be an instance of cxx_writer.Variable"""
+        """Adds a variable (cxx_writer.Variable) as an operation class
+        member."""
         if isinstance(variable, type(())):
             variable = cxx_writer.Variable(variable[0], resolveBitType(variable[1]))
         for instrVar in self.localvars + self.instrvars:
@@ -623,9 +594,14 @@ class HelperOperation:
                     raise Exception('Cannot add variable ' + variable.name + ' of type ' + variable.type.name + ' to operation ' + self.name + '. Variable of type ' + instrVar.type.name + ' already exists in operation.')
         self.localvars.append(variable)
 
+    def addUserInstructionElement(self, archElem):
+        """Declares an instruction field that will be accessed by this
+        operation."""
+        self.archElems.append(archElem)
+
     def addInstructionVar(self, variable):
-        """adds a variable global to the all instructions containig this operation;
-        note that variable has to be an instance of cxx_writer.Variable"""
+        """Declares an instruction variable that will be accessed by this
+        operation."""
         if isinstance(variable, type(())):
             variable = cxx_writer.Variable(variable[0], resolveBitType(variable[1]))
         for instrVar in self.instrvars + self.localvars:
@@ -633,11 +609,6 @@ class HelperOperation:
                 if variable.type.name != instrVar.type.name:
                     raise Exception('Cannot add variable ' + variable.name + ' of type ' + variable.type.name + ' to operation ' + self.name + '. Variable of type ' + instrVar.type.name + ' already exists in operation.')
         self.instrvars.append(variable)
-
-    def addUserInstructionElement(self, archElem):
-        """adds an instruction element to this instruction: this is necessary in case
-        the current operation needs to access the field of a machine code"""
-        self.archElems.append(archElem)
 
     def addSpecialRegister(self, regName, direction = 'inout'):
         if direction in ['inout', 'in']:
@@ -648,7 +619,7 @@ class HelperOperation:
             raise Exception('Invalid value ' + str(direction) + ' for direction of register ' + regName + ', expected \'inout\', \'in\', or \'out\'.')
 
     def getCPPOperation(self, namespace):
-        """returns the cpp code implementing the current method"""
+        """Returns the cpp code implementing the current operation."""
         return isaWriter.getCPPOperation(self, namespace)
 
     def __repr__(self):
@@ -658,9 +629,9 @@ class HelperOperation:
         return repr(self)
 
 class HelperMethod:
-    """Represents a fucntion which can be shared among the
-    instructions. This function can be called from all
-    the instructions and other helper operations"""
+    """Represents a function that can be called by any instruction. The code can
+    reference global resources (registers, etc) but not instruction fields or
+    variables."""
     def __init__(self, name, code, stage, exception = True, const = False, inline = False):
         """Code must be an instance of cxx_writer.CustomCode."""
         self.name = name
@@ -673,24 +644,10 @@ class HelperMethod:
         self.parameters = []
         self.retType = cxx_writer.Type('void')
 
-    def addVariable(self, variable):
-        """adds a variable global to the operation; note that
-        variable has to be an instance of cxx_writer.Variable"""
-        if isinstance(variable, type(())):
-            variable = cxx_writer.Variable(variable[0], resolveBitType(variable[1]))
-        for instrVar in self.localvars:
-            if variable.name == instrVar.name:
-                if variable.type.name != instrVar.type.name:
-                    raise Exception('Cannot add variable ' + variable.name + ' of type ' + variable.type.name + ' to operation ' + self.name + '. Variable of type ' + instrVar.type.name + ' already exists in operation.')
-        for param in self.parameters:
-            if variable.name == param.name:
-                raise Exception('Cannot add parameter ' + param.name + ' to operation ' + self.name + '. Variable already exists in operation.')
-        self.localvars.append(variable)
-
     def setSignature(self, retType = cxx_writer.Type('void'), parameters = []):
-        """sets the signature for the method; the return type has to be an instance of
-        cxx_writer.Type or a string representing a bit type, while the parameters
-         can either be cxx_writer.Parameter or a string representing a bit type"""
+        """Sets the function signature. The return type has to be an instance of
+        cxx_writer.Type or a string representing a bit type. The parameters can
+        either be cxx_writer.Parameter or a string representing a bit type."""
         if isinstance(retType, str):
             self.retType = resolveBitType(retType)
         else:
@@ -707,8 +664,22 @@ class HelperMethod:
                     raise Exception('Cannot add parameter ' + param.name + ' to operation ' + self.name + '. Parameter already exists in operation.')
             self.parameters.append(param)
 
+    def addVariable(self, variable):
+        """Adds a variable (cxx_writer.Variable) as a local function
+        variable."""
+        if isinstance(variable, type(())):
+            variable = cxx_writer.Variable(variable[0], resolveBitType(variable[1]))
+        for instrVar in self.localvars:
+            if variable.name == instrVar.name:
+                if variable.type.name != instrVar.type.name:
+                    raise Exception('Cannot add variable ' + variable.name + ' of type ' + variable.type.name + ' to operation ' + self.name + '. Variable of type ' + instrVar.type.name + ' already exists in operation.')
+        for param in self.parameters:
+            if variable.name == param.name:
+                raise Exception('Cannot add parameter ' + param.name + ' to operation ' + self.name + '. Variable already exists in operation.')
+        self.localvars.append(variable)
+
     def getCPPInstrMethod(self, model, namespace):
-        """returns the cpp code implementing the current method"""
+        """Returns the cpp code implementing the current method."""
         return isaWriter.getCPPInstrMethod(self, model, namespace)
 
     def __repr__(self):

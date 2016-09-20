@@ -47,10 +47,8 @@ import procWriter, pipelineWriter, registerWriter, memWriter, interfaceWriter, p
 validModels = ['funcLT', 'funcAT', 'accLT', 'accAT']
 
 def extractRegInterval(regBankString):
-    """Given a string, it check if it specifies an interval
-    of registers of a register bank. In case it returns the
-    interval, None otherwise. An exception is raised in case
-    the string is malformed"""
+    """Checks whether the given string specifies an interval within a register
+    bank. If so, the interval is returned, if not, None is returned."""
     if ('[' in regBankString and not ']' in regBankString) or (']' in regBankString and not '[' in regBankString):
         raise Exception('Malformed brackets in registry bank identifier ' + regBankString + '.')
     if not '[' in regBankString:
@@ -70,27 +68,19 @@ def extractRegInterval(regBankString):
 # Processor
 ################################################################################
 class Processor:
-    """
-    Defined by (a) name (b) endianess (c) wordsize (in terms of
-    bytes) (d) bytesize (it is the minimum addressing quantity)
-    (e) all the architectural elements here defined (f) the
-    behavior for the received interrupt method; note that this
-    has to be specified only if there are actually interrupts
-    registered (this method is called at every cycle and the content,
-    which has to be specified by the user, checks if there are
-    interrupts, if they are not masked and takes the appropriate
-    action) (g) if we are describing a processor or a coprocessor
-    (the different with the coprocessor is that it is not active,
-    instructions are passed to it and not actively fetched)
-    Three special operations are defined, (1) begin, (2) end
-    and (3) reset, used at the begining of the simulation (or
-    after a reset), at the end of the simulation and to reset
-    the processor.
-    The systemc parameter in the constructor specifies whether systemc
-    will be used for keeping time or not in the completely
-    functional processor in case a local memory is used (in case TLM ports
-    are used the systemc parameter is not taken into account)
-    """
+    """Defined by (a) name (b) endianess (c) wordsize [byte] (d) bytesize [bit]
+    (minimum addressable field) (e) all the contained architectural elements
+    (f) the behavior for the received interrupt method. Note that this has to be
+    specified only if there are interrupts present. (g) if we are describing a
+    processor or a coprocessor (the difference is that a coprocessor is not
+    active; instructions are passed to it and not actively fetched by it.)
+    Three special operations are defined, (1) begin, (2) end and (3) reset,
+    used at the begining of the simulation (or after a reset), at the end of
+    the simulation and to reset the processor.
+    The systemc parameter in the constructor is relevant only for functional
+    processors with a local memory and specifies whether SystemC will be used
+    for keeping time or not. In case TLM ports are used the systemc parameter is
+    not taken into account."""
 
     #---------------------------------------------------------------------------
     ## @name Initialization and Configuration
@@ -108,7 +98,8 @@ class Processor:
         self.name = name
         self.version = version
         self.isBigEndian = None
-        #self.alloc_buffer_size = alloc_buffer_size # Commented since preallocating instruction does not give any speedup
+        # Pre-allocating instructions does not give any speedup.
+        #self.alloc_buffer_size = alloc_buffer_size
         self.wordSize = None
         self.byteSize = None
         self.bitSizes = None
@@ -251,8 +242,8 @@ class Processor:
         self.aliasRegBanks.append(alias)
 
     def setFetchRegister(self, fetchReg,  offset = 0):
-        """Sets the correspondence between the fetch address
-        and a register inside the processor"""
+        """Specifies that a processor register will be used as the fetch
+        register."""
         found = False
         for i in self.aliasRegs + self.regs:
             if i.name == fetchReg:
@@ -286,7 +277,7 @@ class Processor:
         self.memory = (name, mem_size, debug, program_counter)
 
     def setTLMMem(self, mem_size, memLatency, sparse = False):
-        """the memory latency is exrepssed in us"""
+        """Memory latency is expressed in us."""
         self.tlmFakeMemProperties = (mem_size, memLatency, sparse)
 
     # ..........................................................................
@@ -305,15 +296,15 @@ class Processor:
         self.pins.append(pin)
 
     def addTLMPort(self, portName, fetch = False):
-        """Note that for the TLM port, if only one is specified and the it is the
-        port for the fetch, another port called portName + '_fetch' will be automatically
-        instantiated. the port called portName can be, instead, used for accessing normal
-        data"""
+        """Note that if only one TLM port is declared and it is specified as the
+        fetch port, another port called portName + '_fetch' will be
+        automatically instantiated. The port called portName can be then used
+        for accessing normal data."""
         if not self.systemc:
             raise Exception('Cannot use TLM ports if SystemC is not enabled.')
         if fetch and self.memory:
             raise Exception('Cannot specify port ' + portName + ' as a fetch port since the internal memory is already set for fetching instructions.')
-        for name,isFetch  in self.tlmPorts.items():
+        for name, isFetch in self.tlmPorts.items():
             if name == portName:
                 raise Exception('Port ' + portName + ' already exists.')
             if fetch and isFetch:
@@ -342,25 +333,19 @@ class Processor:
         self.parameters.append(parameter)
 
     def setBeginOperation(self, code):
-        """if is an instance of cxx_writer.CustomCode,
-        containing the code for the behavior
-        If no begin operation is specified, the default
-        values for the registers are used"""
+        """Instance of cxx_writer.CustomCode containing behavior to be run at
+        the begining of the simulation."""
         self.startup = code
 
-    def setEndOperation(self, code):
-        """if is an instance of cxx_writer.CustomCode,
-        containing the code for the behavior
-        If no end operation is specified, nothing
-        is done"""
-        self.shutdown = code
-
     def setResetOperation(self, code):
-        """if is an instance of cxx_writer.CustomCode,
-        containing the code for the behavior
-        if no reset operation is specified, the
-        begin operation is called"""
+        """Instance of cxx_writer.CustomCode containig behavior to be run at
+        reset."""
         self.reset = code
+
+    def setEndOperation(self, code):
+        """Instance of cxx_writer.CustomCode containing behavior to be run at
+        the end of the simulation."""
+        self.shutdown = code
 
     ## @} Initialization and Configuration
     #---------------------------------------------------------------------------
@@ -448,7 +433,6 @@ class Processor:
 
     def isRegExisting(self, name, index = None):
         if index:
-            # I have to check for a register bank
             for i in self.regBanks:
                 if name == i.name:
                     if index[0] >= 0 and index[1] <= i.numRegs:
@@ -477,17 +461,13 @@ class Processor:
         return False
 
     def checkAliases(self):
-        """checks that the declared aliases actually refer to
-        existing registers"""
+        """Checks that the declared aliases actually refer to existing
+        registers."""
         for alias in self.aliasRegBanks:
-            # I have to check that the registers alised by
-            # this register bank actually exists and that
-            # intervals, if used, are correct
+            # Alias bank refers to one register, alias, register bank or alias
+            # register bank.
             if isinstance(alias.initAlias, str):
                 index = extractRegInterval(alias.initAlias)
-                # I'm aliasing part of a register bank or another alias:
-                # I check that it exists and that I am still within
-                # boundaries
                 refName = alias.initAlias[:alias.initAlias.find('[')]
                 regInstance = self.isRegExisting(refName, index)
                 if regInstance is None:
@@ -503,14 +483,15 @@ class Processor:
                         pass
                 except AttributeError:
                     pass
+            # Alias bank refers to a combination of registers, aliases, register
+            # banks or alias register banks.
             else:
                 totalRegs = 0
                 for i in range(0, len(alias.initAlias)):
                     index = extractRegInterval(alias.initAlias[i])
+                    # Alias bank refers to (a subset of) a register bank or
+                    # alias register bank.
                     if index:
-                        # I'm aliasing part of a register bank or another alias:
-                        # I check that it exists and that I am still within
-                        # boundaries
                         refName = alias.initAlias[i][:alias.initAlias[i].find('[')]
                         regInstance = self.isRegExisting(refName, index)
                         if regInstance is None:
@@ -525,8 +506,8 @@ class Processor:
                                 pass
                         except AttributeError:
                             pass
+                    # Alias bank refers to a single register or alias.
                     else:
-                        # Single register or alias: I check that it exists
                         regInstance = self.isRegExisting(alias.initAlias[i])
                         if regInstance is None:
                             raise Exception('Register ' + alias.initAlias[i] + ' referenced by alias ' + alias.name + ' does not exist.')
@@ -540,12 +521,12 @@ class Processor:
                                 pass
                         except AttributeError:
                             pass
+
         for alias in self.aliasRegs:
             index = extractRegInterval(alias.initAlias)
+            # Alias refers to one register inside a register bank or alias
+            # register bank.
             if index:
-                # I'm aliasing part of a register bank or another alias:
-                # I check that it exists and that I am still within
-                # boundaries
                 refName = alias.initAlias[:alias.initAlias.find('[')]
                 regInstance = self.isRegExisting(refName, index)
                 if regInstance is None:
@@ -560,8 +541,8 @@ class Processor:
                         pass
                 except AttributeError:
                     pass
+            # Alias refers to a single register or alias.
             else:
-                # Single register or alias: I check that it exists
                 regInstance = self.isRegExisting(refName, index)
                 if regInstance is None:
                     raise Exception('Register ' + alias.initAlias + ' referenced by alias ' + alias.name + ' does not exist.')
@@ -577,44 +558,49 @@ class Processor:
                     pass
 
     def checkMemRegisters(self):
-        if not self.memory and not self.tlmPorts:
-            raise Exception('Please specify either an internal memory (using setMemory()) or a TLM memory port (using addTLMPort()).')
+        if not self.memory:
+            if not self.tlmPorts:
+                raise Exception('Please specify either an internal memory (using setMemory()) or a TLM memory port (using addTLMPort()).')
+            for name, isFetch in self.tlmPorts.items():
+                if isFetch:
+                    break
+            else: raise Exception('Neither TLM port nor internal memory defined for instruction fetch.')
         if not self.fetchReg:
             raise Exception('Please specify a fetch register using setFetchRegister() (usually the PC).')
         for memAliasReg in self.memAlias:
             index = extractRegInterval(memAliasReg.alias)
+            # Alias refers to one register inside a register bank or alias
+            # register bank.
             if index:
-                # I'm aliasing part of a register bank or another alias:
-                # I check that it exists and that I am still within
-                # boundaries
                 regName = memAliasReg.alias[:memAliasReg.alias.find('[')]
                 if self.isRegExisting(regName, index) is None:
                     raise Exception('Cannot set memory alias for register ' + memAliasReg.alias + ' at address ' + memAliasReg.address + '. Register does not exist.')
+            # Alias refers to a single register or alias.
             else:
-                # Single register or alias: I check that it exists
                 if self.isRegExisting(memAliasReg.alias) is None:
                     raise Exception('Cannot set memory alias for register ' + memAliasReg.alias + ' at address ' + memAliasReg.address + '. Register does not exist.')
         if self.memory and self.memory[3]:
             index = extractRegInterval(self.memory[3])
+            # Alias refers to one register inside a register bank or alias
+            # register bank.
             if index:
-                # I'm aliasing part of a register bank or another alias:
-                # I check that it exists and that I am still within
-                # boundaries
                 regName = self.memory[3][:self.memory[3].find('[')]
                 if self.isRegExisting(regName, index) is None:
                     raise Exception('Cannot set register ' + self.memory[3] + ' as the program counter. Register does not exist in local memory.')
+            # Alias refers to a single register or alias.
             else:
-                # Single register or alias: I check that it exists
                 if self.isRegExisting(self.memory[3]) is None:
                     raise Exception('Cannot set register ' + self.memory[3] + ' as the program counter. Register does not exist in local memory.')
 
     def checkISARegs(self):
-        """Checks that registers declared in the instruction encoding and the ISA really exists"""
+        """Checks that the registers declared in the instruction encoding and
+        the ISA really exist."""
         architecturalNames = [archElem.name for archElem in self.regs + self.regBanks + self.aliasRegs + self.aliasRegBanks]
         for name, instruction in self.isa.instructions.items():
-            # inside each instruction I have to check for registers defined in the machine code (bitCorrespondence),
-            # the correspondence declared inside the instruction itself (bitCorrespondence), the input and output
-            # special registers (specialInRegs, specialOutRegs)
+            # Inside each instruction I have to check for registers defined in
+            # the machine code (bitCorrespondence), the correspondence declared
+            # inside the instruction itself (bitCorrespondence), the input and
+            # output special registers (specialInRegs, specialOutRegs).
             for regName in instruction.machineCode.bitCorrespondence.values():
                 if not regName[0] in architecturalNames:
                     raise Exception('Architectural element ' + str(regName[0]) + ' specified in the machine code of instruction ' + name + ' does not exist.')
@@ -629,15 +615,14 @@ class Processor:
                 inRegs += regList
             for regName in inRegs + outRegs:
                 index = extractRegInterval(regName)
+                # Alias refers to one register inside a register bank or alias
+                # register bank.
                 if index:
-                    # I'm aliasing part of a register bank or another alias:
-                    # I check that it exists and that I am still within
-                    # boundaries
                     refName = regName[:regName.find('[')]
                     if self.isRegExisting(refName, index) is None:
                         raise Exception('Register bank ' + regName + ' referenced as spcial register in instruction ' + name + ' does not exist.')
+                # Alias refers to a single register or alias.
                 else:
-                    # Single register or alias: I check that it exists
                     if self.isRegExisting(regName) is None:
                         raise Exception('Register ' + regName + ' referenced as spcial register in instruction ' + name + ' does not exist.')
             pipeStageName = [i.name for i in self.pipes] + ['default']
@@ -667,7 +652,7 @@ class Processor:
             instruction.specialInRegs = newInRegs
 
     def checkTestRegs(self):
-        """We check that the registers specified in the tests exist"""
+        """Checks that the registers specified in the tests exist."""
         outPinPorts = []
         for pinPort in self.pins:
             if not pinPort.inbound:
@@ -675,12 +660,12 @@ class Processor:
 
         for instr in self.isa.instructions.values():
             for test in instr.tests:
-                # Now I check the existence of the instruction fields
+                # Check whether the instruction fields exist.
                 for name, elemValue in test[0].items():
                     if not instr.machineCode.bitLen.has_key(name):
                         raise Exception('Field ' + name + ' in test of instruction ' + instr.name + ' does not exist in the machine code.')
                 for resource, value in test[1].items():
-                    # Now I check the existence of the global resources
+                    # Check whether the global resources exist.
                     brackIndex = resource.find('[')
                     memories = self.tlmPorts.keys()
                     if self.memory:
@@ -713,7 +698,7 @@ class Processor:
     # Interface Checks
 
     def checkIRQPorts(self):
-        """So far I only have to check that the stages of the IRQ operations are existing"""
+        """Checks that the stages of the IRQ operations exist."""
         stageNames = [i.name for i in self.pipes]
         for irq in self.irqs:
             for stage in irq.operation.keys():
@@ -721,8 +706,7 @@ class Processor:
                     raise Exception('Pipeline stage ' + stage + ' specified for interrupt ' + irq.name + ' does not exist.')
 
     def checkABI(self):
-        """checks that the registers specified for the ABI interface
-        refer to existing registers"""
+        """Checks that the registers specified for the ABI interface exist."""
         index = extractRegInterval(self.abi.RetVal)
         if index:
             regBound = self.abi.RetVal[self.abi.RetVal.find('['):self.abi.RetVal.find(']')]
@@ -748,21 +732,20 @@ class Processor:
             for returnReg in self.abi.returnCallReg:
                 toCheck.append(returnReg[0])
                 toCheck.append(returnReg[1])
-        # ok, now I finally perform the check
+
         for i in toCheck:
             index = extractRegInterval(i)
+            # ABI register refers to one register inside a register bank or an
+            # alias register bank.
             if index:
-                # I'm aliasing part of a register bank or another alias:
-                # I check that it exists and that I am still within
-                # boundaries
                 refName = i[:i.find('[')]
                 if self.isRegExisting(refName, index) is None:
                     raise Exception('Register bank ' + i + ' used in the ABI does not exist.')
+            # ABI register refers to a single register or alias.
             else:
-                # Single register or alias: I check that it exists
                 if self.isRegExisting(i) is None:
                     raise Exception('Register ' + i + ' used in the ABI does not exist.')
-        # warning in case details are not specified
+        # Warning in case of missing details.
         if not self.abi.returnCallInstr or not self.abi.callInstr:
             print('Warning: "returnCallInstr" or "callInstr" not specified in the ABI. The profiler may give incorrect results.')
         ################# TODO: check also the memories #######################
@@ -773,11 +756,10 @@ class Processor:
     #  @{
 
     def write(self, folder = '.', models = validModels, namespace = '', dumpDecoderName = '', trace = False, combinedTrace = False, forceDecoderCreation = False, tests = True, memPenaltyFactor = 4):
-        """Ok: this method does two things: first of all it performs all
-        the possible checks to ensure that the processor description is
-        coherent. Second it actually calls the write method of the
-        processor components (registers, instructions, etc.) to create
-        the code of the simulator"""
+        """This method does two things: First, it performs all possible checks
+        to ensure that the processor description is coherent. Second, it calls
+        the write method of the processor components (registers, instructions,
+        etc.) to create the simulator code."""
 
         print ('\tCreating processor model ' + self.name + '...')
         print ('\t\tChecking the consistency of the specification...')
@@ -814,7 +796,7 @@ class Processor:
         from isa import resolveBitType
         import decoder, os
         import cxx_writer
-        # Now I declare a couple of variables used for keeping track of the size of each words and parts for them
+        # Variables used for keeping track of memory field sizes.
         self.bitSizes = [resolveBitType('BIT<' + str(self.wordSize*self.byteSize*2) + '>'),
                         resolveBitType('BIT<' + str(self.wordSize*self.byteSize) + '>'),
                         resolveBitType('BIT<' + str(self.wordSize*self.byteSize/2) + '>'),
@@ -826,13 +808,13 @@ class Processor:
         cxx_writer.FileDumper.developer_email = self.developer_email
         cxx_writer.FileDumper.banner = self.banner
 
-        # Here we check if the decoder signature changed; in case it hasn't we create the decoder,
-        # otherwise we load it from file
+        # Check if the decoder signature has changed. In case not, the decoder
+        # is is loaded from file, otherwise it is re-created.
         instructionSignature = self.isa.getInstructionSig()
         if not forceDecoderCreation:
             if os.path.exists(os.path.join(os.path.expanduser(os.path.expandvars(folder)), '.decoderSig')) and os.path.exists(os.path.join(os.path.expanduser(os.path.expandvars(folder)), '.decoderDump.pickle')):
-                # Now I have to compare the saved signature with the signature of the current
-                # instructions
+                # Compare the saved signature with the signature of the current
+                # instruction set.
                 try:
                     decSigFile = open(os.path.join(os.path.expanduser(os.path.expandvars(folder)), '.decoderSig'), 'r')
                     savedSig = decSigFile.read()
@@ -874,16 +856,16 @@ class Processor:
         mainFolder = cxx_writer.Folder(os.path.expanduser(os.path.expandvars(folder)))
 
         for model, modelFolder in models.items():
-            # Here I add the define code, defining the type of the current model;
-            # such define code has to be added to each created header file
+            # Add the define code, defining the type of the current model. The
+            # define code has to be added to each generated header file.
             defString = '#define ' + model[:-2].upper() + '_MODEL\n'
             defString += '#define ' + model[-2:].upper() + '_IF\n'
             defCode = cxx_writer.Define(defString)
             cxx_writer.FileDumper.def_prefix = 'CORE_' + self.name.upper() + '_' +  model[:-2].upper() + '_' + model[-2:].upper() + '_'
 
-            # Now I also set the processor class name: note that even if each model has a
-            # separate namespace, some buggy dynamic linkers complain, so we must also
-            # use separate names for the processor class
+            # Set the processor class name. Note that even if each model has a
+            # separate namespace, some buggy dynamic linkers complain, so we
+            # must also use separate names for the processor class.
             procWriter.processor_name = 'Core' + self.name + model[0].upper() + model[1:]
 
             print ('\t\tCreating ' + model + ' implementation...')
@@ -1163,10 +1145,8 @@ class Processor:
 # - Speculative prefetching
 # - VLIW
 class PipeStage:
-    """Identified by (a) name (b) optional, if it is wb,
-    the stage where the hazards are checked or where the
-    bypassing is started. Note that this is just the default
-    information which can be overridden by each instruction"""
+    """Identified by (a) name (b) whether it is a special stage (fetch, decode,
+    regs, wb)."""
     def __init__(self, name):
         self.name = name
         self.fetchStage = False
@@ -1204,10 +1184,9 @@ class PipeStage:
 # Storage Models: Registers, Aliases, Register Banks and Memory
 ################################################################################
 class Register:
-    """Register of a processor. It is identified by (a) the
-    width in bits, (b) the name. It is eventually possible
-    to associate names to the different register fields and
-    then refer to them instead of having to use bit masks"""
+    """Register of a processor. It is identified by (a) the width in bits, (b)
+    the name. Register fields can be accessed by name instead of having to use
+    bit masks."""
     def __init__(self, name, bitWidth, bitMask = {}):
         self.name = name
         self.bitWidth = bitWidth
@@ -1252,7 +1231,7 @@ class Register:
         self.delay = value
 
     def setOffset(self, value):
-        """TODO: eliminate this restriction"""
+        # TODO: Eliminate this restriction.
         if self.bitMask:
             raise Exception('Cannot set offset for register ' + self.name + ' because it uses a bit mask.')
         self.offset = value
@@ -1279,10 +1258,9 @@ class Register:
         self.isGlobal = True
 
 class RegisterBank:
-    """Same thing of a register, it also specifies the
-    number of registers in the bank. In case register
-    fields are specified, they have to be the same for the
-    whole bank"""
+    """Registers inside a bank share the same bitmasks/field names and offsets.
+    Reset values, delays and pipeline bypasses can be specified for individual
+    registers."""
     def __init__(self, name, numRegs, bitWidth, bitMask = {}):
         self.name = name
         self.bitWidth = bitWidth
@@ -1388,20 +1366,14 @@ class RegisterBank:
         self.isGlobal = True
 
 class AliasRegister:
-    """Alias for a register of the processor;
-    actually this is a pointer to a register; this pointer
-    might be updated during program execution to point to
-    the right register; updating it is responsibility of
-    the programmer; it is also possible to directly specify
-    a target for the alias"""
-    # TODO: it might be a good idea to introduce 0 offset aliases: they are aliases
-    # for which it is not possible to use any offset by which are much faster than
-    # normal aliases at runtime
-    # Update: @see runtime/modules/register/register_alias.hpp
+    """Alias of a processor register. It is basically a class that contains a
+    pointer to a register and delegates all operations there. This is useful for
+    processors where the user sees only a subset (logical registers) of the
+    physical registers at a given time. An offset added to the register value
+    can be specified. The target register can by changed during runtime."""
     def __init__(self, name, initAlias, offset = 0):
         self.name = name
-        # I make sure that there is just one registers specified for
-        # the alias
+        # Check that the alias points to only one register.
         index = extractRegInterval(initAlias)
         if index:
             if index[0] != index[1]:
@@ -1418,34 +1390,39 @@ class AliasRegister:
         self.isFixed = True
 
 class AliasRegBank:
-    """Alias for a register of the processor;
-    actually this is a pointer to a register; this pointer
-    might be updated during program execution to point to
-    the right register; updating it is responsibility of
-    the programmer; it is also possible to directly specify
-    a target for the alias: in this case the alias is fixed"""
+    """Alias bank pointing to a subset of the processor registers. It is
+    basically a container of aliases, where each points to a register and
+    delegates all operations there. This is useful for processors where the user
+    sees only a subset (logical registers) of the physical registers at a given
+    time. An offset added to the register value can be specified. The target
+    register can by changed during runtime."""
     def __init__(self, name, numRegs, initAlias):
         self.name = name
         self.numRegs = numRegs
-        # Now I have to make sure that the registers specified for the
-        # alias have the same lenght of the alias width
+        # Check that the width of the registers and aliases match.
+        # Alias bank refers to one register or register bank.
         if isinstance(initAlias, str):
             index = extractRegInterval(initAlias)
-            # Part of a register bank or alias register bank.
+            # Alias bank refers to (a subset of) a register bank or alias
+            # register bank.
             if index:
                 if index[1] - index[0] + 1 != numRegs:
                     raise Exception('Alias register bank ' + str(initAlias) + ' contains ' + str(index[1]-index[0]+1) + ' registers but the aliased register bank contains ' + str(numRegs) + ' registers.')
-            # Single register or alias register.
+            # Alias bank refers to a single register or alias.
             else:
                 if numRegs > 1:
                     raise Exception('Alias register bank ' + str(initAlias) + ' contains one register but the aliased register bank contains ' + str(numRegs) + ' registers.')
-        # List of registers, alias registers, register banks or alias register banks.
+        # Alias bank refers to a combination of registers, aliases, register
+        # banks or alias register banks.
         else:
             totalRegs = 0
             for i in initAlias:
                 index = extractRegInterval(i)
+                # Alias bank refers to (a subset of) a register bank or alias
+                # register bank.
                 if index:
                     totalRegs += index[1] - index[0] + 1
+                # Alias bank refers to a single register or alias.
                 else:
                     totalRegs += 1
             if totalRegs != numRegs:
@@ -1482,8 +1459,8 @@ class AliasRegBank:
         self.defValues[position] = value
 
 class MemoryAlias:
-    """Alias for a register through a memory address: by reading and writing to the
-    memory address we actually read/write to the register"""
+    """Alias of a processor register through a memory address: By reading and
+    writing to the memory address we actually read/write the register."""
     def __init__(self, address, alias):
         self.address = address
         self.alias = alias
@@ -1493,11 +1470,10 @@ class MemoryAlias:
 ################################################################################
 class Interrupt:
     """Specifies an interrupt port for the processor.
-    Note that I will render both systemc and TLM ports as systemc
-    signals: there is a check interrupts routine which will be
-    called every cycle, in which the user can check the IRQs and
-    take the appropriate actions. The signal will be automatically
-    raised, lowered etc... depending whether edge triggered, level etc.."""
+    Note that an interrupt checking routine is created for both SystemC and TLM
+    signals. It is called every cycle and runs user-specified code for checking
+    and processing the interrupts. The signal will be automatically raised or
+    lowered depending on whether it is edge- or level-triggered."""
     def __init__(self, name, portWidth, tlm = True, priority = 0):
         self.name = name
         self.tlm = tlm
@@ -1509,8 +1485,8 @@ class Interrupt:
         self.variables = []
 
     def addVariable(self, variable):
-        """adds a variable global to the instruction; note that
-        variable has to be an instance of cxx_writer.Variable"""
+        """Adds the given cxx_writer.Variable as a member to the interrupt
+        instruction."""
         if isinstance(variable, type(())):
             from isa import resolveBitType
             variable = cxx_writer.Variable(variable[0], resolveBitType(variable[1]))
@@ -1529,22 +1505,17 @@ class Interrupt:
         self.condition = condition
 
     def addTest(self, inputState, expOut):
-        """The test is composed of 2 parts: the status before the
-        execution of the interrupt and the status after; note that
-        in the status before execution of the interrupt we also have
-        to specify the value of the interrupt line"""
+        """The test is composed of two parts: The status before the triggering
+        of the interrupt and the status after. Note that the status before
+        the interrupt should include the value of the interrupt line."""
         self.tests.append((inputState, expOut))
 
 class Pins:
-    """Custom pins; checking them or writing to them is responsibility ofnon
-    the programmer. They are identified by (a) name (b) type. They are
-    rendered with systemc or TLM ports. The type of the port should also
-    be specified, as is the direction. For outgoing TLM ports, the requested
-    type and the content of the payload are insignificant and only the
-    address is important"""
+    """Custom pins identified by (a) name (b) type. Checking or writing pins is
+    the responsibility of the programmer. They are implemented as SystemC or TLM
+    ports. For outgoing TLM ports, the requested type and the content of the
+    payload are insignificant and only the address is considered."""
     def __init__(self, name, portWidth, inbound = False, systemc = False):
-        """Note how the type of the must be of class cxx_writer.Type; a
-        systemc port using this type as a template will be created"""
         self.name = name
         self.portWidth = portWidth
         self.systemc = systemc
@@ -1557,111 +1528,90 @@ class Pins:
         self.operation = operation
 
 class ABI:
-    """Defines the ABI for the processor: this is necessary both for
-    the systemcalls implementation and for the gcc retargeting
-    We need to specify in which register the return value is written,
-    which are the registers holding the parameters of the call.
-    I also have to specify the function prologue and epilogue, where
-    the address of the previous execution path is saved, how to branch
-    to a fixed address (here we can also reference instructions of
-    the ISA).
-    The correspondence between the real architectural elements
-    and the variables of the simulator must be defined: I have to
-    list all the registers as seen (for example) by GDB,
-    so (0-n), and then to refer to variables I can either specify
-    register name, registry bank with indexes, constants.
-    I have to specify the program counter, sp, lr, fp.
-    Note that for each of these correspondences I can also specify
-    an offset (in the sense that PC can be r15 + 8 for ex).
+    """Defines the ABI for the processor. This is necessary both for the
+    implementation of system calls as well as gcc retargeting. The ABI supplies
+    information regarding:
+    - Names of registers holding function parameters or return values.
+    - Prologues and epilogues to function calls, such as where the address of
+      the previous execution path is saved, how to branch to a fixed address,
+      etc. Here we can also reference instructions or methods from the ISA.
+    - The correspondence between the real architectural elements and the
+      variables of the simulator: All registers as seen e.g. by GDB are listed.
     """
     def __init__(self, RetVal, args, PC, LR = None, SP = None, FP = None):
-        """Regsiter for the return value (either a register or a tuple
-        regback, index)"""
+        """Register holding the return value (either a register or a (regBank,
+        index) tuple."""
         self.RetVal = RetVal
-        # Register cprrespondence (offsets should also be specified)
-        self.LR = LR
+        if self.RetVal:
+            self.name[self.RetVal] = 'return_value'
+        # Special registers, possibly including offsets.
         self.PC = PC
+        self.name = {self.PC: 'PC'}
+        self.LR = LR
+        if self.LR:
+            self.name[self.LR] = 'LR'
         self.SP = SP
+        if self.SP:
+            self.name[self.SP] = 'SP'
         self.FP = FP
-        # A list of the registers for the I argument, II arg etc.
+        if self.FP:
+            self.name[self.FP] = 'FP'
+
+        # Registers holding function arguments.
         self.args = []
+        # One register holds function arguments.
         if isinstance(args, str):
             index = extractRegInterval(args)
             if index:
-                # I'm aliasing part of a register bank or another alias:
+                # Register refers to one register inside a register bank or
+                # alias register bank.
                 refName = args[:args.find('[')]
                 for i in range(index[0], index[1] + 1):
                     self.args.append(refName + '[' + str(i) + ']')
             else:
-                # Single register or alias
+                # Register refers to a single register or alias.
                 self.args.append(args)
+        # Multiple registers hold function arguments.
         else:
             for j in args:
                 index = extractRegInterval(j)
                 if index:
-                    # I'm aliasing part of a register bank or another alias:
+                    # Register refers to one register inside a register bank or
+                    # alias register bank.
                     refName = j[:j.find('[')]
                     for i in range(index[0], index[1] + 1):
                         self.args.append(refName + '[' + str(i) + ']')
                 else:
-                    # Single register or alias
+                    # Register refers to a single register or alias.
                     self.args.append(j)
+
         # Correspondence between regs as seen by GDB and the architectural
-        # variables
+        # variables.
         self.regCorrespondence = {}
-        # offsets which must be taken into consideration when dealing with the
-        # functional model
+        # Offsets are only relevant for the functional model.
         self.offset = {}
-        # set the names: to the PC register the name PC, etc.
-        self.name = {self.PC: 'PC'}
-        if self.LR:
-            self.name[self.LR] = 'LR'
-        if self.SP:
-            self.name[self.SP] = 'SP'
-        if self.FP:
-            self.name[self.FP] = 'FP'
-        if self.RetVal:
-            self.name[self.RetVal] = 'return_value'
-        # Specifies the memories which can be accessed; if more than one memory is specified,
-        # we have to associate the address range to each of them
+        # Specifies the memories which can be accessed. If more than one memory
+        # is specified, each has to specify an address range.
         self.memories = {}
-        # C++ Code which has to be executed during emulation of system calls in order to
-        # correctly enter a and return from a system call
+        # C++ Code which is executed during emulation of system calls in order
+        # to correctly enter and return from a system call.
         self.preCallCode = None
         self.postCallCode = None
-        # Registers which have to be updated in order to correctly return from a function call
+        # Registers which have to be updated in order to correctly return from a
+        # function call.
         self.returnCallReg = None
-        # Sequences of instructions which identify a call to a routine and the return from the call
-        # to a routine; such sequences are in the form [a, b, (c, d)] which means that, for example,
-        # we enter in a new routine when instructions a, b, and c or d are executed in sequence
+        # Sequences of instructions which identify a call to a routine and the
+        # return from the call. Such sequences are in the form [a, b, (c, d)],
+        # where we enter a new routine whenever instructions a, b, and c or d
+        # are executed in sequence.
         self.callInstr = []
         self.returnCallInstr = []
-        # Code used to determine the processor ID in a multi-processor environment
+        # Code used to determine the processor ID in a multi-processor
+        # environment.
         self.procIdCode = None
-        # Registers which do not need to be included when saving and restoring the
-        # state
+        # Registers which do not need to be included when saving and restoring
+        # the state.
         self.stateIgnoreRegs = []
-
-    def addIgnoreStateReg(self, toIgnore):
-        self.stateIgnoreRegs.append(toIgnore)
-
-    def processorID(self, procIdCode):
-        self.procIdCode = procIdCode
-
-    def setCallInstr(self, instrList):
-        self.callInstr = instrList
-
-    def setReturnCallInstr(self, instrList):
-        self.returnCallInstr = instrList
-
-    def returnCall(self, regList):
-        self.returnCallReg = regList
-
-    def setECallPreCode(self, code):
-        self.preCallCode = code
-
-    def setECallPostCode(self, code):
-        self.postCallCode = code
 
     def addVarRegsCorrespondence(self, correspondence):
         for key, value in correspondence.items():
@@ -1713,55 +1663,63 @@ class ABI:
                     raise Exception('Address range overlap between memories ' + name + ' and ' + memory + '.')
         self.memories[memory] = addr
 
+    def addIgnoreStateReg(self, toIgnore):
+        self.stateIgnoreRegs.append(toIgnore)
+
+    def setCallInstr(self, instrList):
+        self.callInstr = instrList
+
+    def setReturnCallInstr(self, instrList):
+        self.returnCallInstr = instrList
+
+    def returnCall(self, regList):
+        self.returnCallReg = regList
+
+    def setECallPreCode(self, code):
+        self.preCallCode = code
+
+    def setECallPostCode(self, code):
+        self.postCallCode = code
+
+    def processorID(self, procIdCode):
+        self.procIdCode = procIdCode
+
 ################################################################################
 # Coprocessor Model
 ################################################################################
 class Coprocessor:
-    """Specifies the presence of a specific coprocessor; in particular
-    it specifies what are the instructions of the ISA (already defined
-    instructions) which are coprocessor instructions and for each of
-    them it specifies what is the co-processor method which must be called
-    note that also the necessary include file must be provided.
-    it also specifies the bits which identify if the instruction if
-    for this coprocessor or not.
-    Alternatively a custom behavior can be provided, which will be
-    executed instead of the method call.
-    Note that the coprocessor name must be given: the processor will
-    contain a variable with this name; this variable will have to
-    be initialized to the instance of the coprocessor (by calling a
-    special method addCoprocessor ....) Note that the coprocessor
-    might need to access the Integer unit to read or set some registers.
-    This can either be done by passing a reference to the Ingeter Unit
-    registers to the coprocessor at construction or by using the custom
-    behavior in each co-processor instruction"""
-    # TODO: an accurate interface is also needed. This means that
-    # we need to define control signals and pins for the communication
-    # between the processor and the coprocessor
+    """A coprocessor needs to know the subset of instructions that are
+    coprocessor instructions. Each instruction is assigned a coprocessor method
+    which should be called. Alternatively a custom behavior can be provided,
+    which is to be executed instead of the method call.
+    The processor should contain a coprocessor variable holding the name of the
+    coprocessor, as given here. Depending on the architecture, the coprocessor
+    communicates with the processor either via special instructions that
+    transfer data from each set of registers, or by passing a reference to the
+    architectural elements at construction."""
+    # TODO: The accurate interface is missing: We need to define control signals
+    # and pins for the communication between the processor and the coprocessor.
     def __init__(self, name, type):
-        """Specifies the name of the coprocessor variable in the
-        processor. It also specifies its type"""
+        """Specifies the name and type of the coprocessor variable in the
+        processor."""
         self.name = name
         self.type = type
         self.isa = {}
 
     def addIsaCustom(self, name, code, idBits):
-        """Specifies that ISA instruction with name name
-        is a co-processor instruction and that
-        custom code is provided if the instruction is for
-        this coprocessor. idBits specifies what it the
-        value of the bits which specify if the instruction
-        is for this co-processor or not"""
+        """Specifies that ISA instruction <name> is a coprocessor instruction
+        and that custom code is provided for the instruction behavior. idBits
+        specifies a variable field in the instruction that indicates whether
+        the instruction is addressed to this coprocessor or not."""
         if self.isa.has_key(name):
             raise Exception('Instruction ' + name + ' already assigned to coprocessor ' + self.name + '.')
         self.isa[name] = (idBits, code)
 
     def addIsaCall(self, name, functionName, idBits):
-        """Specifies that ISA instruction with name name
-        is a co-processor instruction and that
-        a function call is provided if the instruction is for
-        this coprocessor. idBits specifies what it the
-        value of the bits which specify if the instruction
-        is for this co-processor or not"""
+        """Specifies that ISA instruction <name> is a coprocessor instruction
+        and that a method is provided for the instruction behavior. idBits
+        specifies a variable field in the instruction that indicates whether
+        the instruction is addressed to this coprocessor or not."""
         if self.isa.has_key(name):
             raise Exception('Instruction ' + name + ' already assigned to coprocessor ' + self.name + '.')
         self.isa[name] = (idBits, functionName)

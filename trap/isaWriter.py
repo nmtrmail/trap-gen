@@ -176,11 +176,8 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
         instructionMembers.append(unlockRegsMethod)
 
         # Attributes
-        # I also have to add the program counter attribute
         fetchPCAttr = cxx_writer.Attribute('fetch_PC', processor.bitSizes[1], 'public')
         instructionMembers.append(fetchPCAttr)
-        # and the inInPipeline attribute, specifying if the instruction is currently already
-        # in the pipeline or not
         inPipelineAttr = cxx_writer.Attribute('in_pipeline', cxx_writer.boolType, 'public')
         instructionMembers.append(inPipelineAttr)
         toDestroyAttr = cxx_writer.Attribute('to_destroy', cxx_writer.boolType, 'public')
@@ -193,8 +190,8 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
         Code = ''
 
         if model.startswith('acc'):
-            # Renames all resources so that their usage can be transparent
-            # to the developer.
+            # Renames all resources so that their usage can be transparent to
+            # the developer.
             Code += 'R.set_stage(' + str(processor.pipes.index(traceStage)) + ');\n'
 
         if not combinedTrace:
@@ -228,7 +225,6 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
         printTraceMethod = cxx_writer.Method('print_trace', printTraceBody, cxx_writer.voidType, 'public')
         instructionMembers.append(printTraceMethod)
 
-        # Now we have to print the method for creating the data hazards
         if model.startswith('acc'):
             printBusyRegsMethod = cxx_writer.Method('print_busy_regs', cxx_writer.Code('return "";'), cxx_writer.stringType, 'public', virtual = True)
             instructionMembers.append(printBusyRegsMethod)
@@ -269,8 +265,6 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
             instructionMembers.append(helperMethod.getCPPInstrMethod(model, namespace))
 
     # Attributes
-    # Now create references to the architectural elements contained in the processor and
-    # initialize them through the constructor
     if not model.startswith('acc'):
         instructionMembers.append(cxx_writer.Attribute('num_instr_cycles', cxx_writer.uintType, 'public'))
         instrCtorCode = 'this->num_instr_cycles = 0;'
@@ -358,10 +352,10 @@ def getCPPInstructions(self, processor, model, trace, combinedTrace, namespace):
     ## @} InvalidInstruction Class
     #---------------------------------------------------------------------------
     ## @name NOPInstruction Class
+    #  The NOP instruction is used whenever the pipeline is flushed.
     #  @{
 
     if model.startswith('acc'):
-        # The NOP instruction is used whenever the pipeline is flushed.
         NOPInstrMembers = []
 
         # Methods: get_id()
@@ -509,8 +503,8 @@ def getCPPInstrMnemonic(obj, i):
     return Code
 
 def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
-    """Returns the code implementing a single instruction. Implements
-    all abstract methods of the base instruction class."""
+    """Returns the class implementing a single instruction. Implements all
+    abstract methods of the base instruction class."""
 
     from procWriter import instrCtorParams, instrCtorValues
     from registerWriter import registerType, aliasType
@@ -634,8 +628,7 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
             Code += 'new_instr->' + name + '.set_alias(' + correspondence[0] + '[' + str(correspondence[1]) + ' + new_instr->' + name + '_bit]);\n'
         else:
             Code += 'new_instr->' + name + '.set_alias(' + correspondence[0] + '[new_instr->' + name + '_bit]);\n'
-    # now I need to declare the fields for the variable parts of the
-    # instruction
+    # Fields for the variable parts of the instruction.
     for name, length in self.machineCode.bitFields:
         if name in self.machineCode.bitCorrespondence.keys() + self.bitCorrespondence.keys():
             continue
@@ -678,12 +671,12 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     if not instrBases:
         instrBases.append(instructionType)
 
+    # Behavior dealing with data hazards.
     hasHazard = False
     decodeStage = None
     regsStage = None
     wbStage = None
     if model.startswith('acc'):
-        # Now I have to add the code for checking data hazards
         for pipeStage in processor.pipes:
             if pipeStage.decodeStage:
                 decodeStage = processor.pipes.index(pipeStage)
@@ -696,9 +689,9 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
             if pipeStage.wbStage:
                 wbStage = processor.pipes.index(pipeStage)
 
+    # User-defined instruction behavior.
     behaviorUserCode = ''
     for pipeStage in processor.pipes:
-        # Now I start computing the actual user-defined behavior of this instruction
         if self.prebehaviors.has_key(pipeStage.name):
             for beh in self.prebehaviors[pipeStage.name]:
                 if not ((model.startswith('acc') and beh.name in self.behaviorAcc) or (model.startswith('func') and beh.name in self.behaviorFun)):
@@ -766,9 +759,6 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
                             behaviorUserCode += ', '
                     behaviorUserCode += ');\n'
 
-        # Now I have to specify the code to manage data hazards in the processor.pipes; in particular to
-        # add, if the current one is the writeBack stage, the registers locked in the read stage
-        # to the unlock queue
         if model.startswith('acc'):
             behaviorCode = 'this->num_stage_cycles = 0;\n'
             if behaviorUserCode:
@@ -918,8 +908,8 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
                 for beh in behaviors:
                     for reg in beh.specialInRegs:
                         stageIndex = [pipeStageInner.name for pipeStageInner in processor.pipes].index(pipeName)
-                        # Only if the register will be read in an earlier
-                        # stage than we already calculated.
+                        # Only if the register will be read in an earlier stage
+                        # than we already calculated.
                         if reg not in instrInRegs:
                             if reg not in instrSpecialInRegs.keys():
                                 instrSpecialInRegs[reg] = stageIndex
@@ -1071,12 +1061,12 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
     #operatorDelParams = [cxx_writer.Parameter('m', cxx_writer.voidPtrType)]
     #operatorDelMethod = cxx_writer.MemberOperator('delete', operatorDelBody, cxx_writer.voidType, 'public', operatorDelParams)
     #instrMembers.append(operatorDelMethod)
-    #num_allocatedAttribute = cxx_writer.Attribute('allocated', cxx_writer.uintType, 'private', initValue = '0', static = True)
-    #instrMembers.append(num_allocatedAttribute)
+    #allocatedAttr = cxx_writer.Attribute('allocated', cxx_writer.uintType, 'private', initValue = '0', static = True)
+    #instrMembers.append(allocatedAttr)
 
     ########################## TODO: to eliminate, only for statistics ####################
-    #out_poolAttribute = cxx_writer.Attribute('allocated_out', cxx_writer.uintType, 'private', static = True)
-    #instrMembers.append(out_poolAttribute)
+    #allocatedOutAttr = cxx_writer.Attribute('allocated_out', cxx_writer.uintType, 'private', static = True)
+    #instrMembers.append(allocatedOutAttr)
     #returnStatsMethod = cxx_writer.Method('get_count_my_alloc', cxx_writer.Code('return ' + self.name + '::allocated;'), cxx_writer.uintType, 'public')
     #instrMembers.append(returnStatsMethod)
     #returnStatsMethod = cxx_writer.Method('get_count_std_alloc', cxx_writer.Code('return ' + self.name + '::allocated_out;'), cxx_writer.uintType, 'public')

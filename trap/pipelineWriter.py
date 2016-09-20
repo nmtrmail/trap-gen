@@ -522,11 +522,8 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
         pipeMembers.append(waitPipeEndMethod)
 
         # Methods: refresh_registers() for fetch stage
+        # Propagates the register latches forward. Honors bypasses.
         if pipeStage.fetchStage:
-            # I create the refresh_registers method; note that in order to update the registers
-            # i simply have to call the "propagate" method; I also have to deal with the update of the alias
-            # by manually moving the pointer to the pipeline register from one stage alias to
-            # the other to update the alias
             Code = """// Update the registers to propagate the values in the pipeline.
             R.clock_cycle();
             """
@@ -534,8 +531,8 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
             pipeMembers.append(refreshRegistersMethod)
 
             # Fetch Stage Attributes, Constructors and Destructors
-            decoderAttribute = cxx_writer.Attribute('decoder', cxx_writer.Type('Decoder', '#include \"decoder.hpp\"'), 'public')
-            pipeMembers.append(decoderAttribute)
+            decoderAttr = cxx_writer.Attribute('decoder', cxx_writer.Type('Decoder', '#include \"decoder.hpp\"'), 'public')
+            pipeMembers.append(decoderAttr)
 
             if self.instructionCache:
                 CacheElemType = cxx_writer.Type('CacheElem')
@@ -569,7 +566,7 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
             pipeMembers.append(historyUndumpedElementsAttr)
             pipeCtorCode += 'this->history_undumped_elements = 0;\n'
 
-            # Now, before the processor elements is destructed I have to make sure that the history dump file is correctly closed
+            # Close history dump file before destruction.
             pipeDtorCode = """#ifdef ENABLE_HISTORY
             if (this->history_en) {
                 // In case a queue dump file has been specified, check if it needs to be saved.

@@ -109,8 +109,8 @@ def getCPPIRQInstr(self, model, trace, namespace):
         # Sets the value of the received interrupt and the related attribute.
         from isa import resolveBitType
         irqWidthType = resolveBitType('BIT<' + str(irq.portWidth) + '>')
-        IRQAttribute = cxx_writer.Attribute(irq.name, irqWidthType.makeRef(), 'public')
-        IRQInstrMembers.append(IRQAttribute)
+        IRQAttr = cxx_writer.Attribute(irq.name, irqWidthType.makeRef(), 'public')
+        IRQInstrMembers.append(IRQAttr)
         IRQInstrCtorParams = [cxx_writer.Parameter(irq.name, irqWidthType.makeRef())]
         IRQInstrCtorInit = [irq.name + '(' + irq.name + ')']
         InterruptValueParam = cxx_writer.Parameter('interrupt_value', irqWidthType.makeRef().makeConst())

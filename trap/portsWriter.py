@@ -770,8 +770,8 @@ def getCPPIRQPorts(self, namespace):
         irqPortClasses.append(irqPortClass)
 
     # SystemC Ports
-    # Contain a method sensitive to a signal. Note that in order to lower the
-    # interrupt the signal has to be 0.
+    # Each port defines a method sensitive to a signal. Note that in order to
+    # lower the interrupt the signal has to be 0.
     for portWidth in SyscWidth:
         irqPortMembers = []
         irqPortCtorParams = []

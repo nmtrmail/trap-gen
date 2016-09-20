@@ -210,10 +210,10 @@ def getPipeClockCycleFunction(self, registerMaxBitwidth):
     return pipeClockCycleFunction
 
 def getRegisterClockCycleFunction(self, regName, wbStageOrder, registerMaxBitwidth):
-    """This function generates the callback function set by <reg>.
-    setWbStageOrder({'pipe_n': ['pipe_x', ... 'pipe_0']})) as described in
-    @see getPipeClockCycleFunction (3). The list of stages is interpreted in
-    order of decreasing precedence."""
+    """Generates the callback function set by
+    <reg>.setWbStageOrder({'pipe_n': ['pipe_x', ... 'pipe_0']}))
+    as described in @see getPipeClockCycleFunction (3). The list of stages is
+    interpreted in order of decreasing precedence."""
 
     if not wbStageOrder: return
 
@@ -266,7 +266,7 @@ def getRegisterClockCycleFunction(self, regName, wbStageOrder, registerMaxBitwid
 # Register Field Index Enums
 ################################################################################
 def getCPPRegisterFields(self):
-    """Returns a set of enum classes containing names of register fields to be
+    """Returns a list of enum classes containing names of register fields to be
     used as register indices."""
     # NOTE: This generates an enum containing the field names for each register,
     # register bank, alias and alias register bank. This is obviously redundant,
@@ -290,10 +290,10 @@ def getCPPRegisterFields(self):
 # Register Defines
 ################################################################################
 def getCPPRegisterDefines(self):
-    """Returns a list of defines for getting rid of the R. syntax. Thus, a
-    given REG will be replaced by R.reg. Assumes the calling object has a member
-    RegisterContainer<> R; This is just a nicety to keep the old interface where
-    each register was an inividual member."""
+    """Returns a list of defines for getting rid of the "R." syntax. Thus, a
+    given REG will be a synonym for R.reg. Assumes the calling object has a
+    member RegisterContainer<> R; This is just a nicety to keep the old
+    interface where each register was an inividual member."""
     # TODO: I obviously hate this ugly hack. But I don't like forcing the R.x
     # syntax either. I need to think of a better solution, esp since this leads
     # to cryptic compilation errors for name collisions, as was the case for
