@@ -355,14 +355,20 @@ def getCPPExternalPorts(self, model, namespace):
     for alias in self.memAlias:
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\nreturn this->' + alias.alias + ';\n}\n'
     addressParam = cxx_writer.Parameter('address', archWordType.makeRef().makeConst())
+    userParams = [cxx_writer.Parameter(paramName, paramAttr[0], initValue = paramAttr[2]) for paramName, paramAttr in self.memoryParams.items()]
+
     readBody = cxx_writer.Code(readMemAliasCode + str(archDWordType) + readCode + swapDEndianessCode + '\nreturn datum;')
     readBody.addInclude('common/report.hpp')
     readBody.addInclude('tlm.h')
-    readMethod = cxx_writer.Method('read_dword', readBody, archDWordType, 'public', [addressParam], noException = True)
+    readMethod = cxx_writer.Method('read_dword', readBody, archDWordType, 'public', [addressParam] + userParams, noException = True)
     extPortMembers.append(readMethod)
 
     readBody = cxx_writer.Code(readMemAliasCode + str(archWordType) + readCode + swapEndianessCode + '\nreturn datum;')
-    readMethod = cxx_writer.Method('read_word', readBody, archWordType, 'public', [addressParam], inline = True, noException = True)
+    readMethod = cxx_writer.Method('read_word', readBody, archWordType, 'public', [addressParam] + userParams, inline = True, noException = True)
+    extPortMembers.append(readMethod)
+
+    readBody = cxx_writer.Code(readMemAliasCode + str(archWordType) + readCode + swapEndianessCode + '\nreturn datum;')
+    readMethod = cxx_writer.Method('read_instr', readBody, archWordType, 'public', [addressParam] + userParams, inline = True, noException = True)
     extPortMembers.append(readMethod)
 
     readMemAliasCode = ''
@@ -370,7 +376,7 @@ def getCPPExternalPorts(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archHWordType) + ')' + alias.alias + '_temp;\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archHWordType) + ' *)&(' + alias.alias + '_temp)) + 1);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + str(archHWordType) + readCode + swapEndianessCode + '\nreturn datum;')
-    readMethod = cxx_writer.Method('read_half', readBody, archHWordType, 'public', [addressParam], noException = True)
+    readMethod = cxx_writer.Method('read_half', readBody, archHWordType, 'public', [addressParam] + userParams, noException = True)
     extPortMembers.append(readMethod)
 
     readMemAliasCode = ''
@@ -380,7 +386,7 @@ def getCPPExternalPorts(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 2);\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 3);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + str(archByteType) + readCode + '\nreturn datum;')
-    readMethod = cxx_writer.Method('read_byte', readBody, archByteType, 'public', [addressParam], noException = True)
+    readMethod = cxx_writer.Method('read_byte', readBody, archByteType, 'public', [addressParam] + userParams, noException = True)
     extPortMembers.append(readMethod)
 
     # Methods: write()
@@ -485,12 +491,12 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n this->' + alias.alias + ' = datum;\nreturn;\n}\n'
     writeBody = cxx_writer.Code(swapDEndianessCode + writeMemAliasCode + checkWatchPointCode + writeCode)
     datumParam = cxx_writer.Parameter('datum', archDWordType)
-    writeMethod = cxx_writer.Method('write_dword', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    writeMethod = cxx_writer.Method('write_dword', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam] + userParams, noException = True)
     extPortMembers.append(writeMethod)
 
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + checkWatchPointCode + writeCode)
     datumParam = cxx_writer.Parameter('datum', archWordType)
-    writeMethod = cxx_writer.Method('write_word', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], inline = True, noException = True)
+    writeMethod = cxx_writer.Method('write_word', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam] + userParams, inline = True, noException = True)
     extPortMembers.append(writeMethod)
 
     writeMemAliasCode = swapEndianessDefine
@@ -504,7 +510,7 @@ def getCPPExternalPorts(self, model, namespace):
     writeMemAliasCode += '#endif\n'
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + checkWatchPointCode + writeCode)
     datumParam = cxx_writer.Parameter('datum', archHWordType)
-    writeMethod = cxx_writer.Method('write_half', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    writeMethod = cxx_writer.Method('write_half', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam] + userParams, noException = True)
     extPortMembers.append(writeMethod)
 
     writeMemAliasCode = swapEndianessDefine
@@ -522,7 +528,7 @@ def getCPPExternalPorts(self, model, namespace):
     writeMemAliasCode += '#endif\n'
     writeBody = cxx_writer.Code(writeMemAliasCode + checkWatchPointCode + writeCode)
     datumParam = cxx_writer.Parameter('datum', archByteType)
-    writeMethod = cxx_writer.Method('write_byte', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    writeMethod = cxx_writer.Method('write_byte', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam] + userParams, noException = True)
     extPortMembers.append(writeMethod)
 
     # Methods: read_dbg()
@@ -540,11 +546,11 @@ def getCPPExternalPorts(self, model, namespace):
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(' + str(self.wordSize*2) + ');\ntrans.set_streaming_width(' + str(self.wordSize*2) + ');\n' + str(archDWordType) + ' datum = 0;\n' + readCode2 + swapDEndianessCode + 'return datum;')
     readBody.addInclude('common/report.hpp')
     readBody.addInclude('tlm.h')
-    readMethod = cxx_writer.Method('read_dword_dbg', readBody, archDWordType, 'public', [addressParam], noException = True)
+    readMethod = cxx_writer.Method('read_dword_dbg', readBody, archDWordType, 'public', [addressParam] + userParams, noException = True)
     extPortMembers.append(readMethod)
 
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(' + str(self.wordSize) + ');\ntrans.set_streaming_width(' + str(self.wordSize) + ');\n' + str(archWordType) + ' datum = 0;\n' + readCode2 + swapEndianessCode + 'return datum;')
-    readMethod = cxx_writer.Method('read_word_dbg', readBody, archWordType, 'public', [addressParam], noException = True)
+    readMethod = cxx_writer.Method('read_word_dbg', readBody, archWordType, 'public', [addressParam] + userParams, noException = True)
     extPortMembers.append(readMethod)
 
     readMemAliasCode = ''
@@ -552,7 +558,7 @@ def getCPPExternalPorts(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archHWordType) + ')' + alias.alias + '_temp;\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + self.wordSize/2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archHWordType) + ' *)&(' + alias.alias + '_temp)) + 1);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(' + str(self.wordSize/2) + ');\ntrans.set_streaming_width(' + str(self.wordSize/2) + ');\n' + str(archHWordType) + ' datum = 0;\n' + readCode2 + swapEndianessCode + 'return datum;')
-    readMethod = cxx_writer.Method('read_half_dbg', readBody, archHWordType, 'public', [addressParam], noException = True)
+    readMethod = cxx_writer.Method('read_half_dbg', readBody, archHWordType, 'public', [addressParam] + userParams, noException = True)
     extPortMembers.append(readMethod)
 
     readMemAliasCode = ''
@@ -562,7 +568,7 @@ def getCPPExternalPorts(self, model, namespace):
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 2) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 2);\n}\n'
         readMemAliasCode += 'if (address == ' + hex(long(alias.address) + 3) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn *(((' + str(archByteType) + ' *)&(' + alias.alias + '_temp)) + 3);\n}\n'
     readBody = cxx_writer.Code(readMemAliasCode + readCode1 + 'trans.set_data_length(1);\ntrans.set_streaming_width(1);\n' + str(archByteType) + ' datum = 0;\n' + readCode2 + 'return datum;')
-    readMethod = cxx_writer.Method('read_byte_dbg', readBody, archByteType, 'public', [addressParam], noException = True)
+    readMethod = cxx_writer.Method('read_byte_dbg', readBody, archByteType, 'public', [addressParam] + userParams, noException = True)
     extPortMembers.append(readMethod)
 
     # Methods: write_dbg()
@@ -578,12 +584,12 @@ def getCPPExternalPorts(self, model, namespace):
         writeMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n this->' + alias.alias + ' = datum;\nreturn;\n}\n'
     writeBody = cxx_writer.Code(swapDEndianessCode + writeMemAliasCode + writeCode1 + 'trans.set_data_length(' + str(self.wordSize*2) + ');\ntrans.set_streaming_width(' + str(self.wordSize*2) + ');\n' + writeCode2)
     datumParam = cxx_writer.Parameter('datum', archDWordType)
-    writeMethod = cxx_writer.Method('write_dword_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    writeMethod = cxx_writer.Method('write_dword_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam] + userParams, noException = True)
     extPortMembers.append(writeMethod)
 
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + writeCode1 + 'trans.set_data_length(' + str(self.wordSize) + ');\ntrans.set_streaming_width(' + str(self.wordSize) + ');\n' + writeCode2)
     datumParam = cxx_writer.Parameter('datum', archWordType)
-    writeMethod = cxx_writer.Method('write_word_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    writeMethod = cxx_writer.Method('write_word_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam] + userParams, noException = True)
     extPortMembers.append(writeMethod)
 
     writeMemAliasCode = swapEndianessDefine
@@ -597,7 +603,7 @@ def getCPPExternalPorts(self, model, namespace):
     writeMemAliasCode += '#endif\n'
     writeBody = cxx_writer.Code(swapEndianessCode + writeMemAliasCode + writeCode1 + 'trans.set_data_length(' + str(self.wordSize/2) + ');\ntrans.set_streaming_width(' + str(self.wordSize/2) + ');\n' + writeCode2)
     datumParam = cxx_writer.Parameter('datum', archHWordType)
-    writeMethod = cxx_writer.Method('write_half_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    writeMethod = cxx_writer.Method('write_half_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam] + userParams, noException = True)
     extPortMembers.append(writeMethod)
 
     writeMemAliasCode = swapEndianessDefine
@@ -615,7 +621,7 @@ def getCPPExternalPorts(self, model, namespace):
     writeMemAliasCode += '#endif\n'
     writeBody = cxx_writer.Code(writeMemAliasCode + writeCode1 + 'trans.set_data_length(1);\ntrans.set_streaming_width(1);\n' + writeCode2)
     datumParam = cxx_writer.Parameter('datum', archByteType)
-    writeMethod = cxx_writer.Method('write_byte_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
+    writeMethod = cxx_writer.Method('write_byte_dbg', writeBody, cxx_writer.voidType, 'public', [addressParam, datumParam] + userParams, noException = True)
     extPortMembers.append(writeMethod)
 
     # Methods: lock(), unlock()
