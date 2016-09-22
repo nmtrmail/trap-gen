@@ -855,21 +855,21 @@ def getCPPIRQTests(self, trace, combinedTrace, namespace):
         #Code += ', ' + alias.alias
 
     # Memory
-    if (trace or (self.memory and self.memory[2])) and not self.systemc:
+    if (trace or (any(memAttr[1] == True for memAttr in self.memories.values()))) and not self.systemc:
         declCode += 'unsigned total_cycles;\n'
-    if self.memory:
+    for memName, memAttr in processor.memories.items():
         Code = ''
-        if self.memory[2]:
+        if memAttr[1]:
             Code += ', total_cycles'
-        if self.memory[3]:
-            Code += ', ' + self.memory[3]
-        declCode += namespace + '::LocalMemory ' + self.memory[0] + '(' + str(self.memory[1]) + Code + ');\n'
+        if memAttr[2]:
+            Code += ', ' + memAttr[2]
+        declCode += namespace + '::LocalMemory ' + memName + '(' + str(memAttr[0]) + Code + ');\n'
 
     # Ports
     # Local memories are declared even for TLM ports. The default memory size is
     # 1MB.
-    for tlmPorts in self.tlmPorts.keys():
-        declCode += namespace + '::LocalMemory ' + tlmPorts + '(' + str(1024*1024) + ');\n'
+    for portName in self.tlmPorts:
+        declCode += namespace + '::LocalMemory ' + portName + '(' + str(1024*1024) + ');\n'
 
     # Pins
     for pinPort in self.pins:
@@ -907,10 +907,8 @@ def getCPPIRQTests(self, trace, combinedTrace, namespace):
             # contains the status after.
             for resource, value in test[0].items():
                 bracket = resource.find('[')
-                memories = self.tlmPorts.keys()
-                if self.memory:
-                    memories.append(self.memory[0])
-                if bracket > 0 and resource[:bracket] in memories:
+                resources = self.memories.keys() + self.memoryifs + self.tlmPorts
+                if bracket > 0 and resource[:bracket] in resources:
                     try:
                         irqTestCode += resource[:bracket] + '.write_word_dbg(' + hex(int(resource[bracket + 1:-1])) + ', ' + hex(value) + ');\n'
                     except ValueError:
@@ -944,10 +942,8 @@ def getCPPIRQTests(self, trace, combinedTrace, namespace):
             for resource, value in test[1].items():
                 irqTestCode += 'BOOST_CHECK_EQUAL('
                 bracket = resource.find('[')
-                memories = self.tlmPorts.keys()
-                if self.memory:
-                    memories.append(self.memory[0])
-                if bracket > 0 and resource[:bracket] in memories:
+                resources = self.memories.keys() + self.memoryifs + self.tlmPorts
+                if bracket > 0 and resource[:bracket] in resources:
                     try:
                         irqTestCode += resource[:bracket] + '.read_word_dbg(' + hex(int(resource[bracket + 1:-1])) + ')'
                     except ValueError:

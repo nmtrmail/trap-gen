@@ -146,12 +146,6 @@ def getCPPIf(self, model, namespace):
     readGDBRegMethod = cxx_writer.Method('read_gdb_reg', readGDBRegBody, wordType, 'public', [readGDBRegParam], noException = True, const = True)
     abiMembers.append(readGDBRegMethod)
 
-    # num_gdb_regs()
-    maxGDBId = 0
-    numGDBRegsBody = cxx_writer.Code('return ' + str(maxGDBId + 1) + ';')
-    numGDBRegsMethod = cxx_writer.Method('num_gdb_regs', numGDBRegsBody, cxx_writer.uintType, 'public', noException = True, const = True)
-    abiMembers.append(numGDBRegsMethod)
-
     # set_gdb_reg()
     Code = 'switch(gdb_id) {\n'
     for reg, gdbId in sortedGDBRegs:

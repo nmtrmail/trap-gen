@@ -110,16 +110,7 @@ def getFetchAddressCode(self, model):
 def getDoFetchCode(self):
     """Reads the instruction at the address pointed to by the current program
     counter."""
-    Code = str(self.bitSizes[1]) + ' bitstring = this->'
-    # Fetching is either from memory or through TLM ports.
-    if self.memory:
-        Code += self.memory[0]
-    else:
-        for name, isFetch in self.tlmPorts.items():
-            if isFetch:
-                Code += name
-                break
-    Code += '.read_word(cur_PC);\n'
+    Code = str(self.bitSizes[1]) + ' bitstring = this->' + self.fetchMem[0] + '.read_word(cur_PC);\n'
     return Code
 
 def getCacheInstrFetchCode(self, doFetchCode, trace, combinedTrace, issueCodeFunction, hasHazard = False, pipeStage = None):
@@ -130,7 +121,7 @@ def getCacheInstrFetchCode(self, doFetchCode, trace, combinedTrace, issueCodeFun
         mapKey = 'cur_PC'
     else:
         mapKey = 'bitstring'
-    Code += 'template_map< ' + str(self.bitSizes[1]) + ', CacheElem >::iterator cached_instr = this->instr_cache.find(' + mapKey + ');'
+    Code += 'template_map< ' + str(self.bitSizes[1]) + ', CacheElem >::iterator cached_instr = this->instr_cache.find(' + mapKey + ');\n'
     # I have found the instruction in the cache
     Code += """if (cached_instr != icache_end) {
         cur_instr = cached_instr->second.instr;
@@ -421,19 +412,9 @@ def initPipeline(self, processorMembers, processorCtorInit):
             pipeCtorValues.append('profiler_time_end')
 
             # Memory
-            if self.memory:
-                memRefType = cxx_writer.Type('LocalMemory', '#include \"memory.hpp\"').makeRef()
-                pipeFetchAttrs.append(cxx_writer.Attribute(self.memory[0], memRefType, 'private'))
-                pipeFetchCtorParams.append(cxx_writer.Parameter(self.memory[0], memRefType))
-                pipeCtorValues.append(self.memory[0])
-            else:
-                for name, isFetch in self.tlmPorts.items():
-                    if isFetch:
-                        memRefType = cxx_writer.Type('TLMMemory', '#include \"externalPorts.hpp\"').makeRef()
-                        pipeFetchAttrs.append(cxx_writer.Attribute(name, memRefType, 'private'))
-                        pipeFetchCtorParams.append(cxx_writer.Parameter(name, memRefType))
-                        pipeCtorValues.append(name)
-                        break
+            pipeFetchAttrs.append(cxx_writer.Attribute(self.fetchMem[0], self.fetchMem[1], 'private'))
+            pipeFetchCtorParams.append(cxx_writer.Parameter(self.fetchMem[0], self.fetchMem[1]))
+            pipeCtorValues.append(self.fetchMem[0])
 
             # Interrupts
             for irq in self.irqs:
@@ -469,8 +450,11 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     fetchWordType = self.bitSizes[1]
     includes = fetchWordType.getIncludes()
     ToolsManagerType = cxx_writer.TemplateType('ToolsManager', [fetchWordType], 'common/tools_if.hpp')
+    MemoryInterfaceType = cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"').makeRef()
+    LocalMemoryType = cxx_writer.Type('LocalMemory', '#include \"memory.hpp\"')
+    TlmPortType = cxx_writer.Type('TLMMemory', '#include \"externalPorts.hpp\"')
     if self.abi:
-        interfaceType = cxx_writer.Type('Interface', '#include \"interface.hpp\"')
+        InterfaceType = cxx_writer.Type('Interface', '#include \"interface.hpp\"')
     IntructionType = cxx_writer.Type('Instruction', '#include \"instructions.hpp\"')
     InstructionTypePtr = IntructionType.makePointer()
     CacheElemType = cxx_writer.Type('CacheElem')
@@ -578,20 +562,44 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         abiCtorValues.append('this->R')
 
     # Attributes and Initialization: Memory
-    if self.memory:
-        memoryAttr = cxx_writer.Attribute(self.memory[0], cxx_writer.Type('LocalMemory', '#include \"memory.hpp\"'), 'public')
+    for memName, memAttr in self.memories.items():
+        memoryAttr = cxx_writer.Attribute(memName, LocalMemoryType, 'public')
         processorMembers.append(memoryAttr)
-        memoryCtorValues = [str(self.memory[1])]
-        if self.memory[2] and not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
+        memoryCtorValues = [str(self.memories[0])]
+        if self.memories[1] and not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
             memoryCtorValues.append('total_cycles')
         if self.memAlias:
             memoryCtorValues.append('this->R')
-        if self.memory[2] and self.memory[3]:
-            memoryCtorValues.append(self.memory[3])
-        processorCtorInit.append(self.memory[0] + '(' + ', '.join(memoryCtorValues) + ')')
-        if self.memory[0] in self.abi.memories.keys():
-            abiAttrs.append(cxx_writer.Attribute(self.memory[0], cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"').makeRef(), 'private'))
-            abiCtorValues.append('this->' + self.memory[0])
+        if self.memories[1] and self.memories[2]:
+            memoryCtorValues.append(self.memories[2])
+        processorCtorInit.append(memName + '(' + ', '.join(memoryCtorValues) + ')')
+        if memName in self.abi.memories.keys():
+            abiAttrs.append(cxx_writer.Attribute(memName, MemoryInterfaceType, 'private'))
+            abiCtorValues.append('this->' + memName)
+
+    # Attributes and Initialization: External Memory Interfaces
+    for memName in self.memoryifs:
+        MemIfAttr = cxx_writer.Attribute(memName, MemoryInterfaceType, 'public')
+        processorMembers.append(MemIfAttr)
+        processorCtorParams.append(cxx_writer.Parameter(memName, MemoryInterfaceType))
+        processorCtorInit.append(memName + '(' + memName + ')')
+        if memName in self.abi.memories.keys():
+            abiAttrs.append(cxx_writer.Attribute(memName, MemoryInterfaceType, 'private'))
+            abiCtorValues.append('this->' + memName)
+
+    # Attributes and Initialization: Ports
+    for portName in self.tlmPorts:
+        portAttr = cxx_writer.Attribute(portName, TlmPortType, 'public')
+        processorMembers.append(portAttr)
+        portCtorValues = ['\"' + portName + '\"']
+        if self.systemc and model.endswith('LT') and not model.startswith('acc'):
+            portCtorValues.append('this->quant_keeper')
+        for memAl in self.memAlias:
+            portCtorValues.append('this->R')
+        processorCtorInit.append(portName + '(' + ', '.join(portCtorValues) + ')')
+        if portName in self.abi.memories.keys():
+            abiAttrs.append(cxx_writer.Attribute(portName, MemoryInterfaceType, 'private'))
+            abiCtorValues.append('this->' + portName)
 
     # Attributes and Initialization: Interrupts
     for irqPort in self.irqs:
@@ -607,20 +615,6 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         irqPortAttr = cxx_writer.Attribute(irqPort.name + '_port', irqPortType, 'public')
         processorMembers.append(irqPortAttr)
         processorCtorInit.append(irqPort.name + '_port(\"' + irqPort.name + '_port\", ' + irqPort.name + ')')
-
-    # Attributes and Initialization: Ports
-    for tlmPortName in self.tlmPorts.keys():
-        portAttr = cxx_writer.Attribute(tlmPortName, cxx_writer.Type('TLMMemory', '#include \"externalPorts.hpp\"'), 'public')
-        processorMembers.append(portAttr)
-        portCtorValues = ['\"' + tlmPortName + '\"']
-        if self.systemc and model.endswith('LT') and not model.startswith('acc'):
-            portCtorValues.append('this->quant_keeper')
-        for memAl in self.memAlias:
-            portCtorValues.append('this->R')
-        processorCtorInit.append(tlmPortName + '(' + ', '.join(portCtorValues) + ')')
-        if tlmPortName in self.abi.memories.keys():
-            abiAttrs.append(cxx_writer.Attribute(tlmPortName, cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"').makeRef(), 'private'))
-            abiCtorValues.append('this->' + tlmPortName)
 
     # Attributes and Initialization: Pins
     for pinPort in self.pins:
@@ -659,13 +653,17 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         instrAttrs.append(cxx_writer.Attribute('R', registerContainerType.makeRef(), 'public'))
         instrCtorParams.append(cxx_writer.Parameter('R', registerContainerType.makeRef()))
         instrCtorValues += 'R, '
-    if self.memory:
-        instrAttrs.append(cxx_writer.Attribute(self.memory[0], cxx_writer.Type('LocalMemory', '#include \"memory.hpp\"').makeRef(), 'public'))
-        instrCtorParams.append(cxx_writer.Parameter(self.memory[0], cxx_writer.Type('LocalMemory').makeRef()))
-        instrCtorValues += self.memory[0] + ', '
-    for tlmPort in self.tlmPorts.keys():
-        instrAttrs.append(cxx_writer.Attribute(tlmPort, cxx_writer.Type('TLMMemory', '#include \"externalPorts.hpp\"').makeRef(), 'public'))
-        instrCtorParams.append(cxx_writer.Parameter(tlmPort, cxx_writer.Type('TLMMemory').makeRef()))
+    for memName in self.memories.keys():
+        instrAttrs.append(cxx_writer.Attribute(memName, LocalMemoryType.makeRef(), 'public'))
+        instrCtorParams.append(cxx_writer.Parameter(memName, LocalMemoryType.makeRef()))
+        instrCtorValues += memName + ', '
+    for memName in self.memoryifs:
+        instrAttrs.append(cxx_writer.Attribute(memName, MemoryInterfaceType, 'public'))
+        instrCtorParams.append(cxx_writer.Parameter(memName, MemoryInterfaceType))
+        instrCtorValues += memName + ', '
+    for tlmPort in self.tlmPorts:
+        instrAttrs.append(cxx_writer.Attribute(tlmPort, TlmPortType.makeRef(), 'public'))
+        instrCtorParams.append(cxx_writer.Parameter(tlmPort, TlmPortType.makeRef()))
         instrCtorValues += tlmPort + ', '
     for pinPort in self.pins:
         if pinPort.systemc:
@@ -802,9 +800,9 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
 
     # Attributes and Initialization: ABI
     if self.abi:
-        abiAttr = cxx_writer.Attribute('ABIIf', interfaceType.makePointer(), 'public')
+        abiAttr = cxx_writer.Attribute('ABIIf', InterfaceType.makePointer(), 'public')
         processorMembers.append(abiAttr)
-        processorCtorCode += 'this->ABIIf = new ' + str(interfaceType) + '(' + ', '.join(abiCtorValues) + ');\n'
+        processorCtorCode += 'this->ABIIf = new ' + str(InterfaceType) + '(' + ', '.join(abiCtorValues) + ');\n'
 
     ## @} Attributes and Initialization: Tools
     #---------------------------------------------------------------------------
@@ -1100,7 +1098,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     # get_interface()
     if self.abi:
         getInterfaceBody = cxx_writer.Code('return *this->ABIIf;')
-        getInterfaceMethod = cxx_writer.Method('get_interface', getInterfaceBody, interfaceType.makeRef(), 'public')
+        getInterfaceMethod = cxx_writer.Method('get_interface', getInterfaceBody, InterfaceType.makeRef(), 'public')
         processorMembers.append(getInterfaceMethod)
 
     ## @} Information and Helper Methods
@@ -1119,15 +1117,24 @@ def getCPPMain(self, model, namespace):
     """Testbench that contains a standalone processor with minimal connections.
     Required stub memories are created and ports connected."""
     wordType = self.bitSizes[1]
-    code = 'using namespace ' + namespace + ';\nusing namespace trap;\n\n'
-    code += 'std::cerr << banner << std::endl;\n'
-    code += """
+    MemoryInterfaceType = cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"').makeRef()
+    LocalMemoryType = cxx_writer.Type('LocalMemory', '#include \"memory.hpp\"')
+
+    processorCtorInit = ['\"' + self.name + '\"']
+
+    Code = 'using namespace ' + namespace + ';\nusing namespace trap;\n\n'
+    Code += 'std::cerr << banner << std::endl;\n'
+    Code += """
+    // ...........................................................................
+    // Program Options
+
+    // Define options.
     boost::program_options::options_description desc("Processor simulator for """ + self.name + """", 120);
     desc.add_options()
         ("help,h", "produces the help message")
     """
     if self.abi:
-        code += """("debugger,d", "activates the use of the software debugger")
+        Code += """("debugger,d", "activates the use of the software debugger")
         ("profiler,p", boost::program_options::value<std::string>(),
             "activates the use of the software profiler, specifying the name of the output file")
         ("prof_range,g", boost::program_options::value<std::string>(),
@@ -1135,29 +1142,29 @@ def getCPPMain(self, model, namespace):
         ("disable_fun_prof,n", "disables profiling statistics for the application routines")
         """
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
-        code += """("frequency,f", boost::program_options::value<double>(),
+        Code += """("frequency,f", boost::program_options::value<double>(),
                     "processor clock frequency specified in MHz [Default 1MHz]")
                     ("cycles_range,c", boost::program_options::value<std::string>(),
                     "start-end addresses between which computing the execution cycles")
         """
-    code += """("application,a", boost::program_options::value<std::string>(),
+    Code += """("application,a", boost::program_options::value<std::string>(),
                                     "application to be executed on the simulator")
                ("disassembler,i", "prints the disassembly of the application")
                ("history,y", boost::program_options::value<std::string>(),
                             "prints on the specified file the instruction history")
             """
     if self.abi:
-        code += """("arguments,r", boost::program_options::value<std::string>(),
+        Code += """("arguments,r", boost::program_options::value<std::string>(),
                     "command line arguments (if any) of the application being simulated - comma separated")
             ("environment,e", boost::program_options::value<std::string>(),
                 "environmental variables (if any) visible to the application being simulated - comma separated")
             ("sysconf,s", boost::program_options::value<std::string>(),
                     "configuration information (if any) visible to the application being simulated - comma separated")
         """
-    code += """;
-
+    Code += """;
     std::cerr << std::endl;
 
+    // Save options.
     boost::program_options::variables_map vm;
     try {
         boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
@@ -1182,7 +1189,7 @@ def getCPPMain(self, model, namespace):
     }
     boost::program_options::notify(vm);
 
-    // Check that the parameters are specified correctly.
+    // Check and process options.
     if (vm.count("help") != 0) {
         std::cout << desc << std::endl;
         return 0;
@@ -1193,64 +1200,92 @@ def getCPPMain(self, model, namespace):
         return -1;
     }
     """
+
     if (self.systemc or model.startswith('acc') or model.endswith('AT')) and not self.externalClock:
-        code += """double latency = 1; // 1us
+        Code += """double latency = 1; // 1us
         if (vm.count("frequency") != 0) {
             latency = 1/(vm["frequency"].as<double>());
         }
-        // Proceed with the actual instantiation of the processor.
-        """ + processor_name + """ processor(\"""" + self.name + """\", sc_time(latency, SC_US));
         """
-    else:
-        code += """
-        // Proceed with the actual instantiation of the processor.
-        """ + processor_name + """ processor(\"""" + self.name + """\");
-        """
+        processorCtorInit.append('sc_time(latency, SC_US)')
+
+    Code += """
+    // ...........................................................................
+    // Modules
+
+    """
+
+    # Instantiate External Memories
+    if self.memoryifs:
+        Code += '// External Memories\n'
+    for memName in self.memoryifs:
+        Code += 'LocalMemory ' + memName + '(1024*1024*10);\n'
+        processorCtorInit.append(memName)
+
+    # Instantiate Processor
+    Code += """
+    // Processor
+    """ + processor_name + """ processor(""" + ', '.join(processorCtorInit) + """);
+    """
+
+    # Instantiate TLM Sockets
+    if self.irqs:
+        Code += '\n// TLM Sockets\n'
+    for irq in self.irqs:
+      Code += 'TLMIntrInitiator_' + str(irq.portWidth) + ' ' + irq.name + '_initiator(\"' + irq.name + '_initiator\");\n' + irq.name + '_initiator.init_socket.bind(processor.' + irq.name + '_port.target_socket);\n'
+
     instrMemName = ''
     instrDissassName = ''
     if len(self.tlmPorts) > 0:
-        code += """// Instantiate the memory and connect it to the processor.\n"""
+        Code += '\n// External TLM Memories\n'
         if self.tlmFakeMemProperties and self.tlmFakeMemProperties[2]:
-            code += 'SparseMemory'
+            Code += 'SparseMemory'
         else:
-            code += 'Memory'
+            Code += 'Memory'
         if model.endswith('LT'):
-            code += 'LT'
+            Code += 'LT'
         else:
-            code += 'AT'
-        code += '<' + str(len(self.tlmPorts)) + """, """ + str(self.wordSize*self.byteSize) + """> mem("procMem", """
+            Code += 'AT'
+        Code += '<' + str(len(self.tlmPorts)) + """, """ + str(self.wordSize*self.byteSize) + """> mem("procMem", """
         if self.tlmFakeMemProperties:
-            code += str(self.tlmFakeMemProperties[0]) + ', sc_time(latency*' + str(self.tlmFakeMemProperties[1]) + ', SC_US));\n'
+            Code += str(self.tlmFakeMemProperties[0]) + ', sc_time(latency*' + str(self.tlmFakeMemProperties[1]) + ', SC_US));\n'
         else:
-            code += """1024*1024*10, sc_time(latency*2, SC_US));
+            Code += """1024*1024*10, sc_time(latency*2, SC_US));
             """
         numPort = 0
-        for tlmPortName, fetch in self.tlmPorts.items():
-            code += 'processor.' + tlmPortName + '.init_socket.bind(*(mem.target_socket[' + str(numPort) + ']));\n'
+        for portName in self.tlmPorts:
+            Code += 'processor.' + portName + '.init_socket.bind(*(mem.target_socket[' + str(numPort) + ']));\n'
             numPort += 1
-            if fetch:
-                instrMemName = 'mem'
-                instrDissassName = 'processor.' + tlmPortName
-    if instrMemName == '' and self.memory:
-        instrMemName = 'processor.' + self.memory[0]
+        if self.fetchMem[0] in self.tlmPorts:
+            instrMemName = 'mem'
+            instrDissassName = 'processor.' + self.fetchMem[0]
+    if instrMemName == '':
+        instrMemName = 'processor.' + self.fetchMem[0]
         instrDissassName = instrMemName
 
-    code += """
+    Code += """
+    // ...........................................................................
+    // Application and Tools
+
     std::cout << std::endl << "Loading the application and initializing the tools ..." << std::endl;
-    // Load the executable code.
+
+    // Loader: Load the executable code.
     boost::filesystem::path application_path = boost::filesystem::system_complete(boost::filesystem::path(vm["application"].as<std::string>()));
     if (!boost::filesystem::exists(application_path)) {
         std::cerr << "Application " << vm["application"].as<std::string>() << " does not exist." << std::endl;
         return -1;
     }
     ExecLoader loader(vm["application"].as<std::string>());
-    // Copy the binary code into memory.
+
+    // Loader: Copy the binary code into memory.
     unsigned char* program_data = loader.get_program_data();
     unsigned program_dim = loader.get_program_dim();
     unsigned program_data_start = loader.get_data_start();
     for (unsigned i = 0; i < program_dim; i++) {
         """ + instrMemName + """.write_byte_dbg(program_data_start + i, program_data[i]);
     }
+
+    // Disassembler
     if (vm.count("disassembler") != 0) {
         std::cout << "Entry Point: " << std::hex << std::showbase << loader.get_program_start() << std::endl << std::endl;
         for (unsigned i = 0; i < program_dim; i+= """ + str(self.wordSize) + """) {
@@ -1264,17 +1299,15 @@ def getCPPMain(self, model, namespace):
         return 0;
     }
 
-    // Set the processor variables.
+    // Loader: Set the processor application variables.
     processor.ENTRY_POINT = loader.get_program_start();
     processor.PROGRAM_LIMIT = program_dim + program_data_start;
     processor.PROGRAM_START = program_data_start;
     """
 
-    for irq in self.irqs:
-      code += 'TLMIntrInitiator_' + str(irq.portWidth) + ' ' + irq.name + '_initiator(\"' + irq.name + '_initiator\");\n' + irq.name + '_initiator.init_socket.bind(processor.' + irq.name + '_port.target_socket);\n'
-
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
-        code += """// Check if counting the cycles between two locations (addresses or symbols) is required.
+        Code += """
+        // Profiler: Check if counting the cycles between two locations (addresses or symbols) is required.
         std::pair<""" + str(wordType) + ', ' + str(wordType) + """> decoded_range((""" + str(wordType) + """)-1, (""" + str(wordType) + """)-1);
         if (vm.count("cycles_range") != 0) {
             // The range is in the form start-end, where start and end can be both integers (both normal and hex) or symbols of the binary file.
@@ -1284,8 +1317,9 @@ def getCPPMain(self, model, namespace):
             processor.set_profiling_range(decoded_range.first, decoded_range.second);
         }
         """
-    code += """
-    // Initialize the instruction history management. Note that both need to be enabled if the debugger is being used and/or if history needs to be dumped to an output file.
+
+    Code += """
+    // History: Both debugging and history need to be enabled if the debugger is being used and/or if history needs to be dumped to an output file.
     if (vm.count("debugger") > 0) {
         processor.enable_history();
     }
@@ -1296,14 +1330,11 @@ def getCPPMain(self, model, namespace):
         processor.enable_history(vm["history"].as<std::string>());
     }
     """
-    if self.abi:
-        code += """
-        // Initialize the tools (e.g. debugger, os emulator, etc).
-        """
-        code += 'OSEmulator<' + str(wordType) + '> os_emulator(processor.ABIIf);\n'
-        code += """GDBStub<""" + str(wordType) + """> gdb_stub(processor.ABIIf);
-        Profiler<""" + str(wordType) + """> profiler(processor.ABIIf, vm["application"].as<std::string>(), vm.count("disable_fun_prof") > 0);
 
+    if self.abi:
+        Code += """
+        // Emulator
+        OSEmulator<""" + str(wordType) + """> os_emulator(processor.ABIIf);
         os_emulator.init_sys_calls(vm["application"].as<std::string>());
         std::vector<std::string> options;
         options.push_back(vm["application"].as<std::string>());
@@ -1373,16 +1404,24 @@ def getCPPMain(self, model, namespace):
             }
         }
         processor.tool_manager.add_tool(os_emulator);
+
+        // Debugger
+        GDBStub<""" + str(wordType) + """> gdb_stub(processor.ABIIf);
         if (vm.count("debugger") != 0) {
             processor.tool_manager.add_tool(gdb_stub);
             gdb_stub.initialize();
     """
-        for tlmPortName in self.tlmPorts.keys():
-            code += 'processor.' + tlmPortName + '.set_debugger(&gdb_stub);\n'
-        if self.memory:
-            code += 'processor.' + self.memory[0] + '.set_debugger(&gdb_stub);\n'
-        code += 'gdb_stub_ref = &gdb_stub;\n}\n'
-    code += """if (vm.count("profiler") != 0) {
+        for portName in self.tlmPorts:
+            Code += 'processor.' + portName + '.set_debugger(&gdb_stub);\n'
+        for memName in self.memories.keys():
+            Code += 'processor.' + memName + '.set_debugger(&gdb_stub);\n'
+        Code += 'gdb_stub_ref = &gdb_stub;\n}\n'
+
+        Code += """
+        // Profiler
+        Profiler<""" + str(wordType) + """> profiler(processor.ABIIf, vm["application"].as<std::string>(), vm.count("disable_fun_prof") > 0);"""
+
+    Code += """if (vm.count("profiler") != 0) {
                 std::set<std::string> toIgnoreFuns = os_emulator.get_registered_functions();
                 toIgnoreFuns.erase("main");
                 profiler.add_ignored_functions(toIgnoreFuns);
@@ -1395,16 +1434,21 @@ def getCPPMain(self, model, namespace):
                 processor.tool_manager.add_tool(profiler);
             }
 
+    std::cout << "Initialized tools." << std::endl;
+
     // Register the signal handlers for the CTRL^C key combination.
     (void) signal(SIGINT, stop_simulation);
     (void) signal(SIGTERM, stop_simulation);
     (void) signal(10, stop_simulation);
 
-    std::cout << "Initialized tools." << std::endl;
+    // ...........................................................................
+    // Simulation
 
     // Start execution.
     boost::timer t;
     sc_start();
+
+    // Execution statistics.
     double elapsed_sec = t.elapsed();
     if (vm.count("profiler") != 0) {
         profiler.print_csv_stats(vm["profiler"].as<std::string>());
@@ -1414,7 +1458,7 @@ def getCPPMain(self, model, namespace):
     std::cout << "Execution speed: " << (double)processor.num_instructions/(elapsed_sec*1e6) << "MIPS" << std::endl;
     """
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
-        code +="""std::cout << "Simulated time: " << ((sc_time_stamp().to_default_time_units())/(sc_time(1, SC_US).to_default_time_units())) << "us" << std::endl;
+        Code +="""std::cout << "Simulated time: " << ((sc_time_stamp().to_default_time_units())/(sc_time(1, SC_US).to_default_time_units())) << "us" << std::endl;
         std::cout << "Elapsed time: " << std::dec << (unsigned)(sc_time_stamp()/sc_time(latency, SC_US)) << " cycles" << std::endl;
         if (decoded_range.first != (""" + str(wordType) + """)-1 || decoded_range.second != (""" + str(wordType) + """)-1) {
             if (processor.profiler_time_end == SC_ZERO_TIME) {
@@ -1425,14 +1469,14 @@ def getCPPMain(self, model, namespace):
         }
                 """
     else:
-        code += 'std::cout << "Elapsed time: " << std::dec << processor.total_cycles << " cycles" << std::endl;\n'
-    code += 'std::cout << std::endl;\n'
+        Code += 'std::cout << "Elapsed time: " << std::dec << processor.total_cycles << " cycles" << std::endl;\n'
+    Code += 'std::cout << std::endl;\n'
     if self.shutdown:
-        code += '// Simulation ended. Call cleanup methods.\processor.shutdown();\n'
-    code += """
+        Code += '// Simulation ended. Call cleanup methods.\processor.shutdown();\n'
+    Code += """
     return 0;
     """
-    mainCode = cxx_writer.Code(code)
+    mainCode = cxx_writer.Code(Code)
     mainCode.addInclude("""#ifdef _WIN32
 #pragma warning(disable : 4101)
 #endif

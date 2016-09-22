@@ -1152,23 +1152,23 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
         #memAliasInit += ', ' + alias.alias
 
     # Memory
-    if (trace or (processor.memory and processor.memory[2])) and not processor.systemc:
+    if (trace or (any(memAttr[1] == True for memAttr in processor.memories.values()))) and not processor.systemc:
         declCode += 'unsigned total_cycles;\n'
-    if processor.memory:
+    for memName, memAttr in processor.memories.items():
         Code = ''
-        if processor.memory[2]:
+        if memAttr[1]:
             Code += ', total_cycles'
-        if processor.memory[3]:
-            Code += ', ' + processor.memory[3]
-        declCode += namespace + '::LocalMemory ' + processor.memory[0] + '(' + str(processor.memory[1]) + Code + ');\n'
-        initInstrCode += processor.memory[0] + ', '
+        if memAttr[2]:
+            Code += ', ' + memAttr[2]
+        declCode += namespace + '::LocalMemory ' + memName + '(' + str(memAttr[0]) + Code + ');\n'
+        initInstrCode += memName + ', '
 
     # Ports
     # Local memories are declared even for TLM ports. The default memory size is
     # 1MB.
-    for tlmPorts in processor.tlmPorts.keys():
-        declCode += namespace + '::LocalMemory ' + tlmPorts + '(' + str(1024*1024) + ');\n'
-        initInstrCode += tlmPorts + ', '
+    for portName in processor.tlmPorts:
+        declCode += namespace + '::LocalMemory ' + portName + '(' + str(1024*1024) + ');\n'
+        initInstrCode += portName + ', '
 
     # Pins
     outPinPorts = []
@@ -1206,10 +1206,8 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
         # Initialize global resources.
         for resource, value in test[1].items():
             bracket = resource.find('[')
-            memories = processor.tlmPorts.keys()
-            if processor.memory:
-                memories.append(processor.memory[0])
-            if bracket > 0 and resource[:bracket] in memories:
+            resources = processor.memories.keys() + processor.memoryifs + processor.tlmPorts
+            if bracket > 0 and resource[:bracket] in resources:
                 try:
                     instrTestCode += resource[:bracket] + '.write_word_dbg(' + hex(int(resource[bracket + 1:-1])) + ', ' + hex(value) + ');\n'
                 except ValueError:
@@ -1240,10 +1238,8 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
         for resource, value in test[2].items():
             instrTestCode += 'BOOST_CHECK_EQUAL('
             bracket = resource.find('[')
-            memories = processor.tlmPorts.keys()
-            if processor.memory:
-                memories.append(processor.memory[0])
-            if bracket > 0 and resource[:bracket] in memories:
+            resources = processor.memories.keys() + processor.memoryifs + processor.tlmPorts
+            if bracket > 0 and resource[:bracket] in resources:
                 try:
                     instrTestCode += resource[:bracket] + '.read_word_dbg(' + hex(int(resource[bracket + 1:-1])) + ')'
                 except ValueError:
@@ -1270,8 +1266,6 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
     return instrTestFunctions
 
 def getCPPInstrTests(self, processor, modelType, trace, combinedTrace, namespace):
-    if not processor.memory:
-        return None
     testFunctions = []
     for instr in self.instructions.values():
         testFunctions += instr.getCPPTest(processor, modelType, trace, combinedTrace, namespace)

@@ -170,7 +170,7 @@ processor.addPipeStage(executeStage)
 
 # Here we declare a memory for the MB (with size = 10MB)
 if standalone:
-    processor.setMemory('dataMem', memorySize)
+    processor.addMemory('dataMem', memorySize)
 else:
     processor.addTLMPort('instrMem', True)
     processor.addTLMPort('dataMem')

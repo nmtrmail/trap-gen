@@ -145,7 +145,7 @@ if processor.systemc:
     processor.addTLMPort('instrMem', True)
     processor.addTLMPort('dataMem')
 else:
-    processor.setMemory('dataMem', 10*1024*1024)
+    processor.addMemory('dataMem', 10*1024*1024)
 # Now lets add the interrupt ports
 irq = trap.Interrupt('IRQ', 1, priority = 0)
 irq.setOperation('CPSR[CPSR_I] == 0', """

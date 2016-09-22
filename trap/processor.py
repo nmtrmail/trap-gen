@@ -96,46 +96,54 @@ class Processor:
             raise Exception('Use of an external clock signal not yet supported.')
 
         self.name = name
-        self.version = version
         self.isBigEndian = None
-        # Pre-allocating instructions does not give any speedup.
-        #self.alloc_buffer_size = alloc_buffer_size
         self.wordSize = None
         self.byteSize = None
         self.bitSizes = None
         self.cacheLimit = cacheLimit
+        self.preProcMacros = []
         self.defines = []
         self.parameters = []
-        self.regs = []
-        self.regBanks = []
-        self.aliasRegs = []
-        self.aliasRegBanks = []
-        self.abi = None
-        self.pipes = []
-        self.isa = None
-        self.coprocessor = coprocessor
-        self.startup = None
-        self.shutdown = None
-        self.reset = None
-        self.irqs = []
-        self.pins = []
-        self.fetchReg = None
-        self.memory = None
-        self.tlmPorts = {}
-        #self.regOrder = {}
-        self.memAlias = []
         self.systemc = systemc
-        self.instructionCache = instructionCache
-        self.fastFetch = fastFetch
-        self.externalClock = externalClock
-        self.preProcMacros = []
-        self.tlmFakeMemProperties = ()
-        self.license_text = licenses.create_gpl_license(self.name)
+
+        self.version = version
         self.license = 'gpl'
+        self.license_text = licenses.create_gpl_license(self.name)
         self.developer_name = ''
         self.developer_email = ''
         self.banner = ''
+
+        # Pre-allocating instructions does not give any speedup.
+        #self.alloc_buffer_size = alloc_buffer_size
+        self.isa = None
         self.invalid_instr = None
+
+        self.externalClock = externalClock
+        self.coprocessor = coprocessor
+        self.pipes = []
+        self.instructionCache = instructionCache
+        self.fastFetch = fastFetch
+
+        self.regs = []
+        self.regBanks = []
+        #self.regOrder = {}
+        self.aliasRegs = []
+        self.aliasRegBanks = []
+
+        self.fetchReg = None
+        self.fetchMem = None
+        self.memAlias = []
+        self.memories = {}
+        self.memoryifs = []
+        self.tlmPorts = []
+        self.tlmFakeMemProperties = ()
+        self.irqs = []
+        self.pins = []
+
+        self.abi = None
+        self.startup = None
+        self.shutdown = None
+        self.reset = None
 
     def setIpRights(self, license, developer_name = '', developer_email = '', banner = '', license_text = ''):
         validLicense = ['gpl', 'lgpl', 'affero', 'esa', 'custom']
@@ -270,18 +278,61 @@ class Processor:
     def addMemAlias(self, memAlias):
         self.memAlias.append(memAlias)
 
-    def setMemory(self, name, mem_size, debug = False, program_counter = ''):
-        for name, isFetch in self.tlmPorts.items():
-            if isFetch:
-                raise Exception('Cannot specify internal memory for fetching instructions since an external fetch port ' + name + ' is already set.')
-        self.memory = (name, mem_size, debug, program_counter)
+    def addMemory(self, name, mem_size, debug = False, program_counter = '', fetch = True):
+        """Defines a processor class member of type LocalMemory that implements
+        MemoryInterface. Instruction fetch can optionally be performed from this
+        memory. Multiple memories can be instantiated."""
+        for memName, memAttrs in self.memories.items():
+            if name == memName:
+                raise Exception('Memory ' + name + ' already exists.')
+            if program_counter and memAttrs[2]:
+                raise Exception('Cannot specify program counter for memory ' + name + '. Program counter is already specified for memory ' + memName + '.')
+        if fetch:
+            if self.fetchMem:
+                raise Exception('Cannot specify internal memory ' + name + ' for fetching instructions. ' + self.fetchMem[0] + ' is already set.')
+            # Instruction fetch is performed from the local memory.
+            self.fetchMem = (name, cxx_writer.Type('LocalMemory', '#include \"memory.hpp\"').makeRef())
+        self.memories[name] = (mem_size, debug, program_counter)
+
+    def addMemoryInterface(self, name, fetch = False):
+        """Defines a processor class member of type MemoryInterface& as well as
+        a constructor parameter that receives the MemoryInterface object.
+        Instruction fetch can optionally be performed from this memory. Multiple
+        memory interfaces can be passed."""
+        for memName in self.memoryifs:
+            if name == memName:
+                raise Exception('Memory interface ' + name + ' already exists.')
+        if fetch:
+            if self.fetchMem:
+                raise Exception('Cannot specify memory interface ' + name + ' for fetching instructions. ' + self.fetchMem[0] + ' is already set.')
+            # Instruction fetch is performed from the local memory.
+            self.fetchMem = (name, cxx_writer.Type('MemoryInterface', '#include \"memory.hpp\"').makeRef())
+        self.memoryifs.append(name)
 
     def setTLMMem(self, mem_size, memLatency, sparse = False):
-        """Memory latency is expressed in us."""
+        """Instantiates a fake memory to be connected to the processor TLM port
+        in case the port is declared as the instruction fetch port. The latency
+        is expressed in us."""
         self.tlmFakeMemProperties = (mem_size, memLatency, sparse)
 
     # ..........................................................................
     # Interface Configuration
+
+    def addTLMPort(self, name, fetch = False):
+        """Defines a processor class member that implements MemoryInterface and
+        contains a simple_initiator_socket<> socket. Instruction fetch can
+        optionally be performed via the socket."""
+        if not self.systemc:
+            raise Exception('Cannot use TLM ports if SystemC is not enabled.')
+        for portName in self.tlmPorts:
+            if name == portName:
+                raise Exception('Port ' + name + ' already exists.')
+        if fetch:
+            if self.fetchMem:
+                raise Exception('Cannot specify port ' + name + ' as a fetch port. ' + portName + ' is already set.')
+            # Instruction fetch is performed via the TLM port.
+            self.fetchMem = (name, cxx_writer.Type('TLMMemory', '#include \"externalPorts.hpp\"').makeRef())
+        self.tlmPorts.append(name)
 
     def addIrq(self, irq):
         for i in self.irqs:
@@ -294,22 +345,6 @@ class Processor:
             if i.name == pin.name:
                 raise Exception('External pin ' + i.name + ' already exists in processor ' + self.name + '.')
         self.pins.append(pin)
-
-    def addTLMPort(self, portName, fetch = False):
-        """Note that if only one TLM port is declared and it is specified as the
-        fetch port, another port called portName + '_fetch' will be
-        automatically instantiated. The port called portName can be then used
-        for accessing normal data."""
-        if not self.systemc:
-            raise Exception('Cannot use TLM ports if SystemC is not enabled.')
-        if fetch and self.memory:
-            raise Exception('Cannot specify port ' + portName + ' as a fetch port since the internal memory is already set for fetching instructions.')
-        for name, isFetch in self.tlmPorts.items():
-            if name == portName:
-                raise Exception('Port ' + portName + ' already exists.')
-            if fetch and isFetch:
-                raise Exception('Cannot specify port ' + portName + ' as a fetch port since port ' + name + ' is already set as a fetch port.')
-        self.tlmPorts[portName] = fetch
 
     def setABI(self, abi):
         if self.coprocessor:
@@ -558,15 +593,12 @@ class Processor:
                     pass
 
     def checkMemRegisters(self):
-        if not self.memory:
-            if not self.tlmPorts:
-                raise Exception('Please specify either an internal memory (using setMemory()) or a TLM memory port (using addTLMPort()).')
-            for name, isFetch in self.tlmPorts.items():
-                if isFetch:
-                    break
-            else: raise Exception('Neither TLM port nor internal memory defined for instruction fetch.')
         if not self.fetchReg:
             raise Exception('Please specify a fetch register using setFetchRegister() (usually the PC).')
+        # Either a local memory, a TLM port or an external MemoryInterface have
+        # to be specified for fetching instructions.
+        if not self.fetchMem:
+            raise Exception('Please specify either an internal memory (addMemory()), a TLM memory port (addTLMPort()) or an external memory interface (addMemoryInterface()) for fetching instructions.')
         for memAliasReg in self.memAlias:
             index = extractRegInterval(memAliasReg.alias)
             # Alias refers to one register inside a register bank or alias
@@ -579,18 +611,19 @@ class Processor:
             else:
                 if self.isRegExisting(memAliasReg.alias) is None:
                     raise Exception('Cannot set memory alias for register ' + memAliasReg.alias + ' at address ' + memAliasReg.address + '. Register does not exist.')
-        if self.memory and self.memory[3]:
-            index = extractRegInterval(self.memory[3])
-            # Alias refers to one register inside a register bank or alias
-            # register bank.
-            if index:
-                regName = self.memory[3][:self.memory[3].find('[')]
-                if self.isRegExisting(regName, index) is None:
-                    raise Exception('Cannot set register ' + self.memory[3] + ' as the program counter. Register does not exist in local memory.')
-            # Alias refers to a single register or alias.
-            else:
-                if self.isRegExisting(self.memory[3]) is None:
-                    raise Exception('Cannot set register ' + self.memory[3] + ' as the program counter. Register does not exist in local memory.')
+        for memName, memAttrs in self.memories.items():
+            if memAttrs[2]:
+                index = extractRegInterval(memAttrs[2])
+                # Alias refers to one register inside a register bank or alias
+                # register bank.
+                if index:
+                    regName = memAttrs[2][:memAttrs[2].find('[')]
+                    if self.isRegExisting(regName, index) is None:
+                        raise Exception('Cannot set register ' + memAttrs[2] + ' as the program counter. Register does not exist.')
+                # Alias refers to a single register or alias.
+                else:
+                    if self.isRegExisting(memAttrs[2]) is None:
+                        raise Exception('Cannot set register ' + memAttrs[2] + ' as the program counter. Register does not exist.')
 
     def checkISARegs(self):
         """Checks that the registers declared in the instruction encoding and
@@ -664,13 +697,11 @@ class Processor:
                 for name, elemValue in test[0].items():
                     if not instr.machineCode.bitLen.has_key(name):
                         raise Exception('Field ' + name + ' in test of instruction ' + instr.name + ' does not exist in the machine code.')
+                # Check whether the global resources exist.
+                resources = self.memories.keys() + self.memoryifs + self.tlmPorts
                 for resource, value in test[1].items():
-                    # Check whether the global resources exist.
                     brackIndex = resource.find('[')
-                    memories = self.tlmPorts.keys()
-                    if self.memory:
-                        memories.append(self.memory[0])
-                    if not (brackIndex > 0 and resource[:brackIndex] in memories):
+                    if not (brackIndex > 0 and resource[:brackIndex] in resources):
                         index = extractRegInterval(resource)
                         if index:
                             resourceName = resource[:brackIndex]
@@ -681,10 +712,7 @@ class Processor:
                                 raise Exception('Resource ' + resource + ' in test of instruction ' + instr.name + ' does not exist.')
                 for resource, value in test[2].items():
                     brackIndex = resource.find('[')
-                    memories = self.tlmPorts.keys()
-                    if self.memory:
-                        memories.append(self.memory[0])
-                    if not (brackIndex > 0 and (resource[:brackIndex] in memories or resource[:brackIndex] in outPinPorts)):
+                    if not (brackIndex > 0 and (resource[:brackIndex] in resources or resource[:brackIndex] in outPinPorts)):
                         index = extractRegInterval(resource)
                         if index:
                             resourceName = resource[:brackIndex]
@@ -783,8 +811,8 @@ class Processor:
         self.checkTestRegs()
 
         # Interface Checks
-        if ('funcAT' in models or 'accAT' in models or 'accLT' in models) and not self.tlmPorts:
-            raise Exception('TLM ports are required for all models other than funcLT. Please specify at least one TLM port.')
+        #if ('funcAT' in models or 'accAT' in models or 'accLT' in models) and not self.tlmPorts:
+        #    raise Exception('TLM ports are required for all models other than funcLT. Please specify at least one TLM port.')
         self.checkIRQPorts()
         if self.abi:
             self.checkABI()
@@ -967,6 +995,18 @@ class Processor:
             curFolder.addCode(memoryImplFile)
 
             # Interface Model Generation
+            portClasses = portsWriter.getCPPExternalPorts(self, model, namespace)
+            if portClasses:
+                portHeadFile = cxx_writer.FileDumper('externalPorts.hpp', True)
+                portHeadFile.addMember(defCode)
+                portHeadFile.addMember(portClasses)
+                portImplFile = cxx_writer.FileDumper('externalPorts.cpp', False)
+                portImplFile.addInclude('#include \"externalPorts.hpp\"')
+                portImplFile.addMember(namespaceUse)
+                portImplFile.addMember(portClasses)
+                curFolder.addHeader(portHeadFile)
+                curFolder.addCode(portImplFile)
+
             if self.irqs:
                 irqClasses = portsWriter.getCPPIRQPorts(self, namespace)
                 if irqClasses:
@@ -995,18 +1035,6 @@ class Processor:
                         pinImplFile.addMember(i)
                     curFolder.addHeader(pinHeadFile)
                     curFolder.addCode(pinImplFile)
-
-            portClasses = portsWriter.getCPPExternalPorts(self, model, namespace)
-            if portClasses:
-                portHeadFile = cxx_writer.FileDumper('externalPorts.hpp', True)
-                portHeadFile.addMember(defCode)
-                portHeadFile.addMember(portClasses)
-                portImplFile = cxx_writer.FileDumper('externalPorts.cpp', False)
-                portImplFile.addInclude('#include \"externalPorts.hpp\"')
-                portImplFile.addMember(namespaceUse)
-                portImplFile.addMember(portClasses)
-                curFolder.addHeader(portHeadFile)
-                curFolder.addCode(portImplFile)
 
             if self.abi:
                 abiClasses = interfaceWriter.getCPPIf(self, model, namespace)
@@ -1466,7 +1494,7 @@ class MemoryAlias:
         self.alias = alias
 
 ################################################################################
-# Interface Models: Interrupts, Ports, Pins and ABI
+# Interface Models: Ports, Interrupts, Pins and ABI
 ################################################################################
 class Interrupt:
     """Specifies an interrupt port for the processor.
@@ -1541,9 +1569,6 @@ class ABI:
     def __init__(self, RetVal, args, PC, LR = None, SP = None, FP = None):
         """Register holding the return value (either a register or a (regBank,
         index) tuple."""
-        self.RetVal = RetVal
-        if self.RetVal:
-            self.name[self.RetVal] = 'return_value'
         # Special registers, possibly including offsets.
         self.PC = PC
         self.name = {self.PC: 'PC'}
@@ -1556,6 +1581,9 @@ class ABI:
         self.FP = FP
         if self.FP:
             self.name[self.FP] = 'FP'
+        self.RetVal = RetVal
+        if self.RetVal:
+            self.name[self.RetVal] = 'return_value'
 
         # Registers holding function arguments.
         self.args = []

@@ -258,7 +258,7 @@ def getCPPMemoryIf(self, model, namespace):
     writeAliasCode['write_byte_dbg'] = writeMemAliasCode
 
     # If there is no memory or debugging is disabled.
-    if not self.memory or not self.memory[2]:
+    if not self.memories or not any(memAttr[1] == True for memAttr in processor.memories.values()):
         # Methods: read(), write(), lock(), unlock()
         methodsCode = {}
         methodsAttrs = {}
@@ -316,8 +316,8 @@ def getCPPMemoryIf(self, model, namespace):
             dumpCode1 += 'dump_info.simulation_time = cur_cycle;\n'
         else:
             dumpCode1 += 'dump_info.simulation_time = sc_time_stamp().to_double();\n'
-        if self.memory[3]:
-            dumpCode1 += 'dump_info.program_counter = this->' + self.memory[3] + ';\n'
+        if [memName for memName, memAttr in processor.memories.items() if memAttr[2] != '']:
+            dumpCode1 += 'dump_info.program_counter = this->' + self.memories[memName][2] + ';\n'
         else:
             dumpCode1 += 'dump_info.program_counter = 0;\n'
         dumpCode1 += 'for (unsigned i = 0; i < '
@@ -378,10 +378,10 @@ def getCPPMemoryIf(self, model, namespace):
             localMemoryCtorInit.append('cur_cycle(cur_cycle)')
             localMemoryMembers.append(cycleAttr)
 
-        if self.memory[3]:
+        if [memName for memName, memAttr in processor.memories.items() if memAttr[2] != '']:
             # Find out type of fetch register.
             from processor import extractRegInterval
-            fetchReg = self.memory[3]
+            fetchReg = self.memories[memName][2]
             fetchIndex = extractRegInterval(fetchReg)
             if fetchIndex: fetchReg = fetchReg[0:fetchReg.index('[')]
             fetchType = None
@@ -389,9 +389,9 @@ def getCPPMemoryIf(self, model, namespace):
                 fetchType = registerType
             if fetchType == None and fetchReg in [i.name for i in self.aliasRegs + self.aliasRegBanks]:
                 fetchType = aliasType
-            localMemoryMembers.append(cxx_writer.Attribute(self.memory[3], fetchType.makeRef(), 'private'))
-            pcRegParam = [cxx_writer.Parameter(self.memory[3], fetchType.makeRef())]
-            pcRegInit = [self.memory[3] + '(' + self.memory[3] + ')']
+            localMemoryMembers.append(cxx_writer.Attribute(self.memories[memName][2], fetchType.makeRef(), 'private'))
+            pcRegParam = [cxx_writer.Parameter(self.memories[memName][2], fetchType.makeRef())]
+            pcRegInit = [self.memories[memName][2] + '(' + self.memories[memName][2] + ')']
 
         # Constructors and Destructors
         localMemoryCtorParams = [cxx_writer.Parameter('size', cxx_writer.uintType)]

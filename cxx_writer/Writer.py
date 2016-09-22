@@ -223,7 +223,7 @@ class CodeWriter:
         line = ''
         for i in range(0, self.curIndent * self.indentSize):
             line += ' '
-        line += '/// '
+        line += '// '
         lenFill = (self.lineWidth - len(line)) / len(fill)
         for i in range(0, lenFill):
             line += fill
