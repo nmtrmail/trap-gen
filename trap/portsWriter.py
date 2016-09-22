@@ -863,7 +863,7 @@ def getCPPIRQTests(self, trace, combinedTrace, namespace):
     # Memory
     if (trace or (any(memAttr[1] == True for memAttr in self.memories.values()))) and not self.systemc:
         declCode += 'unsigned total_cycles;\n'
-    for memName, memAttr in processor.memories.items():
+    for memName, memAttr in self.memories.items():
         Code = ''
         if memAttr[1]:
             Code += ', total_cycles'

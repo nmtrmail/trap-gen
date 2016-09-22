@@ -260,7 +260,7 @@ def getCPPMemoryIf(self, model, namespace):
     writeAliasCode['write_byte_dbg'] = writeMemAliasCode
 
     # If there is no memory or debugging is disabled.
-    if not self.memories or not any(memAttr[1] == True for memAttr in processor.memories.values()):
+    if not self.memories or not any(memAttr[1] == True for memAttr in self.memories.values()):
         # Methods: read(), write(), lock(), unlock()
         methodsCode = {}
         methodsAttrs = {}
@@ -318,7 +318,7 @@ def getCPPMemoryIf(self, model, namespace):
             dumpCode1 += 'dump_info.simulation_time = cur_cycle;\n'
         else:
             dumpCode1 += 'dump_info.simulation_time = sc_time_stamp().to_double();\n'
-        if [memName for memName, memAttr in processor.memories.items() if memAttr[2] != '']:
+        if [memName for memName, memAttr in self.memories.items() if memAttr[2] != '']:
             dumpCode1 += 'dump_info.program_counter = this->' + self.memories[memName][2] + ';\n'
         else:
             dumpCode1 += 'dump_info.program_counter = 0;\n'
@@ -380,7 +380,7 @@ def getCPPMemoryIf(self, model, namespace):
             localMemoryCtorInit.append('cur_cycle(cur_cycle)')
             localMemoryMembers.append(cycleAttr)
 
-        if [memName for memName, memAttr in processor.memories.items() if memAttr[2] != '']:
+        if [memName for memName, memAttr in self.memories.items() if memAttr[2] != '']:
             # Find out type of fetch register.
             from processor import extractRegInterval
             fetchReg = self.memories[memName][2]

@@ -568,13 +568,13 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     for memName, memAttr in self.memories.items():
         memoryAttr = cxx_writer.Attribute(memName, LocalMemoryType, 'public')
         processorMembers.append(memoryAttr)
-        memoryCtorValues = [str(self.memories[0])]
-        if self.memories[1] and not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
+        memoryCtorValues = [str(memAttr[0])]
+        if memAttr[1] and not self.systemc and not model.startswith('acc') and not model.endswith('AT'):
             memoryCtorValues.append('total_cycles')
         if self.memAlias:
             memoryCtorValues.append('this->R')
-        if self.memories[1] and self.memories[2]:
-            memoryCtorValues.append(self.memories[2])
+        if memAttr[1] and memAttr[2]:
+            memoryCtorValues.append(memAttr[2])
         processorCtorInit.append(memName + '(' + ', '.join(memoryCtorValues) + ')')
         if memName in self.abi.memories.keys():
             abiAttrs.append(cxx_writer.Attribute(memName, MemoryInterfaceType, 'private'))
