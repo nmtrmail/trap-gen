@@ -207,6 +207,8 @@ processor.setFetchRegister('PC')
 
 # Lets now add details about the processor interconnection (i.e. memory ports,
 # interrupt ports, pins, etc.)
+processor.addMemoryParam('asi', cxx_writer.uintType, value = '0x8 | (PSR[PSR_S]? 1 : 0)', default = '0')
+processor.addMemoryParam('flush', cxx_writer.uintType, value = '0', default = '0')
 if standalone:
     processor.addMemory('dataMem', 10*1024*1024)
 else:

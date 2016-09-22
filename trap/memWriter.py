@@ -43,7 +43,7 @@ import cxx_writer
 ################################################################################
 # Globals and Helpers
 ################################################################################
-readMethodNames = ['read_dword', 'read_word', 'read_half', 'read_byte']
+readMethodNames = ['read_dword', 'read_word', 'read_half', 'read_byte', 'read_instr']
 readMethodNames_dbg = ['read_dword_dbg', 'read_word_dbg', 'read_half_dbg', 'read_byte_dbg']
 writeMethodNames = ['write_dword', 'write_word', 'write_half', 'write_byte']
 writeMethodNames_dbg = ['write_dword_dbg', 'write_word_dbg', 'write_half_dbg', 'write_byte_dbg']
@@ -59,16 +59,17 @@ def addMemoryMethods(self, localMemoryMembers, methodsCode, methodsAttrs):
     archByteType = self.bitSizes[3]
 
     addressParam = cxx_writer.Parameter('address', archWordType.makeRef().makeConst())
+    userParams = [cxx_writer.Parameter(paramName, paramAttr[0], initValue = paramAttr[2]) for paramName, paramAttr in self.memoryParams.items()]
 
     for methName in readMethodNames + readMethodNames_dbg:
         if methName in methodsCode.keys() and methName in methodsAttrs.keys():
-            readMethod = cxx_writer.Method(methName, methodsCode[methName], methodTypes[methName], 'public', [addressParam], inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], const = len(self.tlmPorts) == 0, noException = 'noexc'  in methodsAttrs[methName])
+            readMethod = cxx_writer.Method(methName, methodsCode[methName], methodTypes[methName], 'public', [addressParam] + userParams, inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], const = len(self.tlmPorts) == 0, noException = 'noexc'  in methodsAttrs[methName])
             localMemoryMembers.append(readMethod)
 
     for methName in writeMethodNames + writeMethodNames_dbg:
         if methName in methodsCode.keys() and methName in methodsAttrs.keys():
             datumParam = cxx_writer.Parameter('datum', methodTypes[methName])
-            writeMethod = cxx_writer.Method(methName, methodsCode[methName], cxx_writer.voidType, 'public', [addressParam, datumParam], inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], noException = 'noexc'  in methodsAttrs[methName])
+            writeMethod = cxx_writer.Method(methName, methodsCode[methName], cxx_writer.voidType, 'public', [addressParam, datumParam] + userParams, inline = 'inline' in methodsAttrs[methName], pure = 'pure' in methodsAttrs[methName], virtual = 'virtual'  in methodsAttrs[methName], noException = 'noexc'  in methodsAttrs[methName])
             localMemoryMembers.append(writeMethod)
 
     for methName in genericMethodNames:
@@ -89,11 +90,11 @@ def getCPPMemoryIf(self, model, namespace):
     archByteType = self.bitSizes[3]
 
     global methodTypes, methodTypeLen
-    methodTypes = {'read_dword': archDWordType, 'read_word': archWordType, 'read_half': archHWordType, 'read_byte': archByteType,
+    methodTypes = {'read_dword': archDWordType, 'read_word': archWordType, 'read_half': archHWordType, 'read_byte': archByteType, 'read_instr': archWordType,
                 'read_dword_dbg': archDWordType, 'read_word_dbg': archWordType, 'read_half_dbg': archHWordType, 'read_byte_dbg': archByteType,
                 'write_dword': archDWordType, 'write_word': archWordType, 'write_half': archHWordType, 'write_byte': archByteType,
                 'write_dword_dbg': archDWordType, 'write_word_dbg': archWordType, 'write_half_dbg': archHWordType, 'write_byte_dbg': archByteType}
-    methodTypeLen = {'read_dword': self.wordSize*2, 'read_word': self.wordSize, 'read_half': self.wordSize/2, 'read_byte': 1,
+    methodTypeLen = {'read_dword': self.wordSize*2, 'read_word': self.wordSize, 'read_half': self.wordSize/2, 'read_byte': 1, 'read_instr': self.wordSize,
                     'read_dword_dbg': self.wordSize*2, 'read_word_dbg': self.wordSize, 'read_half_dbg': self.wordSize/2, 'read_byte_dbg': 1,
                     'write_dword': self.wordSize*2, 'write_word': self.wordSize, 'write_half': self.wordSize/2, 'write_byte': 1,
                     'write_dword_dbg': self.wordSize*2, 'write_word_dbg': self.wordSize, 'write_half_dbg': self.wordSize/2, 'write_byte_dbg': 1}
@@ -194,7 +195,7 @@ def getCPPMemoryIf(self, model, namespace):
     swapDEndianessCode += str(archWordType) + ' datum2 = (' + str(archWordType) + ')(datum >> ' + str(self.wordSize*self.byteSize) + ');\nthis->swap_endianess(datum2);\n'
     swapDEndianessCode += 'datum = datum1 | (((' + str(archDWordType) + ')datum2) << ' + str(self.wordSize*self.byteSize) + ');\n#endif\n'
 
-    endianessCode = {'read_dword': swapDEndianessCode, 'read_word': swapEndianessCode, 'read_half': swapEndianessCode, 'read_byte': '',
+    endianessCode = {'read_dword': swapDEndianessCode, 'read_word': swapEndianessCode, 'read_half': swapEndianessCode, 'read_byte': '', 'read_instr': swapEndianessCode,
                 'read_dword_dbg': swapDEndianessCode, 'read_word_dbg': swapEndianessCode, 'read_half_dbg': swapEndianessCode, 'read_byte_dbg': '',
                 'write_dword': swapDEndianessCode, 'write_word': swapEndianessCode, 'write_half': swapEndianessCode, 'write_byte': '',
                 'write_dword_dbg': swapDEndianessCode, 'write_word_dbg': swapEndianessCode, 'write_half_dbg': swapEndianessCode, 'write_byte_dbg': ''}
@@ -207,6 +208,7 @@ def getCPPMemoryIf(self, model, namespace):
     readAliasCode['read_word'] = readMemAliasCode
     readAliasCode['read_dword_dbg'] = readMemAliasCode
     readAliasCode['read_word_dbg'] = readMemAliasCode
+    readAliasCode['read_instr'] = readMemAliasCode
     readMemAliasCode = ''
     for alias in self.memAlias:
         readMemAliasCode += 'if (address == ' + hex(long(alias.address)) + ') {\n' + str(archWordType) + ' ' + alias.alias + '_temp = this->' + alias.alias + ';\n' + swapEndianessDefine + 'this->swap_endianess(' + alias.alias + '_temp);\n#endif\nreturn (' + str(archHWordType) + ')' + alias.alias + '_temp;\n}\n'

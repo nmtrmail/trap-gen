@@ -110,7 +110,10 @@ def getFetchAddressCode(self, model):
 def getDoFetchCode(self):
     """Reads the instruction at the address pointed to by the current program
     counter."""
-    Code = str(self.bitSizes[1]) + ' bitstring = this->' + self.fetchMem[0] + '.read_word(cur_PC);\n'
+    Code = str(self.bitSizes[1]) + ' bitstring = this->' + self.fetchMem[0] + '.read_instr(cur_PC'
+    for paramName, paramAttr in self.memoryParams.items():
+        Code += ', ' + paramAttr[1]
+    Code += ');\n'
     return Code
 
 def getCacheInstrFetchCode(self, doFetchCode, trace, combinedTrace, issueCodeFunction, hasHazard = False, pipeStage = None):

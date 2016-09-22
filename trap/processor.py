@@ -133,6 +133,7 @@ class Processor:
         self.fetchReg = None
         self.fetchMem = None
         self.memAlias = []
+        self.memoryParams = {}
         self.memories = {}
         self.memoryifs = []
         self.tlmPorts = []
@@ -277,6 +278,14 @@ class Processor:
 
     def addMemAlias(self, memAlias):
         self.memAlias.append(memAlias)
+
+    def addMemoryParam(self, name, paramType, value, default):
+        for paramName in self.memoryParams.keys():
+            if name == paramName:
+                raise Exception('Memory parameter ' + name + ' already exists.')
+            if not isinstance(paramType, cxx_writer.Type):
+                raise Exception('Memory parameter ' + name + ' should be an instance of cxx_writer.Type.')
+        self.memoryParams[name] = (paramType, value, default)
 
     def addMemory(self, name, mem_size, debug = False, program_counter = '', fetch = True):
         """Defines a processor class member of type LocalMemory that implements
