@@ -511,12 +511,6 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         processorMembers.append(quantumKeeperAttr)
         processorCtorCode += 'this->quant_keeper.set_global_quantum(this->latency*100);\nthis->quant_keeper.reset();\n'
 
-    for param in self.parameters:
-        configAttr = cxx_writer.Attribute(param.name, param.type, 'private')
-        processorMembers.append(configAttr)
-        processorCtorParams.append(param)
-        processorCtorInit.append(param.name + '(' + param.name + ')')
-
     resetCalledAttr = cxx_writer.Attribute('reset_called', cxx_writer.boolType, 'private')
     processorMembers.append(resetCalledAttr)
     processorCtorCode += 'this->reset_called = false;\n'
@@ -808,6 +802,17 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         processorCtorCode += 'this->ABIIf = new ' + str(InterfaceType) + '(' + ', '.join(abiCtorValues) + ');\n'
 
     ## @} Attributes and Initialization: Tools
+    #---------------------------------------------------------------------------
+    ## @name Attributes and Initialization: Configuration
+    #  @{
+
+    for param in self.parameters:
+        configAttr = cxx_writer.Attribute(param.name, param.type, 'private')
+        processorMembers.append(configAttr)
+        processorCtorParams.append(param)
+        processorCtorInit.append(param.name + '(' + param.name + ')')
+
+    ## @} Attributes and Initialization: Configuration
     #---------------------------------------------------------------------------
     ## @name Constructors and Destructors
     #  @{
@@ -1413,7 +1418,7 @@ def getCPPMain(self, model, namespace):
         if (vm.count("debugger") != 0) {
             processor.tool_manager.add_tool(gdb_stub);
             gdb_stub.initialize();
-    """
+        """
         for portName in self.tlmPorts:
             Code += 'processor.' + portName + '.set_debugger(&gdb_stub);\n'
         for memName in self.memories.keys():

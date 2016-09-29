@@ -1104,12 +1104,7 @@ def getCPPInstr(self, model, processor, trace, combinedTrace, namespace):
 ################################################################################
 # Instruction Test Functions
 ################################################################################
-def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''):
-    """Returns the code for testing the current instruction. A test consists of
-    setting the instruction variables, performing the instruction behavior and
-    then comparing the registers with the expected value. Some custom code is
-    necessary at the beginning to be able to access the private members of the
-    instruction."""
+def getCPPInstrTestInit(processor, trace, namespace):
 
     # Code common to all tests of a single instruction: Variables are declared
     # and the instruction instantiated with stub parameters.
@@ -1163,6 +1158,11 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
         declCode += namespace + '::LocalMemory ' + memName + '(' + str(memAttr[0]) + Code + ');\n'
         initInstrCode += memName + ', '
 
+    # Memory Interfaces
+    for memName in processor.memoryifs:
+        declCode += namespace + '::LocalMemory ' + memName + '(' + str(1024*1024) + ');\n'
+        initInstrCode += memName + ', '
+
     # Ports
     # Local memories are declared even for TLM ports. The default memory size is
     # 1MB.
@@ -1193,15 +1193,23 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
         initInstrCode += 'total_cycles, '
     initInstrCode = initInstrCode[:-2] + ')'
 
+    return (declCode, initInstrCode, outPinPorts)
+
+def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''):
+    """Returns the code for testing the current instruction. A test consists of
+    setting the instruction variables, performing the instruction behavior and
+    then comparing the registers with the expected value. Some custom code is
+    necessary at the beginning to be able to access the private members of the
+    instruction."""
+
+    (declCode, initInstrCode, outPinPorts) = getCPPInstrTestInit(processor, trace, namespace)
+
     # Individual tests of a single instruction.
     from procWriter import testNames
     instrTestFunctions = []
     for test in self.tests:
         # Instantiate architectural elements.
         instrTestCode = declCode + '\n'
-
-        # Instantiate instruction under test.
-        instrTestCode += self.name + ' test_instruction' + initInstrCode + ';\n'
 
         # Initialize global resources.
         for resource, value in test[1].items():
@@ -1214,6 +1222,9 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
                     instrTestCode += resource[:bracket] + '.write_word_dbg(' + hex(int(resource[bracket + 1:-1], 16)) + ', ' + hex(value) + ');\n'
             else:
                 instrTestCode += resource + '.write_force(' + hex(value) + ');\n'
+
+        # Instantiate instruction under test.
+        instrTestCode += self.name + ' test_instruction' + initInstrCode + ';\n'
 
         # Set instruction fields.
         Code = ['0' for i in range(0, self.machineCode.instrLen)]
@@ -1230,9 +1241,11 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
         instrTestCode += 'test_instruction.set_params(' + hex(int(''.join(Code), 2)) + ');\n'
 
         # Run instruction behavior.
-        instrTestCode += 'try {\n'
-        instrTestCode += 'test_instruction.behavior();'
-        instrTestCode += '\n}\ncatch(annul_exception& etc) {\n}\n\n'
+        instrTestCode += """try {
+            test_instruction.behavior();
+        }
+        catch(annul_exception& etc) {
+        }"""
 
         # Test the output values.
         for resource, value in test[2].items():

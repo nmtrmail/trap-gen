@@ -822,76 +822,8 @@ def getCPPIRQPorts(self, namespace):
 def getCPPIRQTests(self, trace, combinedTrace, namespace):
     """Returns the code for testing the interrupt ports."""
 
-    # Code common to all tests of a single instruction: Variables are declared
-    # and the IRQ port instantiated with stub parameters.
-    declCode = ''
-
-    # Registers, Aliases and Register Banks
-    if self.regs or self.regBanks:
-        from registerWriter import registerContainerType
-        declCode += registerContainerType.name + ' R('
-        # Register const or reset values could be processor variables.
-        # Since we do not have the values for those (probably program-dependent),
-        # we pass on zeros to the Registers ctor.
-        Code = ''
-        for reg in self.regs:
-            if isinstance(reg.constValue, str):
-                Code += '0, '
-            if isinstance(reg.defValue, str):
-                Code += '0, '
-
-        for regBank in self.regBanks:
-            for regConstValue in regBank.constValue.values():
-                if isinstance(regConstValue, str):
-                    Code += '0, '
-            for regDefaultValue in regBank.defValues:
-                if isinstance(regDefaultValue, str):
-                    Code += '0, '
-        if Code:
-            declCode += Code[:-2] + ');\n'
-        else:
-            declCode += ');\n'
-        # We also explicitly reset all regs to zero, instead of the reset value.
-        # Test writers tend to mask status registers apart from the bits they
-        # are interested in, which is perhaps not quite correct but intuitive.
-        declCode += 'R.write_force(0);\n'
-
-    #Code = ''
-    #for alias in self.memAlias:
-        #Code += ', ' + alias.alias
-
-    # Memory
-    if (trace or (any(memAttr[1] == True for memAttr in self.memories.values()))) and not self.systemc:
-        declCode += 'unsigned total_cycles;\n'
-    for memName, memAttr in self.memories.items():
-        Code = ''
-        if memAttr[1]:
-            Code += ', total_cycles'
-        if memAttr[2]:
-            Code += ', ' + memAttr[2]
-        declCode += namespace + '::LocalMemory ' + memName + '(' + str(memAttr[0]) + Code + ');\n'
-
-    # Ports
-    # Local memories are declared even for TLM ports. The default memory size is
-    # 1MB.
-    for portName in self.tlmPorts:
-        declCode += namespace + '::LocalMemory ' + portName + '(' + str(1024*1024) + ');\n'
-
-    # Pins
-    for pinPort in self.pins:
-        if not pinPort.inbound:
-            if pinPort.systemc:
-                pinPortTypeName = 'SC'
-            else:
-                pinPortTypeName = 'TLM'
-            if pinPort.inbound:
-                pinPortTypeName += 'InPin_'
-            else:
-                pinPortTypeName += 'OutPin_'
-            pinPortTypeName += str(pinPort.portWidth)
-            declCode += namespace + '::' + pinPortTypeName + ' ' + pinPort.name + '_pin(\"' + pinPort.name + '_pin\");\n'
-            declCode += 'PINTarget<' + str(pinPort.portWidth) + '> ' + pinPort.name + '_target_pin(\"' + pinPort.name + '_target_pin\");\n'
-            declCode += pinPort.name + '_pin.init_socket.bind(' + pinPort.name + '_target_pin.target_socket);\n'
+    from isaWriter import getCPPInstrTestInit
+    (declCode, initInstrCode, outPinPorts) = getCPPInstrTestInit(self, trace, namespace)
 
     # IRQ Tests
     from procWriter import testNames
@@ -905,7 +837,7 @@ def getCPPIRQTests(self, trace, combinedTrace, namespace):
         testNum = 0
         for test in irq.tests:
             # Instantiate architectural elements.
-            irqTestCode = declCode
+            irqTestCode = declCode + '\n'
 
             # Initialize global resources.
             # Note that each test is composed of two parts: The first contains
@@ -934,7 +866,7 @@ def getCPPIRQTests(self, trace, combinedTrace, namespace):
             irqTestCode += ') {\n'
 
             # Instantiate IRQ instruction under test.
-            irqTestCode += + irq.name + 'IntrInstruction test_instruction(' + instrCtorValues + ', ' + irq.name + ');\n'
+            irqTestCode += 'IntrInstruction test_instruction' + initInstrCode + ';\n'
 
             # Run IRQ instruction behavior.
             irqTestCode += """try {
