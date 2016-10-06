@@ -503,7 +503,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     else:
         totalCyclesAttr = cxx_writer.Attribute('total_cycles', cxx_writer.uintType, 'public')
         processorMembers.append(totalCyclesAttr)
-        processorCtorCode += 'this->total_cycles = 0;\n'
+        processorCtorInit.append('total_cycles(0)')
 
     if model.endswith('LT') and len(self.tlmPorts) > 0 and not model.startswith('acc'):
         quantumKeeperType = cxx_writer.Type('tlm_utils::tlm_quantumkeeper', 'tlm_utils/tlm_quantumkeeper.h')
@@ -513,7 +513,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
 
     resetCalledAttr = cxx_writer.Attribute('reset_called', cxx_writer.boolType, 'private')
     processorMembers.append(resetCalledAttr)
-    processorCtorCode += 'this->reset_called = false;\n'
+    processorCtorInit.append('reset_called(false)')
 
     if not model.startswith('acc'):
         processorCtorCode += 'SC_THREAD(main_loop);\n'
@@ -693,7 +693,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         NOPIntructionType = cxx_writer.Type('NOPInstruction', '#include \"instructions.hpp\"')
         NOPinstructionsAttr = cxx_writer.Attribute('NOP_instr', NOPIntructionType.makePointer(), 'public', True)
         processorMembers.append(NOPinstructionsAttr)
-        processorCtorCode += 'if (' + processor_name + '::num_instances == 1) {\n'
+        processorCtorCode += '\nif (' + processor_name + '::num_instances == 1) {\n'
         processorCtorCode += processor_name + '::NOP_instr = new NOPInstruction(' + instrCtorValues + ');\n'
         for pipeStage in self.pipes:
             processorCtorCode += pipeStage.name + '_stage.NOP_instr = ' + processor_name + '::NOP_instr;\n'
@@ -703,10 +703,11 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         if model.startswith('acc'):
             for pipeStage in self.pipes:
                 processorCtorCode += 'this->' + pipeStage.name + '_stage.' + irq.name + '_instr = this->' + irq.name + '_instr;\n'
+            processorCtorCode += '\n'
 
     numInstrAttr = cxx_writer.Attribute('num_instructions', cxx_writer.uintType, 'public')
     processorMembers.append(numInstrAttr)
-    processorCtorCode += 'this->num_instructions = 0;\n'
+    processorCtorInit.append('num_instructions(0)')
     instrExecutingAttr = cxx_writer.Attribute('instr_executing', cxx_writer.boolType, 'private')
     processorMembers.append(instrExecutingAttr)
     abiAttrs.append(cxx_writer.Attribute('instr_executing', cxx_writer.boolType.makeRef(), 'private'))
@@ -743,23 +744,23 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     if self.systemc or model.startswith('acc') or model.endswith('AT'):
         profilerTimeStartAttr = cxx_writer.Attribute('profiler_time_start', cxx_writer.sc_timeType, 'public')
         processorMembers.append(profilerTimeStartAttr)
-        processorCtorCode += 'this->profiler_time_start = SC_ZERO_TIME;\n'
+        processorCtorInit.append('profiler_time_start(SC_ZERO_TIME)')
         profilerTimeEndAttr = cxx_writer.Attribute('profiler_time_end', cxx_writer.sc_timeType, 'public')
         processorMembers.append(profilerTimeEndAttr)
-        processorCtorCode += 'this->profiler_time_end = SC_ZERO_TIME;\n'
+        processorCtorInit.append('profiler_time_end(SC_ZERO_TIME)')
     if self.systemc and model.startswith('func'):
         profilerAddrStartAttr = cxx_writer.Attribute('profiler_start_addr', fetchWordType, 'private')
         processorMembers.append(profilerAddrStartAttr)
-        processorCtorCode += 'this->profiler_start_addr = (' + str(fetchWordType) + ')-1;\n'
+        processorCtorInit.append('profiler_start_addr((' + str(fetchWordType) + ')-1)')
         profilerAddrEndAttr = cxx_writer.Attribute('profiler_end_addr', fetchWordType, 'private')
         processorMembers.append(profilerAddrEndAttr)
-        processorCtorCode += 'this->profiler_end_addr = (' + str(fetchWordType) + ')-1;\n'
+        processorCtorInit.append('profiler_end_addr((' + str(fetchWordType) + ')-1)')
 
     # Attributes and Initialization: History
     if model.startswith('func'):
         histEnabledAttr = cxx_writer.Attribute('history_en', cxx_writer.boolType, 'private')
         processorMembers.append(histEnabledAttr)
-        processorCtorCode += 'this->history_en = false;\n'
+        processorCtorInit.append('history_en(false)')
         instrHistFileAttr = cxx_writer.Attribute('history_file', cxx_writer.ofstreamType, 'private')
         processorMembers.append(instrHistFileAttr)
 
@@ -777,23 +778,23 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
     if model.startswith('func'):
         undumpedHistElemsAttr = cxx_writer.Attribute('history_undumped_elements', cxx_writer.uintType, 'public')
         processorMembers.append(undumpedHistElemsAttr)
-        processorCtorCode += 'this->history_undumped_elements = 0;\n'
+        processorCtorInit.append('history_undumped_elements(0)')
 
     # Attributes and Initialization: Loader
-    entryPointAttr = cxx_writer.Attribute('ENTRY_POINT', fetchWordType, 'public')
-    processorMembers.append(entryPointAttr)
-    processorCtorCode += 'this->ENTRY_POINT = 0;\n'
     mprocIdAttr = cxx_writer.Attribute('MPROC_ID', fetchWordType, 'public')
     processorMembers.append(mprocIdAttr)
-    processorCtorCode += 'this->MPROC_ID = 0;\n'
-    programLimitAttr = cxx_writer.Attribute('PROGRAM_LIMIT', fetchWordType, 'public')
-    processorMembers.append(programLimitAttr)
-    processorCtorCode += 'this->PROGRAM_LIMIT = 0;\n'
-    abiAttrs.append(cxx_writer.Attribute('PROGRAM_LIMIT', fetchWordType.makeRef(), 'private'))
-    abiCtorValues.append('this->PROGRAM_LIMIT')
+    processorCtorInit.append('MPROC_ID(0)')
+    entryPointAttr = cxx_writer.Attribute('ENTRY_POINT', fetchWordType, 'public')
+    processorMembers.append(entryPointAttr)
+    processorCtorInit.append('ENTRY_POINT(0)')
     programStartAttr = cxx_writer.Attribute('PROGRAM_START', fetchWordType, 'public')
     processorMembers.append(programStartAttr)
-    processorCtorCode += 'this->PROGRAM_START = 0;\n'
+    processorCtorInit.append('PROGRAM_START(0)')
+    programLimitAttr = cxx_writer.Attribute('PROGRAM_LIMIT', fetchWordType, 'public')
+    processorMembers.append(programLimitAttr)
+    processorCtorInit.append('PROGRAM_LIMIT(0)')
+    abiAttrs.append(cxx_writer.Attribute('PROGRAM_LIMIT', fetchWordType.makeRef(), 'private'))
+    abiCtorValues.append('this->PROGRAM_LIMIT')
 
     # Attributes and Initialization: ABI
     if self.abi:

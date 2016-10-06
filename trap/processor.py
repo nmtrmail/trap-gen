@@ -1195,15 +1195,30 @@ class PipeStage:
         self.operation = ''
 
     def setFetchStage(self):
+        """Exactly one pipeline stage needs to be set as the fetch stage. The
+        pipeline stage behavior will then contain the code for fetching
+        instructions."""
         self.fetchStage = True
 
     def setDecodeStage(self):
+        """Exactly one pipeline stage needs to be set as the decode stage. As
+        soon as the instruction register ids are decoded, the input registers
+        can be checked for possible data hazards, and the output registers can
+        be locked."""
         self.decodeStage = True
 
     def setRegsStage(self):
+        """Exactly one pipeline stage needs to be set as the register stage.
+        Unless otherwise specified, this is the point where registers are read.
+        This is important for correct hazard detection and register locking
+        logic."""
         self.regsStage = True
 
     def setWbStage(self):
+        """Exactly one pipeline stage needs to be set as the write-back stage.
+        Unless otherwise specified, this is the point where registers are
+        written. This is important for correct hazard detection, register
+        locking and value propagation logic."""
         self.wbStage = True
 
     # This is a list of forwarding paths, so e.g. ['ID', 'EX'], means this stage

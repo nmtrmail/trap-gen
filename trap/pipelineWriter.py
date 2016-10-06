@@ -211,6 +211,8 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
 
         if pipeStage.fetchStage:
             Code +='this->instr_executing = true;\n'
+            # Tool-induced Stall Detection
+            Code += 'bool will_stall = false;\n'
         else:
             Code += """cur_instr = this->next_instr;
             bool instr_annulled = false;
@@ -234,7 +236,6 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
               R.stall(""" + str(self.pipes.index(pipeStage)) + """);
             // Just discovered end of stall: Advance registers.
             } else if (was_stalled && !will_stall) {
-              this->next_instr = this->prev_stage->cur_instr;
               R.advance();
             }
 
@@ -273,16 +274,45 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
                 #ifndef DISABLE_TOOLS
                 // Check whether the tools require the pipeline to be empty before proceeding with execution.
                 if (this->tool_manager.is_pipeline_empty(cur_PC)) {
-                    num_NOPs++;
+                    // Pipeline is already emptying.
+                    if (num_NOPs) {
+                        num_NOPs--;
+                        will_stall = true;
+                        // Just discovered end of stall: Advance registers.
+                        if (!num_NOPs) {
+                            will_stall = false;
+                            // Do not advance registers if stall was initiated in a succeeding stage.
+                            if (!this->stalled) {
+                                R.advance();
+                            }
+                        }
+                    }
+                    // Pipeline has to be emptied.
+                    else {
+                        num_NOPs = """ + str(len(self.pipes)-self.pipes.index(pipeStage)-1)+ """;
+                        // Stall might be shorter if pipeline already contains a bubble for some other reason.
+                        BasePipeStage* stage = this->succ_stage;
+                        while (stage) {
+                            if (stage->cur_instr != this->NOP_instr)
+                                break;
+                            num_NOPs--;
+                            stage = stage->succ_stage;
+                        }
+                        if (num_NOPs) {
+                            // Stall this pipeline stage.
+                            will_stall = true;
+                            // Just discovered stall: Stall registers:
+                            R.stall(""" + str(self.pipes.index(pipeStage)) + """);
+                        }
+                    }
                 } else {
                     num_NOPs = 0;
                 }
                 if (num_NOPs > 0 && num_NOPs < """ + str(len(self.pipes)) + """) {
-                    cur_instr = this->NOP_instr;
+                    std::cerr << std::setw(15) << std::left << \"Stage=""" + pipeStage.name + """\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_PC << \", Instruction=NOP       , Mnemonic=NOP: Propagating NOP as required by tools.\" << std::endl;
+                    wait(this->latency);
                 """
 
-            if trace and not combinedTrace:
-                Code += 'std::cerr << std::setw(15) << std::left << \"Stage=' + pipeStage.name + '\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_PC << \", Instruction=NOP       , Mnemonic=NOP: Propagating NOP as required by tools.\" << std::endl;\n'
             Code += """} else {
                     num_NOPs = 0;
                 #endif
@@ -367,6 +397,12 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
             #endif
             """
 
+        # Synchronize with other stages.
+        Code += """// Instruction-induced Latency
+        wait((num_cycles + """ + str(float(seenStages - 1)/(len(self.pipes) - 1)) + """)*this->latency);
+        """
+
+        if pipeStage.fetchStage:
             Code += """this->num_instructions++;
                 #ifndef DISABLE_TOOLS
                 } // Pipeline is empty or no tools require it to be so.
@@ -377,31 +413,35 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
             if self.irqs:
                 Code += '} // if (!IRQ)\n'
 
-        # Synchronize with other stages.
-        if pipeStage.fetchStage:
-            Code += """// Instruction-induced Latency
-            wait((num_cycles + """ + str(float(seenStages - 1)/(len(self.pipes) - 1)) + """)*this->latency);
-            // Wait for other pipeline stages to end.
-            this->wait_pipe_end();
+        if pipeStage.fetchStage or (hasHazard and pipeStage.decodeStage):
+            Code += """
+            // Stall pipeline stages.
+            BasePipeStage* stage = this;
+            while (stage) {
+                stage->stalled = this->stalled || will_stall;
+                stage = stage->prev_stage;
+            }
             """
-        else:
-            Code += """// Instruction-induced Latency
-            wait((num_cycles + """ + str(float(seenStages - 1)/(len(self.pipes) - 1)) + """)*this->latency);
-            // Wait for other pipeline stages to end.
-            this->wait_pipe_end();
 
+        Code += """
+        // Wait for other pipeline stages to end.
+        this->wait_pipe_end();
+        """
+
+        if not pipeStage.fetchStage:
+            Code += """
             // Flush pipeline.
             if (instr_annulled) {
                 cur_instr->flush_pipeline = false;
                 // Flush preceding pipeline stages.
                 this->prev_stage->flush();
-                // Flush registers.
+                // Flush registers from this stage downwards.
                 R.flush(""" + str(self.pipes.index(pipeStage)) + """);
             } else if (cur_instr->flush_pipeline) {
                 cur_instr->flush_pipeline = false;
                 // Flush preceding pipeline stages.
                 this->prev_stage->flush();
-                // Flush registers.
+                // Flush registers from the preceding stage downwards.
                 R.flush(""" + str(self.pipes.index(pipeStage)-1) + """);
             }
             """
@@ -416,26 +456,29 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
             if trace:
                 if combinedTrace and pipeStage.fetchStage:
                     Code += 'if (cur_instr != this->NOP_instr) {\n'
-                if not combinedTrace or pipeStage.fetchStage:
-                    Code += 'std::cerr << std::setw(15) << std::left << \"Stage=' + pipeStage.name + '\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_instr->fetch_PC << \", Instruction=\" << std::setw(10) << std::left << cur_instr->get_name() << \", Mnemonic=\" << cur_instr->get_mnemonic() << \": Stalled on a data hazard.\" << std::endl;\nstd::cerr << "Stalled registers: " << cur_instr->print_busy_regs() << std::endl;'
+                if not combinedTrace or pipeStage.decodeStage:
+                    Code += 'std::cerr << std::setw(15) << std::left << \"Stage=' + pipeStage.name + '\" << \", PC=\" << std::hex << std::showbase << std::setw(10) << cur_instr->fetch_PC << \", Instruction=\" << std::setw(10) << std::left << cur_instr->get_name() << \", Mnemonic=\" << cur_instr->get_mnemonic() << \": Stalled on a data hazard.\" << std::endl;\n'
+                if pipeStage.decodeStage:
+                    Code += 'std::cerr << "                 Stalled registers: " << cur_instr->print_busy_regs() << std::endl;'
                 if pipeStage.fetchStage:
                     Code += 'cur_instr->print_trace();\n'
                 if combinedTrace and pipeStage.fetchStage:
                     Code += '}\n'
 
+            if pipeStage.fetchStage or pipeStage.decodeStage:
+                Code += """
+                // Stall pipeline stages.
+                BasePipeStage* stage = this;
+                while (stage) {
+                    stage->stalled = this->stalled || will_stall;
+                    stage = stage->prev_stage;
+                }
+                """
+
             Code += """
+                // Wait for other pipeline stages to end.
                 this->wait_pipe_end();
             } // if (this->stalled)
-            """
-
-        if hasHazard and pipeStage.decodeStage:
-            Code += """
-            // Stall pipeline stages.
-            BasePipeStage* stage = this;
-            while (stage) {
-                stage->stalled = will_stall;
-                stage = stage->prev_stage;
-            }
             """
 
         Code += """
@@ -451,26 +494,40 @@ def getCPPPipeline(self, trace, combinedTrace, model, namespace):
             this->next_instr = this->NOP_instr;
             this->succ_stage->next_instr = this->NOP_instr;
         }"""
-        if hasHazard and pipeStage.decodeStage:
-            Code += """ else if (this->stalled) {
-                // All preceding stages will retain next_instr = cur_instr.
-                this->next_instr = cur_instr;
-                // Propagate NOP only because the stall is caused by the instruction in this stage. Otherwise the next stage will retain next_instr = cur_instr.
+        if pipeStage.fetchStage or (hasHazard and pipeStage.decodeStage):
+            Code += """ else if (will_stall) {
+                // Propagate NOP because the stall is caused by the instruction in this stage.
                 this->succ_stage->next_instr = this->NOP_instr;
-            } else {
-                this->succ_stage->next_instr = cur_instr;
-            }
-            """
-        elif hasHazard and pipeStage != self.pipes[-1]:
+            }"""
+        if hasHazard and not pipeStage.decodeStage and pipeStage != self.pipes[-1]:
             Code += """ else if (this->stalled) {
-                // All preceding stages will retain next_instr = cur_instr.
-                this->next_instr = cur_instr;
-            } else {
+                // Retain next_instr = cur_instr in the following stage.
+                this->succ_stage->next_instr = this->succ_stage->cur_instr;
+            }"""
+        if pipeStage != self.pipes[-1]:
+            Code += """ else {
                 this->succ_stage->next_instr = cur_instr;
             }
             """
-        elif pipeStage != self.pipes[-1]:
-            Code += '\nthis->succ_stage->next_instr = cur_instr;\n'
+
+        #if hasHazard and pipeStage.decodeStage:
+        #    Code += """ else if (will_stall) {
+        #        // Propagate NOP because the stall is caused by the instruction in this stage.
+        #        this->succ_stage->next_instr = this->NOP_instr;
+        #    } else {
+        #        this->succ_stage->next_instr = cur_instr;
+        #    }
+        #    """
+        #elif hasHazard and pipeStage != self.pipes[-1]:
+        #    Code += """ else if (this->stalled) {
+        #        // Retain next_instr = cur_instr in the following stage.
+        #        this->succ_stage->next_instr = this->succ_stage->cur_instr;
+        #    } else {
+        #        this->succ_stage->next_instr = cur_instr;
+        #    }
+        #    """
+        #elif pipeStage != self.pipes[-1]:
+        #    Code += '\nthis->succ_stage->next_instr = cur_instr;\n'
 
         if pipeStage.fetchStage:
             # Register Propagation and Instruction Execution State
