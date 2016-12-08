@@ -460,9 +460,8 @@ class Function(DumpElement):
         if self.retType.name:
             writer.write(' ')
         writer.write(self.name + '(')
-        split = False
         indent = -1
-        if (len(self.parameters) > 1):
+        if (len(self.parameters) > 2):
             writer.write('\n')
             indent = writer.curIndent+2
         for i in self.parameters:
@@ -482,11 +481,11 @@ class Function(DumpElement):
             self.body.writeImplementation(writer)
             writer.write('} // ' + self.name + '()\n\n')
         elif self.headerBody == 2: # empty body
-            writer.write(' {}\n')
+            writer.write(' {}\n', indent = indent, split = ',')
         elif self.headerBody == 1: # pure
-            writer.write(' = 0;\n')
+            writer.write(' = 0;\n', indent = indent, split = ',')
         else: # no body in header
-            writer.write(';\n')
+            writer.write(';\n', indent = indent, split = ',')
         #for namespace in self.namespaces:
         #    writer.write('} // namespace ' + namespace + '\n')
 

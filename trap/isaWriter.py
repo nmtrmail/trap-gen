@@ -1228,6 +1228,15 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
 
         # Set instruction fields.
         Code = ['0' for i in range(0, self.machineCode.instrLen)]
+        # From encoding
+        for name, val in self.machineCode.bitValue.items():
+            for i in range(0, len(val)):
+                Code[self.machineCode.bitPos[name] + i] = str(val[i])
+        # From instruction
+        for name, val in self.machineBits.items():
+            for i in range(0, len(val)):
+                Code[self.machineCode.bitPos[name] + i] = str(val[i])
+        # From test
         for name, elemValue in test[0].items():
             if self.machineCode.bitLen.has_key(name):
                 curBitCode = toBinStr(elemValue, self.machineCode.bitLen[name])

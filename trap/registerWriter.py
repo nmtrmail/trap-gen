@@ -98,12 +98,11 @@ def getPipeClockCycleFunction(self, registerMaxBitwidth):
        forwarding stage is stalled, the bypass is deactivated.
 
     3. Register-specific feedback loops via <reg>.setWbStageOrder():
-       the common pipe
-       behavior in (1) and (2) does not run except for the step-wise forward
-       propagation, in which case all stages propagate, not just [regsStage..
-       wbStage] If <reg>.setWbStageOrder() is used, care should therefore be
-       taken to re-define all feedback loops as required. If the forwarding
-       stage is stalled, the bypass is deactivated.
+       the common pipe behavior in (1) and (2) does not run except for the step-
+       wise forward propagation, in which case all stages propagate, not just
+       [regsStage..wbStage] If <reg>.setWbStageOrder() is used, care should
+       therefore be taken to re-define all feedback loops as required. If the
+       forwarding stage is stalled, the bypass is deactivated.
 
     This function generates the callback function containing default propagation
     logic (1) as well as any forwarding specified by <pipe>.setWbStageOrder(
