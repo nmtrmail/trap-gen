@@ -42,9 +42,9 @@ import cxx_writer
 from registerWriter import registerContainerType
 
 ################################################################################
-# PIN Classes
+# Pin Classes
 ################################################################################
-def getCPPPINPorts(self, namespace):
+def getCPPPinPorts(self, namespace):
     """Returns the classes implementing pins for communicating with the external
     world. There are both incoming and outgoing external ports. For the
     outgoing, I simply have to declare the port class (like memory ports). For
@@ -112,9 +112,9 @@ def getCPPPINPorts(self, namespace):
         sendPinReqBody.addInclude('common/report.hpp')
         sendPinReqBody.addInclude('tlm.h')
         from isa import resolveBitType
-        PINWidthType = resolveBitType('BIT<' + str(port.portWidth) + '>')
-        addressParam = cxx_writer.Parameter('address', PINWidthType.makeRef().makeConst())
-        datumParam = cxx_writer.Parameter('datum', PINWidthType)
+        PinWidthType = resolveBitType('BIT<' + str(port.portWidth) + '>')
+        addressParam = cxx_writer.Parameter('address', PinWidthType.makeRef().makeConst())
+        datumParam = cxx_writer.Parameter('datum', PinWidthType)
         sendPinReqMethod = cxx_writer.Method('send_pin_req', sendPinReqBody, cxx_writer.voidType, 'public', [addressParam, datumParam], noException = True)
         pinPortMembers.append(sendPinReqMethod)
 

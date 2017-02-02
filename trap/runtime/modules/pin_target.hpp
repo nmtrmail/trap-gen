@@ -53,17 +53,17 @@
 namespace trap {
 
 /**
- * @brief PINTarget
+ * @brief PinTarget
  */
 template<unsigned SOCK_SIZE>
-class PINTarget : public sc_module {
+class PinTarget : public sc_module {
   public:
-  PINTarget(sc_module_name name) :
+  PinTarget(sc_module_name name) :
     sc_module(name),
     target_socket(("pin_target_" + boost::lexical_cast<std::string>(name)).c_str()) {
-    this->target_socket.register_b_transport(this, &PINTarget::b_transport);
+    this->target_socket.register_b_transport(this, &PinTarget::b_transport);
     end_module();
-  } // PINTarget()
+  } // PinTarget()
 
   /// ..........................................................................
 
@@ -86,10 +86,10 @@ class PINTarget : public sc_module {
 
   /// ..........................................................................
 
-  // Method used to read the value of the PIN that has just been assigned.
+  // Method used to read the value of the pin that has just been assigned.
   unsigned read_pin(unsigned address) {
     if (this->values.find(address) == this->values.end()) {
-      THROW_EXCEPTION("Address " << std::hex << std::showbase << address << " not yet written by PIN port.");
+      THROW_EXCEPTION("Address " << std::hex << std::showbase << address << " not yet written by pin port.");
     }
     return this->values[address];
   } // read_pin()
@@ -97,10 +97,10 @@ class PINTarget : public sc_module {
   /// ..........................................................................
 
   public:
-  tlm_utils::simple_target_socket<PINTarget, SOCK_SIZE> target_socket;
+  tlm_utils::simple_target_socket<PinTarget, SOCK_SIZE> target_socket;
   private:
   std::map<unsigned, unsigned> values;
-}; // class PINTarget
+}; // class PinTarget
 
 } // namespace trap
 

@@ -1,0 +1,21 @@
+COMMON
+- SystemC parameter: Trace the effect of SystemC activation.
+- Generation of abstraction-parametrized processors: Already done for registers. Big change of course, have to go through everything and decide how to merge the acc/func variants.
+- Go through all TODOs in .py files.
+
+REGISTERS
+- Reset values: Currently, reset values are passed to registers at construction. This does not work for the PC, e.g., because the reset value (ENTRY_POINT) is changed after loading. Maybe just a set_reset_value()? ENTRY_POINT and co have to be changed as well from public vars to private+set/get to enable triggering the PC reset value change.
+- Pipeline bypasses: Currently, bypasses are not considered when locking registers. This is erring on the safe side, since a conservative number of stall cycles is requested if we need to wait for a given register. For a correct calculation of stall cylces, setWbStageOrder() has to be honored in RegisterCA::lock() and is_locked().
+
+INSTRUCTIONS
+- Rethink HelperOperations/HelperMethods: Currently, HelperOperations are classes deriving from Instruction, and HelperMethods are methods of Instruction. Instructions using operations derive from them (creating a diamond inheritence from Instruction). Methods are used natively. Operations do not create that much overhead since the state (registers and other resources) is only instantiated once per final instruction due to the virtual inheritence. The methods are inefficient though, since they are unnecessarily replicated per instruction. Possible solutions:
+  - Separate functions: We would have to pass the state with each function call.
+  - Functors with state: Solves previous problem but method will not have access to instruction members (sometimes necessary).
+  - Friends of functions: Code for declaring m methods as friends of i instructions.
+
+TOOLS
+- Tracing: Grep(trace=True). Consider offering possibility of attaching own reporting/tracing interface (e.g. sr_report).
+
+PROCESSORS
+- Leon3: Work Trap-SoCRocket diff back into trap for processor + ports.
+- Common: Grep(<reg>=, <reg>.lock(), stall(), addSpecReg, _MODEL) and update to addSpecReg(<variable-reg-name>, condition)

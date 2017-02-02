@@ -110,6 +110,7 @@ def getFetchAddressCode(self, model):
 def getDoFetchCode(self):
     """Reads the instruction at the address pointed to by the current program
     counter."""
+    # TODO: Make instruction length variable to enable 32-bit/16-bit instruction set combinations e.g.
     Code = str(self.bitSizes[1]) + ' bitstring = this->' + self.fetchMem[0] + '.read_instr(cur_PC'
     for paramName, paramAttr in self.memoryParams.items():
         Code += ', ' + paramAttr[1]
@@ -505,9 +506,9 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         processorMembers.append(totalCyclesAttr)
         processorCtorInit.append('total_cycles(0)')
 
-    if model.endswith('LT') and len(self.tlmPorts) > 0 and not model.startswith('acc'):
+    if model.endswith('LT') and not model.startswith('acc') and (len(self.tlmPorts) > 0 or len(self.memoryifs) > 0):
         quantumKeeperType = cxx_writer.Type('tlm_utils::tlm_quantumkeeper', 'tlm_utils/tlm_quantumkeeper.h')
-        quantumKeeperAttr = cxx_writer.Attribute('quant_keeper', quantumKeeperType, 'private')
+        quantumKeeperAttr = cxx_writer.Attribute('quant_keeper', quantumKeeperType, 'public')
         processorMembers.append(quantumKeeperAttr)
         processorCtorCode += 'this->quant_keeper.set_global_quantum(this->latency*100);\nthis->quant_keeper.reset();\n'
 
@@ -912,7 +913,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
         HistoryInstrType instr_queue_elem;
         if (this->history_en) {
         """
-        if len(self.tlmPorts) > 0 and model.endswith('LT'):
+        if model.endswith('LT') and (len(self.tlmPorts) > 0 or len(self.memoryifs) > 0):
             Code += 'instr_queue_elem.cycle = (unsigned)(this->quant_keeper.get_current_time()/this->latency);'
         elif model.startswith('acc') or self.systemc or model.endswith('AT'):
             Code += 'instr_queue_elem.cycle = (unsigned)(sc_time_stamp()/this->latency);'
@@ -975,7 +976,7 @@ def getCPPProcessor(self, model, trace, combinedTrace, namespace):
             Code += '} // if (!IRQ)\n'
 
         # Synchronize
-        if len(self.tlmPorts) > 0 and model.endswith('LT'):
+        if model.endswith('LT') and (len(self.tlmPorts) > 0 or len(self.memoryifs) > 0):
             Code += '// Instruction-induced Latency\nthis->quant_keeper.inc((num_cycles + 1)*this->latency);\nif (this->quant_keeper.need_sync()) {\nthis->quant_keeper.sync();\n}\n'
         elif model.startswith('acc') or self.systemc or model.endswith('AT'):
             Code += '// Instruction-induced Latency\nwait((num_cycles + 1)*this->latency);\n'
@@ -1310,8 +1311,8 @@ def getCPPMain(self, model, namespace):
 
     // Loader: Set the processor application variables.
     processor.ENTRY_POINT = loader.get_program_start();
-    processor.PROGRAM_LIMIT = program_dim + program_data_start;
     processor.PROGRAM_START = program_data_start;
+    processor.PROGRAM_LIMIT = program_data_start + program_dim;
     """
 
     if self.systemc or model.startswith('acc') or model.endswith('AT'):

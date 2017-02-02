@@ -352,6 +352,7 @@ class Instruction:
         self.notLockRegs = []
         self.customCheckHazardOp = {}
 
+    # TODO: Add reference to processor features; tag mnemonic, machineCode and machineBits with features.
     def setMachineCode(self, machineCode, machineBits = {}, mnemonic = [], subInstr = False):
         """Sets the machine code for this instruction. Note that machineCode
         may be generic for groups of instructions, with machineBits specializing

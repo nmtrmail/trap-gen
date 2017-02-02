@@ -103,6 +103,7 @@ class Processor:
         self.cacheLimit = cacheLimit
         self.preProcMacros = []
         self.defines = []
+        self.features = {}
         self.parameters = []
         self.systemc = systemc
 
@@ -172,6 +173,17 @@ class Processor:
         self.wordSize = wordSize
         self.byteSize = byteSize
 
+    def addFeatures(self, features):
+        for category, values in features.items():
+            if not isinstance(values, list):
+                raise Exception('Invalid values ' + values + ' for feature ' + category + ', expected list of available values + active values.')
+            if not isinstance(values[0], list):
+                raise Exception('Invalid values ' + values[0] + ' for feature ' + category + ', expected list.')
+            if values[1] != None and not values[1] in values[0]:
+                raise Exception('Value ' + values[1] + ' for feature ' + category + ', does not match any of the available values: ' + values[0] + '.')
+        self.features = features
+
+
     # ..........................................................................
     # Instruction Set Architecture Configuration
 
@@ -190,7 +202,7 @@ class Processor:
     # ..........................................................................
     # Storage Configuration
 
-    def addRegister(self, reg):
+    def addRegister(self, reg, features = []):
         for i in self.regs:
             if reg.name == i.name:
                 raise Exception('Register ' + reg.name + ' conflicts with register ' + i.name + ' in processor ' + self.name + '.')
@@ -203,7 +215,13 @@ class Processor:
         for i in self.aliasRegBanks:
             if reg.name == i.name:
                 raise Exception('Register ' + reg.name + ' conflicts with alias register bank ' + i.name + ' in processor ' + self.name + '.')
-        self.regs.append(reg)
+        if not features:
+            self.regs.append(reg)
+        else:
+            for feature in features:
+                if feature in [ self.features[key][1] for key in self.features.keys() ]:
+                    self.regs.append(reg)
+                    break
 
     def addRegBank(self, regBank):
         for i in self.regs:
@@ -1032,7 +1050,7 @@ class Processor:
 
             pinClasses = []
             if self.pins:
-                pinClasses = portsWriter.getCPPPINPorts(self, namespace)
+                pinClasses = portsWriter.getCPPPinPorts(self, namespace)
                 if pinClasses:
                     pinHeadFile = cxx_writer.FileDumper('externalPins.hpp', True)
                     pinHeadFile.addMember(defCode)

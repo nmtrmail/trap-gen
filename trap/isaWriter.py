@@ -84,7 +84,7 @@ def getCPPInstrMethod(self, model, namespace):
     for var in self.localvars:
         methodCode.addVariable(var)
 
-    methodMethod = cxx_writer.Method(self.name, methodCode, self.retType, 'public', self.parameters, inline = self.inline, noException = not self.exception)
+    methodMethod = cxx_writer.Method(self.name, methodCode, self.retType, 'public', self.parameters, inline = self.inline, noException = not self.exception, const = self.const)
 
     return methodMethod
 
@@ -1185,7 +1185,7 @@ def getCPPInstrTestInit(processor, trace, namespace):
                 pinPortTypeName += 'OutPin_'
             pinPortTypeName += str(pinPort.portWidth)
             declCode += namespace + '::' + pinPortTypeName + ' ' + pinPort.name + '_pin(\"' + pinPort.name + '_pin\");\n'
-            declCode += 'PINTarget<' + str(pinPort.portWidth) + '> ' + pinPort.name + '_target_pin(\"' + pinPort.name + '_target_pin\");\n'
+            declCode += 'PinTarget<' + str(pinPort.portWidth) + '> ' + pinPort.name + '_target_pin(\"' + pinPort.name + '_target_pin\");\n'
             declCode += pinPort.name + '_pin.init_socket.bind(' + pinPort.name + '_target_pin.target_socket);\n'
             initInstrCode += pinPort.name + '_pin, '
 
@@ -1254,7 +1254,8 @@ def getCPPInstrTest(self, processor, model, trace, combinedTrace, namespace = ''
             test_instruction.behavior();
         }
         catch(annul_exception& etc) {
-        }"""
+        }
+        """
 
         # Test the output values.
         for resource, value in test[2].items():

@@ -43,6 +43,7 @@
 //#include <amba_parameters.h>
 
 #include <list>
+#include <tuple>
 #include <assert.h>
 #include <iomanip>
 
@@ -248,7 +249,7 @@ class RegisterTLMOffset : public RegisterTLM<DATATYPE> {
       m_offset(offset) {
     // Offsets cannot be used with masks since it is not obviuos whether the
     // initial or the offset value should be masked.
-    assert(read_mask == ((unsigned long)1 << (sizeof(DATATYPE) * 8) - 1)
+    assert(read_mask == (((unsigned long)1 << (sizeof(DATATYPE) * 8)) - 1)
     && read_mask == write_mask);
   }
 
@@ -369,7 +370,7 @@ class RegisterTLMDelayOffset : public RegisterTLM<DATATYPE> {
       m_delay(delay) {
     // Offsets cannot be used with masks since it is not obviuos whether the
     // initial or the offset value should be masked.
-    assert(read_mask == ((unsigned long)1 << (sizeof(DATATYPE) * 8) - 1)
+    assert(read_mask == (((unsigned long)1 << (sizeof(DATATYPE) * 8)) - 1)
     && read_mask == write_mask);
 
     this->m_update_slots = new bool[this->m_delay];
@@ -534,8 +535,8 @@ class RegisterCA : public RegisterAbstraction<DATATYPE> {
       m_stall_stage(-1),
       m_nop_stages(0),
       m_current_cycle(1),
-      m_clock_cycle_func(clock_cycle_func),
-      m_has_to_propagate(false) {
+      m_has_to_propagate(false),
+      m_clock_cycle_func(clock_cycle_func) {
 
     this->m_values = new DATATYPE[this->m_num_stages];
     this->m_time_stamps = new unsigned long long[this->m_num_stages];
